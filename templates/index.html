@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBRecruitAI | Join the Don Benito's Family</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="bg-container"></div>
+    
+    <div class="landing-page">
+        <!-- Navigation -->
+        <header class="navbar glass">
+            <div class="nav-logo">
+                <img src="assets/logo.png" alt="DBRecruitAI Logo">
+            </div>
+            <nav class="nav-menu">
+                <a href="jobs.html" class="nav-link">Browse Jobs</a>
+                <a href="track.html" class="nav-link">Track Application</a>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <main class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">Join the <span class="accent-text">Don Benito's</span> Family</h1>
+                <p class="hero-subtitle">Discover opportunities where your talent meets our tradition of excellence. Start your journey with us today.</p>
+                <div class="hero-actions">
+                    <a href="jobs.html" class="btn btn-primary btn-lg">
+                        <i class="fas fa-search"></i> Browse Job Openings
+                    </a>
+                    <a href="track.html" class="btn btn-secondary btn-lg glass">
+                        <i class="fas fa-tasks"></i> Track Application
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Optional: Floating elements or features -->
+            <div class="hero-stats">
+                <div class="mini-stat glass">
+                    <span class="m-val">400+</span>
+                    <span class="m-lbl">Branches</span>
+                </div>
+                <div class="mini-stat glass">
+                    <span class="m-val">1000+</span>
+                    <span class="m-lbl">Employees</span>
+                </div>
+                <div class="mini-stat glass">
+                    <span class="m-val">100%</span>
+                    <span class="m-lbl">Commitment</span>
+                </div>
+            </div>
+        </main>
+
+        <footer class="landing-footer glass">
+            <p>&copy; 2026 DBRecruitAI - Powered by Don Benito's. All Rights Reserved.</p>
+        </footer>
+    </div>
+    {%block content %}{% endblock %}
+    <script src="{% static "js/main.js" %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="anonymous"></script>
+</body>
+</html>
