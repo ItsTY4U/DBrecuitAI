@@ -55,7 +55,7 @@ Edit `.env` and fill in your local MySQL credentials and a real `DJANGO_SECRET_K
 Create the database (adjust user/password as needed):
 
 ```sql
-CREATE DATABASE recruitment_screening CHARACTER SET utf8mb4;
+CREATE DATABASE DBrecruitAI_database CHARACTER SET utf8mb4;
 ```
 
 > Tip: if you don't want to install MySQL locally yet, set `DB_ENGINE=sqlite` in `.env`
@@ -86,60 +86,3 @@ flake8 .
 black .
 isort .
 ```
-
-## Setting up the GitHub repository
-
-1. Create a new, empty repository on GitHub (do **not** initialize it with a
-   README/.gitignore/license there, since this project already has them).
-2. From this project folder:
-
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit: Django project scaffold"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/<your-repo>.git
-   git push -u origin main
-   ```
-
-3. (Recommended) Create a `develop` branch for ongoing work and protect `main`:
-
-   ```bash
-   git checkout -b develop
-   git push -u origin develop
-   ```
-
-   In GitHub → Settings → Branches, add a branch protection rule for `main`
-   requiring the CI checks (`lint`, `test`) to pass before merging.
-
-## CI/CD pipeline
-
-A GitHub Actions workflow is included at `.github/workflows/ci.yml`. It runs
-automatically on every push/PR to `main` or `develop` and:
-
-1. **Lint job** — runs `flake8` and `black --check`.
-2. **Test job** — spins up a real MySQL 8.4 service container, runs
-   migrations, and runs the Django test suite with coverage.
-
-No secrets are required for CI as-is (it uses a throwaway MySQL container).
-
-### Adding deployment later
-
-The workflow has a commented-out placeholder `deploy` job. Once you pick a
-hosting target, come back and let me know — I can fill in the deploy steps for:
-
-- **Docker + VPS** (build & push image, SSH deploy)
-- **Render / Railway** (deploy via their GitHub integration or CLI)
-- **AWS** (ECS, Elastic Beanstalk, or Lambda via SAM/Zappa)
-
-## Environment variables reference
-
-See `.env.example` for the full list. Key ones:
-
-| Variable | Purpose |
-|---|---|
-| `DJANGO_SECRET_KEY` | Django cryptographic signing key — keep secret |
-| `DJANGO_DEBUG` | `True`/`False` |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated list of allowed hostnames |
-| `DB_ENGINE` | `mysql` (default) or `sqlite` for quick local dev |
-| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | MySQL connection details |
