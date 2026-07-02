@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "main",
     "jobs",
+    "track_application",
 ]
 
 MIDDLEWARE = [

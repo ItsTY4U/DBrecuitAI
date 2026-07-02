@@ -1,0 +1,34 @@
+{% extends "home.html" %}
+{% load static %}
+{% block body %}
+<main class="main-content-centered">
+    <div class="content-header text-center">
+        <h1 class="page-title">Track Application</h1>
+        <p class="page-subtitle">
+            Enter your unique application ID to see your current status.
+        </p>
+    </div>
+    <div class="track-container glass-white">
+        <div class="back-button-container">
+            <a href="{% url 'home' %}" class="btn btn-outline-alt">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+        <div class="search-box">
+            <input
+                type="text"
+                name="application_id"
+                placeholder="Example: APP-1001">
+            <button
+                class="btn btn-primary btn-track"
+                hx-get="{% url 'track_application' %}"
+                hx-include="[name='application_id']"
+                hx-target="#track-result-container"
+                hx-swap="innerHTML">
+                Track Status
+            </button>
+        </div>
+    <div id="track-result-container"></div>
+</main>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% for job in jobs %}
+                <div class="job-card">
+
+                    <div class="job-main">
+                        <span class="job-type">
+                            {{ job.job_type }}
+                        </span>
+
+                        <h3 class="job-title">
+                            {{ job.title }}
+                        </h3>
+
+                        <span class="job-dept">
+                            {{ job.department }}
+                        </span>
+                    </div>
+
+                    <div class="job-actions-row">
+                        <a href="{% url 'job_detail' job.id %}"
+                        class="btn btn-outline-alt">
+                            View Details
+                        </a>
+
+                        <a href="{% url 'apply' job.id %}"
+                        class="btn btn-primary">
+                            Apply Now
+                        </a>
+                    </div>
+
+                </div>
+
+                {% empty %}
+
+                <div class="job-card">
+                    <p>No job openings available.</p>
+                </div>
+
+                {% endfor %}

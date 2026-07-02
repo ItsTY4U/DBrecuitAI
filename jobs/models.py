@@ -1,7 +1,6 @@
-from django.db import models
-
 # Create your models here.
 from django.db import models
+
 
 class Job(models.Model):
     JOB_TYPES = [
@@ -33,3 +32,14 @@ class Job(models.Model):
 
     def __str__(self):
         return self.title
+    
+class Requirement(models.Model):
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="requirements_list"
+    )
+    text = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.text

@@ -1,0 +1,90 @@
+{% if application %}
+
+<div class="track-container glass-white">
+
+    <div class="tracking-result">
+
+        <div class="result-header">
+
+            <div class="r-title-group">
+                <h2>{{ application.job.title }}</h2>
+
+                <span class="r-date">
+                    Applied on {{ application.applied_date }}
+                </span>
+            </div>
+
+            <div class="status-badge">
+                {{ application.status }}
+            </div>
+
+        </div>
+
+        <div class="timeline">
+
+            <div class="t-node completed">
+                <div class="t-icon"></div>
+                <div class="t-info">
+                    <h3>Application Received</h3>
+                    <p>We have successfully received your application.</p>
+                </div>
+            </div>
+
+            {% if application.status == "Screening" or application.status == "Interview" or application.status == "Hired" %}
+            <div class="t-node completed">
+            {% else %}
+            <div class="t-node">
+            {% endif %}
+
+                <div class="t-icon"></div>
+
+                <div class="t-info">
+                    <h3>AI Screening</h3>
+                    <p>Your application is being reviewed.</p>
+                </div>
+
+            </div>
+
+            {% if application.status == "Interview" or application.status == "Hired" %}
+            <div class="t-node completed">
+            {% else %}
+            <div class="t-node">
+            {% endif %}
+
+                <div class="t-icon"></div>
+
+                <div class="t-info">
+                    <h3>Interview</h3>
+                    <p>Interview process.</p>
+                </div>
+
+            </div>
+
+            {% if application.status == "Hired" %}
+            <div class="t-node completed">
+            {% else %}
+            <div class="t-node">
+            {% endif %}
+
+                <div class="t-icon"></div>
+
+                <div class="t-info">
+                    <h3>Final Decision</h3>
+                    <p>HR will contact you.</p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% else %}
+
+<div class="track-container glass-white">
+    <h3>No application found.</h3>
+</div>
+
+{% endif %}
