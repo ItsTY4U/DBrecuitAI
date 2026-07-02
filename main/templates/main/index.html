@@ -2,26 +2,13 @@
 {% load static %}
 {% block body %}
     <div class="bg-container"></div>
-    
-    <div class="landing-page">
-        <!-- Navigation -->
-        <header class="navbar glass">
-            <div class="nav-logo">
-                <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
-            </div>
-            <nav class="nav-menu">
-                <a href="jobs.html" class="nav-link">Browse Jobs</a>
-                <a href="track.html" class="nav-link">Track Application</a>
-            </nav>
-        </header>
-
         <!-- Hero Section -->
         <main class="hero">
             <div class="hero-content">
                 <h1 class="hero-title">Join the <span class="accent-text">Don Benito's</span> Family</h1>
                 <p class="hero-subtitle">Discover opportunities where your talent meets our tradition of excellence. Start your journey with us today.</p>
                 <div class="hero-actions">
-                    <a href="jobs.html" class="btn btn-primary btn-lg">
+                    <a href="{% url 'jobs' %}" class="btn btn-primary btn-lg">
                         <i class="fas fa-search"></i> Browse Job Openings
                     </a>
                     <a href="track.html" class="btn btn-secondary btn-lg glass">
@@ -46,9 +33,5 @@
                 </div>
             </div>
         </main>
-
-        <footer class="landing-footer glass">
-            <p>&copy; 2026 DBRecruitAI - Powered by Don Benito's. All Rights Reserved.</p>
-        </footer>
     </div>
 {% endblock %}

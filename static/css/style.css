@@ -183,6 +183,16 @@ body {
     color: white;
 }
 
+.back-button-container {
+    margin-bottom: 20px;
+}
+
+.back-button-container .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* Stats Styling */
 .hero-stats {
     display: flex;
@@ -220,7 +230,7 @@ body {
     width: 90%;
     max-width: 1200px;
     margin: 0 auto;
-    min-height: 100vh;
+    min-height: 80vh;
     display: flex;
     flex-direction: column;
 }

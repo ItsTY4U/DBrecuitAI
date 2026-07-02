@@ -1,0 +1,81 @@
+{% extends "home.html" %}
+{% load static %}
+{% block body %}
+
+<main class="main-content-wide">
+    <div class="job-detail-hero">
+        <div class="hero-left">
+            <span class="badge-full">{{ job.job_type }}</span>
+
+            <span class="posted-date">
+                Posted on {{ job.posted_date|date:"n/j/y" }}
+            </span>
+
+            <h1>{{ job.title }}</h1>
+
+            <span class="dept">
+                {{ job.department }}
+            </span>
+        </div>
+
+        <div class="hero-right">
+            <a href="{% url 'jobs' %}" class="btn btn-outline-alt">
+                Back to all jobs
+            </a>
+
+            <a href="{% url 'apply' job.id %}" class="btn btn-primary">
+                Apply for this position
+            </a>
+        </div>
+    </div>
+
+    <div class="job-detail-grid">
+
+        <div class="detail-card">
+
+            <div class="detail-section">
+                <h2>Job Description</h2>
+
+                <p>{{ job.description }}</p>
+            </div>
+
+            <div class="detail-section">
+                <h2>Requirements</h2>
+
+                <ul>
+                    {% for requirement in job.requirements.splitlines %}
+                        <li>{{ requirement }}</li>
+                    {% empty %}
+                        <li>No requirements listed.</li>
+                    {% endfor %}
+                </ul>
+
+            </div>
+
+        </div>
+
+        <div class="overview-card">
+
+            <h2>Job Overview</h2>
+
+            <div class="o-item">
+                <span class="o-label">Category</span>
+                <span class="o-val">{{ job.department }}</span>
+            </div>
+
+            <div class="o-item">
+                <span class="o-label">Type</span>
+                <span class="o-val">{{ job.job_type }}</span>
+            </div>
+
+            <div class="o-item">
+                <span class="o-label">Status</span>
+                <span class="o-val">{{ job.status }}</span>
+            </div>
+
+        </div>
+
+    </div>
+</main>
+
+{% endblock %}

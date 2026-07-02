@@ -1,0 +1,76 @@
+{% extends "home.html" %}
+{% load static %}
+{% block body %}
+    <div class="bg-container dim"></div>
+    <main class="main-content-wide">
+        <div class="back-button-container">
+            <a href="{% url 'home' %}" class="btn btn-outline-alt">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+        </div>
+        <div class="content-header">
+            <h1 class="page-title">Browse Job Openings</h1>
+            <p class="page-subtitle">Smart Hiring Starts Here!</p>
+        </div>
+
+        <div class="jobs-search-container glass-white">
+
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+
+                <input
+                    type="text"
+                    placeholder="Search for Jobs (e.g. Admin Staff, Marketing, etc.)">
+
+                <button class="btn btn-primary btn-search">
+                    Search
+                </button>
+            </div>
+
+            <div class="jobs-list">
+
+                {% for job in jobs %}
+                <div class="job-card">
+
+                    <div class="job-main">
+                        <span class="job-type">
+                            {{ job.job_type }}
+                        </span>
+
+                        <h3 class="job-title">
+                            {{ job.title }}
+                        </h3>
+
+                        <span class="job-dept">
+                            {{ job.department }}
+                        </span>
+                    </div>
+
+                    <div class="job-actions-row">
+                        <a href="{% url 'job_detail' job.id %}"
+                        class="btn btn-outline-alt">
+                            View Details
+                        </a>
+
+                        <a href="{% url 'apply' job.id %}"
+                        class="btn btn-primary">
+                            Apply Now
+                        </a>
+                    </div>
+
+                </div>
+
+                {% empty %}
+
+                <div class="job-card">
+                    <p>No job openings available.</p>
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+    </main>
+
+{% endblock %}
