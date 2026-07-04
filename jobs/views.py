@@ -34,16 +34,41 @@ def apply_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     
     if request.method == "POST":
-        application = Application.objects.create(
-            job=job,
-            first_name=request.POST.get("first_name"),
-            middle_initial=request.POST.get("middle_initial"),
-            last_name=request.POST.get("last_name"),
-            email=request.POST.get("email"),
-            phone=request.POST.get("phone"),
-            resume=request.FILES.get("resume")
+        application = get_object_or_404(
+            Application,
+            pk=request.POST.get("application_id"),
         )
+        application.first_name = request.POST.get("first_name")
+        application.middle_initial = request.POST.get("middle_initial")
+        application.last_name = request.POST.get("last_name")
+        application.email = request.POST.get("email")
+        application.phone = request.POST.get("phone")
+        application.status = "pending"
+        application.save()
         
         return render(request, "jobs/partials/success.html", {"application":application})
     
     return render(request, "jobs/apply.html", {"job": job})
+
+def upload_resume(request, pk):
+    job = get_object_or_404(Job, pk=pk)
+    
+    if request.method == "POST":
+        resume = request.FILES.get("resume")
+        
+        application = Application.objects.create(
+            job=job,
+            resume=resume,
+            status="draft",
+            
+            #tempo placeholder
+            first_name="",
+            middle_initial="",
+            last_name="",
+            email="",
+            phone="",
+        )
+        
+        return render(request, "jobs/partials/personal_info.html",{
+            "job": job, "application": application,
+        })

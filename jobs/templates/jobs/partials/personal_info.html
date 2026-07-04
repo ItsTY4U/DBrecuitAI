@@ -1,4 +1,4 @@
-<div class="form-step hidden" id="step-2">
+<div class="form-step active" id="step-2">
                     <div class="step-nav">
                         <div class="step-item" data-step="1">1. Upload Resume</div>
                         <div class="step-item active" data-step="2">2. Personal Information</div>
@@ -7,33 +7,36 @@
                         <h2 class="step-title">Review your information</h2>
                         <p class="step-subtitle">We've extracted this from your resume. Please check if it's correct.</p>
                         <form hx-post="{% url 'apply' job.id %}" hx-target="#apply-flow"
-                            hx-swap="outerHTML" enctype="multipart/form-data">
+                            hx-swap="innerHTML" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="form-grid">
+                                <input type="hidden" name="application_id" value="{{ application.pk}}">
                                 <div class="form-group">
                                     <label>First Name</label>
-                                    <input type="text" value="" name="first_name">
+                                    <input type="text" name="first_name">
                                 </div>
                                 <div class="form-group">
                                     <label>Last Name</label>
-                                    <input type="text" value="" name="last_name">
+                                    <input type="text" name="last_name">
                                 </div>
                                 <div class="form-group sm">
                                     <label>M.I</label>
-                                    <input type="text" value="" name="middle_initial">
+                                    <input type="text" name="middle_initial">
                                 </div>
                                 <div class="form-group">
                                     <label>Email Address</label>
-                                    <input type="email" value="" name="email">
+                                    <input type="email" name="email">
                                 </div>
                                 <div class="form-group">
                                     <label>Phone Number</label>
-                                    <input type="text" value="" name="phone_number">
+                                    <input type="text" name="phone">
                                 </div>
                             </div>
                             <div class="attached-file">
                                 <i class="fas fa-file-pdf"></i>
-                                <span class="file-name">pauljohn_resume.docx | 764.3 KB</span>
+                                <span class="file-name">{{ application.resume.name| cut:"resume/" }}
+                                    ({{ application.resume.size|filesizeformat }})
+                                </span>
                             </div>
                             <div class="form-actions">
                                 <button class="btn btn-outline-alt" id="btn-cancel" type="button">Cancel</button>

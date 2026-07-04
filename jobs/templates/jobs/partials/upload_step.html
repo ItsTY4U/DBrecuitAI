@@ -6,16 +6,20 @@
                     <div class="step-content">
                         <h2 class="step-title">Start with your resume</h2>
                         <p class="step-subtitle">Upload your resume to automatically fill in your application details.</p>
-                        <input type="file" name="resume" id="resume-upload" accept=".pdf, .doc, .docx" hidden> 
-                        <div class="upload-area" id="drop-zone">
-                            <div class="upload-idle">
-                                <i class="fas fa-file-alt upload-icon"></i>
-                                <p class="u-text">Click to upload <br><span>or drag and drop</span></p>
-                                <p class="u-hint">PDF or DOCX (Max 5MB)</p>
+                        <form hx-post="{% url 'upload_resume' job.pk %}" hx-target="#apply-flow" hx-swap="innerHTML" 
+                            enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="file" name="resume" id="resume-upload" accept=".pdf, .doc, .docx" hidden> 
+                            <div class="upload-area" id="drop-zone">
+                                <div class="upload-idle">
+                                    <i class="fas fa-file-alt upload-icon"></i>
+                                    <p class="u-text">Click to upload <br><span>or drag and drop</span></p>
+                                    <p class="u-hint">PDF or DOCX (Max 5MB)</p>
+                                </div>
+                                <div class="upload-loading hidden">
+                                    <p class="ai-text">AI extracting information . . .</p>
+                                </div>
                             </div>
-                            <div class="upload-loading hidden">
-                                <p class="ai-text">AI extracting information . . .</p>
-                            </div>
-                        </div>
+                        </form>
                     </div>
                 </div>

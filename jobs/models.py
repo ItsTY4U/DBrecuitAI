@@ -42,12 +42,13 @@ class Requirement(models.Model):
     
 class Application(models.Model):
     STATUS_CHOICES =[
-        ("pending", "Pending"),
-        ("reviewing","Reviewing"),
-        ("shortlisted","Shortlisted"),
-        ("interview","Interview"),
-        ("rejected", "Rejected"),
-        ("hired","Hired"),
+        ("Draft", "Draft"),
+        ("Pending", "Pending"),
+        ("Reviewing","Reviewing"),
+        ("Shortlisted","Shortlisted"),
+        ("Interview","Interview"),
+        ("Rejected", "Rejected"),
+        ("Hired","Hired"),
     ]
     
     application_id = models.CharField(
@@ -78,7 +79,7 @@ class Application(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="pending"
+        default="Draft"
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
