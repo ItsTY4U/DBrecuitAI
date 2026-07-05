@@ -27,7 +27,9 @@ urlpatterns = [
     
     path("jobs/", include("jobs.urls")),
     
-    path("track/", include("track_application.urls"))
+    path("track/", include("track_application.urls")),
+    
+    path("admin/", include("hr.urls"))
 ]
 
 if settings.DEBUG:

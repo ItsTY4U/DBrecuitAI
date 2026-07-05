@@ -1,0 +1,46 @@
+<!-- Post Job Modal -->
+    <div class="modal-overlay" id="post-job-modal">
+        <div class="modal-content post-job-card">
+            <i class="fas fa-times close-modal" id="close-post-modal"></i>
+            <h2 style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 25px;">Post New Job</h2>
+            <form id="post-job-form" method="POST" action="{% url "create_job" %}">
+                {% csrf_token %}
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Job Title</label>
+                    <input type="text" name="title" id="new-job-title" placeholder="Enter Job Title" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Department</label>
+                        <input type="text" name="department" id="new-job-cat" placeholder="Deparment" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Job Type</label>
+                        <select name="job_type">
+                            <option value="Full-time">Full-time</option>
+                            <option value="Part-time">Part-time</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Description</label>
+                    <textarea name="description" placeholder="Job description..." style="height: 100px;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label>Requirements</label>
+                    <div id="requirements-container">
+                        <div class="requirement-row">
+                            <input type="text" name="requirements" placeholder="Enter a requirement" required>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-outline-alt" id="add-requirement"style="margin-top:10px;">
+                        + Add Requirement
+                    </button>
+                </div>
+                <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button type="button" class="btn btn-cancel" id="cancel-modal" style="background: #999;">Cancel</button>
+                    <button type="submit" class="btn btn-post" style="background: #1e4d2b;">Post Job</button>
+                </div>
+            </form>
+        </div>
+    </div>

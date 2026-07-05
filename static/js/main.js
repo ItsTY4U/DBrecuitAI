@@ -7,6 +7,7 @@ const uploadLoading = document.querySelector(".upload-loading");
 const step1 = document.getElementById("step-1");
 const step2 = document.getElementById("step-2");
 
+
 dropZone.addEventListener("click", () => {
     fileInput.click()
 });
@@ -47,4 +48,24 @@ fileInput.addEventListener("change", () => {
     if (fileInput.files.length > 0) {
         fileInput.form.requestSubmit();
     }
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const modal = document.getElementById('post-job-modal');
+    const openBtn = document.getElementById('open-post-modal');
+    const closeBtn = document.getElementById('close-post-modal');
+    const cancelBtn = document.getElementById('cancel-modal');
+
+    openBtn.addEventListener('click', () => {
+        modal.classList.add('active');
+    });
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+
 });

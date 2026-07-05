@@ -986,6 +986,32 @@ body {
     align-items: center;
 }
 
+/* Requirements Form */
+
+.requirement-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+}
+
+.requirement-row input{
+    flex:1;
+}
+
+.remove-requirement{
+    width:40px;
+    border:none;
+    background:#dc3545;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.remove-requirement:hover{
+    background:#b52a37;
+}
+
 /* Footer Content */
 .landing-footer {
     width: 100%;

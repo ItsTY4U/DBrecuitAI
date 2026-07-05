@@ -1,0 +1,143 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+<main class="main-dashboard">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h2>Welcome Back, Admin!</h2>
+                </div>
+                <div class="header-right">
+                    <div class="notif-bell">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Grid -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <i class="fas fa-users stat-icon"></i>
+                        <h3>{{ total_applications }}</h3>
+                    </div>
+                    <span class="stat-label">Total Applicants</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <i class="fas fa-briefcase stat-icon" style="color:#f1c40f;"></i>
+                        <h3>{{ screening }}</h3>
+                    </div>
+                    <span class="stat-label">Screening</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <i class="fas fa-check-square stat-icon" style="color:#e74c3c;"></i>
+                        <h3>{{ hired }}</h3>
+                    </div>
+                    <span class="stat-label">Hired This Month</span>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <i class="fas fa-file-alt stat-icon" style="color:#8b4513;"></i>
+                        <h3>{{ active_jobs }}</h3>
+                    </div>
+                    <span class="stat-label">Active Job Posts</span>
+                </div>
+            </section>
+
+            <!-- Middle Grid -->
+            <div class="dashboard-grid">
+                <div class="dash-column">
+                    <div class="content-box">
+                        <div class="box-header">
+                            <h3>Candidate Pipeline</h3>
+                            <span class="val"> <i class="fas fa-chevron-right"></i></span>
+                        </div>
+                        <div class="pipeline-list">
+                            <div class="pipeline-item">
+                                <span class="p-label">Total Applicants</span>
+                                <div class="progress-bar"><div class="progress-fill fill-yellow" style="width: 100%;"></div></div>
+                                <span class="p-val">{{ total_applications }}</span>
+                            </div>
+                            <div class="pipeline-item">
+                                <span class="p-label">Screening</span>
+                                <div class="progress-bar"><div class="progress-fill fill-green-dark" style="width: 36%;"></div></div>
+                                <span class="p-val">{{ screening }}</span>
+                            </div>
+                            <div class="pipeline-item">
+                                <span class="p-label">Interviewing</span>
+                                <div class="progress-bar"><div class="progress-fill fill-yellow-alt" style="width: 18%;"></div></div>
+                                <span class="p-val">{{ interview_count }}</span>
+                            </div>
+                            <div class="pipeline-item">
+                                <span class="p-label">Hired</span>
+                                <div class="progress-bar"><div class="progress-fill fill-green-dark" style="width: 0%;"></div></div>
+                                <span class="p-val">{{ hired }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-box">
+                        <div class="box-header">
+                            <h3>Reminders</h3>
+                        </div>
+                        {% if pending_count %}
+                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='applicant-aziel.html'">
+                            <i class="fas fa-video" style="color: var(--primary);"></i>
+                            Review {{ pending_count }} pending application {{ pending_count|pluralize }}
+                        </div>
+                        {% endif %}
+                        {% if interview_count  %}
+                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='post-job.html'">
+                            <i class="fas fa-file-alt" style="color: #f1c40f;"></i>
+                            {{ interview_count }} candidate{{ interview_count|pluralize }} waiting for interview
+                        </div>
+                        {% endif %}
+                        {% if not pending_count and interview_count %}
+                        <div class="reminder-item">
+                            <i class="fas fa-check-circle" style="color:green;"></i>
+                            No pending reminders.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="dash-column">
+                    <div class="content-box">
+                        <div class="box-header">
+                            <h3>Recent Applicants</h3>
+                        </div>           
+                        <table class="applicant-list" style="width: 100%;">
+                            <tr style="border-bottom: 1px solid #eee; text-align: left;">
+                                <th style="font-size: 11px; color: #999; padding-bottom: 10px;">Job Position</th>
+                                <th style="font-size: 11px; color: #999; padding-bottom: 10px;">Status</th>
+                                <th style="font-size: 11px; color: #999; padding-bottom: 10px;">Time</th>
+                            </tr>
+                            <!-- App 1 -->
+                            {% for application in recent_applications %}
+                            <tr class="applicant-row" style="cursor: pointer;" onclick="window.location.href='applicant-aziel.html'">
+                                <td class="a-info">
+                                    <div class="avatar"><i class="fas fa-user"></i></div>
+                                    <div class="a-details">
+                                        <h4>{{ application.first_name }} {{ application.last_name }}</h4>
+                                        <p>{{ application.job.title }}</p>
+                                    </div>
+                                </td>
+                                <td><span class="a-status" style="padding: 4px 10px; background: #d4edda; color: #155724; border-radius: 6px; font-size: 11px; font-weight: 800;">{{application.status}}</span></td>
+                                <td class="a-time">{{ application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</td>
+                            </tr>
+                            {%empty%}
+                            <tr>
+                                <td colspan="3">No Applicants yet.</td>
+                            </tr>
+                            {% endfor %}
+                            
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+
+
+{% endblock %}

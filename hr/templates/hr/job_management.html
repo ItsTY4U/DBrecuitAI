@@ -1,0 +1,25 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+    <main class="main-dashboard">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h2>Job Management</h2>
+                </div>
+                {% comment %} <div class="header-right">
+                    <div class="notif-bell">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                </div> {% endcomment %}
+            </header>
+
+            <div style="margin-bottom: 25px; text-align: right;">
+                <button type="button" class="btn btn-primary" id="open-post-modal">
+                    <i class="fas fa-plus"></i> Post New Job
+                </button>            
+            </div>
+            
+            {% include "hr/partials/job_grid.html" %}
+            {% include "hr/partials/post_job.html" %}
+        </main>
+{% endblock %}

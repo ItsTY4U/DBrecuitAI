@@ -1,0 +1,16 @@
+<div class="content-box">
+                <div class="box-header">
+                    <h3>Active Jobs</h3>
+                </div>
+                
+                <div class="admin-job-grid">
+                    <!-- Job 1 -->
+                    
+                        {% for job in jobs %}
+                            {% include "hr/partials/job_card.html" %}
+                        {% empty %}
+                            <p>No active Jobs.</p>
+                        {% endfor %}
+                    
+                </div>
+            </div>

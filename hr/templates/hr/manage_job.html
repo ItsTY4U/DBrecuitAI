@@ -1,0 +1,63 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+
+<main class="main-dashboard" style="padding: 40px;">
+            <a href="{% url "job_management" %}" class="back-link-alt" style="margin-bottom: 20px; display: inline-block; background: white;">
+                <i class="fas fa-arrow-left"></i> Back to Jobs</a>
+            
+            <header class="dashboard-header" style="margin-bottom: 30px;">
+                <div class="header-left">
+                    <h2>Edit Job Details</h2>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">Update information for this specific active job.</p>
+                </div>
+            </header>
+
+            <div class="content-box" style="max-width: 800px; padding: 40px;">
+                <form action="" method="POST">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Job Title</label>
+                        <input type="text" name="title" value="{{ job.title }}" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;" required>
+                    </div>
+                    
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                        <div class="form-group">
+                            <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Deparment</label>
+                            <input type="text" name="department" value="{{job.department}}" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;" required>
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Job Type</label>
+                            <select name="job_type" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;">
+                                <option value="Full-time"
+                                    {% if job.job_type == "Full-time" %}seleted{% endif %}>
+                                    Full-time</option>
+                                <option value="Part-time"
+                                {% if job.job_type == "Part-time" %}selected{% endif %} >Part-time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Status</label>
+                        <select name="is_active" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;">
+                            <option value="True" {% if job.is_active %}seleted{% endif %}>Active</option>
+                            <option value="False" {% if not job.is_active %}selected{% endif %}>Closed</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Description</label>
+                        <textarea name="description"
+                        style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif; height: 120px;">
+                        {{job.description}}</textarea>
+                    </div>
+
+                    <div class="post-actions" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px; display: flex; gap: 15px; justify-content: flex-end;">
+                        <a href="{% url "job_management" %}" class="btn" style="background: #f1f2f6; color: #555; font-weight: 700; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR Dashboard | DBRecruitAI</title>
+    <link rel="stylesheet" href="{% static "css/style.css" %}">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body class="dashboard-body light-bg">
+    <div class="bg-container dim"></div>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="{% static "images/logo.png" %}" alt="DBRecruitAI">
+            </div>
+            <ul class="sidebar-menu">
+                <li class="menu-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <a href="{% url "dashboard" %}" class="nav-link menu-link"><i class="fas fa-th-large"></i> Dashboard</a>
+                </li>
+                <li class="menu-item {% if request.resolver_match.url_name == 'job_management' %}active{% endif %}">
+                    <a href="{% url "job_management" %}" class="nav-link menu-link"><i class="fas fa-plus-circle"></i> Manage Job</a>
+                </li>
+                <li class="menu-item" >
+                    <a href="candidates.html" class="nav-link menu-link"><i class="fas fa-users"></i> Candidates</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link"><i class="fas fa-calendar-alt"></i> Interviews</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link"><i class="fas fa-chart-bar"></i> Reports</a>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <li class="menu-item">
+                    <a href="{% url "hr_login" %}" class="menu-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </li>
+            </div>
+        </aside>
+        {% block admin_body %}
+        
+        {% endblock %}
+    </div>
+    <script src="{% static "js/modal.js" %}"></script>
+</body>
+</html>
