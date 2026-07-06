@@ -13,7 +13,7 @@
                 </div>
             </header>
 
-            <div class="content-box" style="max-width: 800px; padding: 40px;">
+            <div class="content-box-manage" style="max-width: 800px; padding: 40px;">
                 <form action="" method="POST">
                     {% csrf_token %}
                     <div class="form-group" style="margin-bottom: 25px;">
@@ -24,7 +24,7 @@
                     <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
                         <div class="form-group">
                             <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Deparment</label>
-                            <input type="text" name="department" value="{{job.department}}" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;" required>
+                            <input type="text" name="department" value="{{job.department}}" style="width: 600px; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;" required>
                         </div>
                         <div class="form-group">
                             <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Job Type</label>

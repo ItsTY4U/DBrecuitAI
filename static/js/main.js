@@ -50,22 +50,3 @@ fileInput.addEventListener("change", () => {
     }
 });
 
-document.addEventListener("DOMContentLoaded", function () {
-
-    const modal = document.getElementById('post-job-modal');
-    const openBtn = document.getElementById('open-post-modal');
-    const closeBtn = document.getElementById('close-post-modal');
-    const cancelBtn = document.getElementById('cancel-modal');
-
-    openBtn.addEventListener('click', () => {
-        modal.classList.add('active');
-    });
-
-    function closeModal() {
-        modal.classList.remove('active');
-    }
-
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
-
-});
