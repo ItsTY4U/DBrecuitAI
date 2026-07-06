@@ -26,7 +26,7 @@
                     Search
                 </button>
             </div>
-            <select name="department" hx-get="{% url 'jobs' %}" hx-trigger="chance"
+            <select class="status-select" name="department" hx-get="{% url 'jobs' %}" hx-trigger="chance"
                 hx-target="#jobs-list" hx-swap="innerHTML" hx-include="#search-input">
                 <option value="">All Department</option>
                 <option value="Administrative">Administrative</option>

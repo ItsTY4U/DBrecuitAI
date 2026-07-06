@@ -1015,7 +1015,7 @@ body {
 /* Footer Content */
 .landing-footer {
     width: 100%;
-    margin: 20px auto 20px;
+    margin: auto 20px;
     padding: 30px 20px;
     text-align: center;
     font-size: 14px;
@@ -1097,7 +1097,8 @@ body {
 .bar { width: 8px; border-radius: 4px; }
 
 .dashboard-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
-.content-box { background: white; border-radius: 24px; padding: 30px; border: 1px solid #f0f0f0; margin-bottom: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
+.content-box { background: white; border-radius: 24px; padding: 30px; border: 1px solid #f0f0f0; margin: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
+.content-box-manage { background: white; border-radius: 24px; padding: 30px; border: 1px solid #f0f0f0; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.03); display:flex ; }
 .box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .box-header h3 { font-size: 18px; font-weight: 900; color: #333; }
 
