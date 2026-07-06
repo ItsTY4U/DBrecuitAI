@@ -4,6 +4,7 @@
 import os
 import sys
 
+import config
 
 def main():
     """Run administrative tasks."""
