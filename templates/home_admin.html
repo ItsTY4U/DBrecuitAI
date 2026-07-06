@@ -24,10 +24,10 @@
                 <li class="menu-item {% if request.resolver_match.url_name == 'job_management' %}active{% endif %}">
                     <a href="{% url "job_management" %}" class="nav-link menu-link"><i class="fas fa-plus-circle"></i> Manage Job</a>
                 </li>
-                <li class="menu-item" >
-                    <a href="candidates.html" class="nav-link menu-link"><i class="fas fa-users"></i> Candidates</a>
+                <li class="menu-item {% if request.resolver_match.url_name == 'candidates' %}active{% endif %}" >
+                    <a href="{% url "candidates" %}" class="nav-link menu-link"><i class="fas fa-users"></i> Candidates</a>
                 </li>
-                <li class="menu-item">
+                <li class="menu-item ">
                     <a href="#" class="menu-link"><i class="fas fa-calendar-alt"></i> Interviews</a>
                 </li>
                 <li class="menu-item">
@@ -45,5 +45,6 @@
         {% endblock %}
     </div>
     <script src="{% static "js/modal.js" %}"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </body>
 </html>
