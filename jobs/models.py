@@ -94,5 +94,8 @@ class Application(models.Model):
         return f"{self.application_id} - {self.first_name} {self.last_name}"
     
     
-    
+    ai_score = models.IntegerField(default=0)
+    ai_summary = models.TextField(blank=True)
+    ai_strengths = models.TextField(blank=True)
+    ai_weaknesses = models.TextField(blank=True)
     

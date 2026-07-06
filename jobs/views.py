@@ -1,8 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
-from .models import Job
 from .models import Job, Application
-
+from .ai import extract_resume_text, analyze_resume
 
 def jobs(request):
     query = request.GET.get("q", "")
@@ -43,7 +42,7 @@ def apply_job(request, pk):
         application.last_name = request.POST.get("last_name")
         application.email = request.POST.get("email")
         application.phone = request.POST.get("phone")
-        application.status = "pending"
+        application.status = "Pending"
         application.save()
         
         return render(request, "jobs/partials/success.html", {"application":application})
@@ -59,7 +58,7 @@ def upload_resume(request, pk):
         application = Application.objects.create(
             job=job,
             resume=resume,
-            status="draft",
+            status="Draft",
             
             #tempo placeholder
             first_name="",
@@ -68,7 +67,24 @@ def upload_resume(request, pk):
             email="",
             phone="",
         )
-        
+        resume_text = extract_resume_text(application.resume.path)
+
+        ai = analyze_resume(resume_text, job)
+
+        application.first_name = ai["first_name"]
+        application.middle_initial = ai["middle_initial"]
+        application.last_name = ai["last_name"]
+        application.email = ai["email"]
+        application.phone = ai["phone"]
+
+        application.ai_score = ai["score"]
+        application.ai_summary = ai["summary"]
+        application.ai_strengths = ai["strengths"]
+        application.ai_weaknesses = ai["weaknesses"]
+
+        application.resume_processed = True
+        application.save()
+
         return render(request, "jobs/partials/personal_info.html",{
             "job": job, "application": application,
         })
