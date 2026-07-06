@@ -986,6 +986,26 @@ body {
     align-items: center;
 }
 
+/* Candidate */
+
+.candidate-filters{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.candidate-filters .btn{
+    background:white;
+    color:#2D5A27;
+    border:1px solid #2D5A27;
+}
+
+.candidate-filters .btn-primary{
+    background:#2D5A27;
+    color:white;
+}
+
+
 /* Requirements Form */
 
 .requirement-row{
@@ -1217,7 +1237,7 @@ body {
 .admin-actions .btns { display: flex; gap: 10px; }
 
 /* Category Detail View */
-.job-applicants-section { margin-bottom: 40px; }
+.job-applicants-section { margin-bottom: 40px; padding: 20px; border-radius: 15px; background-color: rgba(161, 161, 161, 0.534);}
 .job-applicants-section h3 { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 15px; border-left: 4px solid var(--primary); padding-left: 15px; }
 .back-btn { display: inline-flex; align-items: center; gap: 8px; color: #666; text-decoration: none; font-weight: 700; font-size: 14px; margin-bottom: 20px; }
 .back-btn:hover { color: var(--primary); }
@@ -1253,7 +1273,7 @@ body {
     font-size: 14px; color: white; appearance: none; text-align: center;
     background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat; background-position: right 20px center; background-size: 12px;
-    box-shadow: 0 4px 15px rgba(30,77,43,0.3); transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(30,77,43,0.3); transition: all 0.3s; margin-bottom: 20px;
 }
 .status-select:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,77,43,0.4); }
 

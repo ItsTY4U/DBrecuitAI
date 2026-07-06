@@ -1,0 +1,66 @@
+<div class="category-grid">
+
+{% for card in department_cards %}
+
+<div class="category-card">
+
+    <div class="category-card-header">
+        <h3>{{ card.department }}</h3>
+
+        <span class="count">
+            {{ card.job_count }} Active Job{{ card.job_count|pluralize }}
+        </span>
+    </div>
+
+    <div class="top-applicants-list">
+
+        {% for application in card.top_applicants %}
+
+        <div class="top-applicant-item">
+
+            <div class="applicant-snippet">
+
+                <div class="mini-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+
+                <div class="info">
+                    <h4>{{ application.full_name }}</h4>
+                    <p>{{ application.job.title }}</p>
+                </div>
+
+            </div>
+
+            <span class="mini-score score-high">
+                {{ application.ai_score }}%
+            </span>
+
+        </div>
+
+        {% empty %}
+
+        <p>No applicants yet.</p>
+
+        {% endfor %}
+
+    </div>
+
+    <div class="category-card-footer">
+
+        <button
+            class="btn-manage"
+            hx-get="{% url 'candidate_department' card.department %}"
+            hx-target="#candidate-table"
+            hx-swap="innerHTML">
+
+            Check All Applications
+
+        </button>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+</div>

@@ -1,0 +1,74 @@
+
+    {% for job in jobs %}
+
+    <section class="job-applicants-section">
+
+        <h3>{{ job.title }} Applicants</h3>
+
+        <div class="applicant-card-grid">
+
+            {% for application in job.application.all %}
+
+            <div class="applicant-card">
+
+                <div class="a-card-header">
+
+                    <div class="mini-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+
+                    <div class="info">
+                        <h4>
+                            {{ application.first_name }}
+                            {{ application.last_name }}
+                        </h4>
+
+                        <p>
+                            Applied {{ application.created_at|date:"M d, Y" }}
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="a-card-stats">
+
+                    <span class="ai-score-badge score-high">
+                        {{ application.ai_score|default:"--" }}%
+                    </span>
+
+                    <span class="a-status">
+                        {{ application.status }}
+                    </span>
+
+                </div>
+
+                <div class="a-card-footer">
+
+                    <a
+                        {% comment %} href="{% url 'applicant_detail' application.id %}" {% endcomment %}
+                        class="btn-manage">
+
+                        View Applicant Details
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% empty %}
+
+            <p>No applicants yet.</p>
+
+            {% endfor %}
+
+        </div>
+
+    </section>
+
+    {% empty %}
+
+    <p>No active jobs in this department.</p>
+
+    {% endfor %}
+

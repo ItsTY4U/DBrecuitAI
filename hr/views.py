@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement
+from django.db.models import Q, Count
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -93,3 +94,49 @@ def manage_job(request, pk):
     return render(request, "hr/manage_job.html",{
         "job":job,
     })
+    
+    
+def candidates(request):
+    departments = (
+        Job.objects
+        .values("department")
+        .annotate(job_count=Count("id"))
+        .order_by("department")
+    )
+
+    department_cards = []
+
+    for dept in departments:
+        top_applicants = (
+            Application.objects
+            .select_related("job")
+            .filter(job__department=dept["department"])
+            .order_by("-ai_score")[:3]   # highest AI score
+        )
+
+        department_cards.append({
+            "department": dept["department"],
+            "job_count": dept["job_count"],
+            "top_applicants": top_applicants,
+        })
+
+    context = {
+        "department_cards": department_cards,
+    }
+
+    return render(request, "hr/candidates.html", context)
+
+def candidate_department(request, department):
+    jobs = Job.objects.filter(
+        department=department,
+        is_active=True
+    ).prefetch_related("application")
+
+    return render(
+        request,
+        "hr/partials/candidate_table.html",
+        {
+            "department": department,
+            "jobs": jobs,
+        }
+    )

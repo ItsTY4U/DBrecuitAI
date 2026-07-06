@@ -1,0 +1,43 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+
+<main class="main-dashboard">
+    <header class="dashboard-header">
+        <div class="header-left">
+            <h2>Candidates Management</h2>
+        </div>
+        <div class="candidate-filter">
+            <label><strong>Department</strong></label>
+
+            <select
+                name="department"
+                class="status-select"
+
+                hx-get="{% url 'candidates' %}"
+                hx-trigger="change"
+                hx-target="#candidate-table"
+                hx-swap="innerHTML">
+
+                <option value="">All Departments</option>
+
+                {% for department in departments %}
+                    <option
+                        value="{{ department }}"
+                        {% if department == active_department %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ department }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </header>
+    
+    <div id="candidate-table">
+        {% include "hr/partials/candidate_departments.html" %}
+    </div>
+</main>
+
+{% endblock %}
