@@ -13,23 +13,23 @@
                                 <input type="hidden" name="application_id" value="{{ application.pk}}">
                                 <div class="form-group">
                                     <label>First Name</label>
-                                    <input type="text" name="first_name">
+                                    <input type="text" name="first_name" value="{{application.first_name}}">
                                 </div>
                                 <div class="form-group">
                                     <label>Last Name</label>
-                                    <input type="text" name="last_name">
+                                    <input type="text" name="last_name" value="{{application.last_name}}">
                                 </div>
                                 <div class="form-group sm">
                                     <label>M.I</label>
-                                    <input type="text" name="middle_initial">
+                                    <input type="text" name="middle_initial" value="{{application.middle_initial}}">
                                 </div>
                                 <div class="form-group">
                                     <label>Email Address</label>
-                                    <input type="email" name="email">
+                                    <input type="email" name="email" value="{{application.email}}">
                                 </div>
                                 <div class="form-group">
                                     <label>Phone Number</label>
-                                    <input type="text" name="phone">
+                                    <input type="text" name="phone" value="{{application.phonr}}">
                                 </div>
                             </div>
                             <div class="attached-file">

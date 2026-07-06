@@ -11,14 +11,9 @@ def hr_login(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
         
-        print("Username:", username)
-        print("Email:", email)
-        print("Password:", password)
         
         user = authenticate(request, username=username, email=email, password=password)
-        
-        print("User:", user)
-        
+                
         if user is not None and user.is_staff:
             login(request, user)
             print("Logged in")

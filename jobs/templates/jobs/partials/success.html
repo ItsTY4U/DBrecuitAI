@@ -1,6 +1,7 @@
 <div id="apply-flow">
     <h1>Application Submitted!</h1>
-    <span>{{ application.application_id }}</span>
+    <span class="badge-full" >This is your Application ID <strong>{{ application.application_id }}</strong></span>
+    <span class="badge-full">Your AI score is {{application.ai_score}}</span>
     <a
         href=""
         class="btn btn-primary">
