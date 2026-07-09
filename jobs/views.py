@@ -5,30 +5,40 @@ from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
 
 def jobs(request):
-    query = request.GET.get("q", "")
-    department = request.GET.get("department", "")
-    jobs = Job.objects.filter(is_active=True)
-    if query:
-        jobs = jobs.filter(
-            Q(title__icontains=query) |
-            Q(department__icontains=query)
-        )
-    if department:
-        jobs = jobs.filter(department=department)
-    
-    if request.headers.get("HX-Request"):
-        return render(request, "jobs/partials/jobs_list.html", {
-            "jobs": jobs
-        })
-    return render(request, "jobs/jobs.html", {
-        "jobs": jobs
-    })
+    try:
+        query = request.GET.get("q", "")
+        department = request.GET.get("department", "")
 
-def job_detail(request, id):
-    job = get_object_or_404(Job, id=id)
-    return render(request, "jobs/job_detail.html", {
-        "job": job
-    })
+        jobs = Job.objects.filter(is_active=True)
+
+        if query:
+            jobs = jobs.filter(
+                Q(title__icontains=query) |
+                Q(department__icontains=query)
+            )
+
+        if department:
+            jobs = jobs.filter(department=department)
+
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "jobs/partials/jobs_list.html",
+                {"jobs": jobs},
+            )
+
+        return render(
+            request,
+            "jobs/jobs.html",
+            {"jobs": jobs},
+        )
+
+    except Exception as e:
+        import traceback
+        return HttpResponse(
+            f"<pre>{traceback.format_exc()}</pre>",
+            status=500
+        )
     
 def apply_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
