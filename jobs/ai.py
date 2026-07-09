@@ -3,7 +3,10 @@ from django.conf import settings
 import pdfplumber
 import json
 
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+client = None
+
+if settings.GEMINI_API_KEY:
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 def extract_resume_text(pdf_path):
     text = ""
@@ -19,6 +22,8 @@ def extract_resume_text(pdf_path):
 
 
 def analyze_resume(resume_text, job):
+    if client is None:
+        raise Exception("Gemini API key is missing.")
     requirements = "\n".join(
         f"- {r.text}" for r in job.requirements_list.all()
     )
