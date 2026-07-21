@@ -21,18 +21,31 @@
             <div class="applicant-snippet">
 
                 <div class="mini-avatar">
-                    <i class="fas fa-user"></i>
+                    {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
                 </div>
 
                 <div class="info">
-                    <h4>{{ application.full_name }}</h4>
+                    <h4>
+                        {{ application.first_name }}
+                        {% if application.middle_initial %}
+                            {{ application.middle_initial }}.
+                        {% endif %}
+                        {{ application.last_name }}
+                    </h4>
                     <p>{{ application.job.title }}</p>
                 </div>
 
             </div>
 
-            <span class="mini-score score-high">
-                {{ application.ai_score }}%
+            <span class="mini-score
+                {% if application.ai_score >= 90 %}
+                    score-high
+                {% elif application.ai_score >= 75 %}
+                    score-mid
+                {% else %}
+                    score-low
+                {% endif %}">
+                    {{ application.ai_score }}%
             </span>
 
         </div>
@@ -47,15 +60,9 @@
 
     <div class="category-card-footer">
 
-        <button
-            class="btn-manage"
-            hx-get="{% url 'candidate_department' card.department %}"
-            hx-target="#candidate-table"
-            hx-swap="innerHTML">
-
-            Check All Applications
-
-        </button>
+        <a href="{% url 'candidate_department' card.department %}" class="btn-manage">
+            Check All Applications 
+        </a>
 
     </div>
 

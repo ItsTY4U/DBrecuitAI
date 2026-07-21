@@ -1,0 +1,42 @@
+<div class="content-box">
+
+    <div class="box-header">
+        <h3>Upcoming Interviews (Next 3 Days)</h3>
+    </div>
+
+    {% for interview in upcoming_interviews %}
+
+    <div class="upcoming-card">
+
+        <strong>
+            {{ interview.applicants.first.job.title }}
+        </strong>
+
+        <p>{{ interview.interview_type }}</p>
+
+        <small>
+            {{ interview.date|date:"M d" }}
+            •
+            {{ interview.time|time:"g:i A" }}
+        </small>
+
+        <br>
+
+        <small>
+            {{ interview.applicants.count }}
+            candidate{{ interview.applicants.count|pluralize }}
+        </small>
+
+        <span class="status-pill">
+            {{ interview.status }}
+        </span>
+
+    </div>
+
+    {% empty %}
+
+    <p>No interviews scheduled.</p>
+
+    {% endfor %}
+
+</div>

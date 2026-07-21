@@ -1,0 +1,36 @@
+<div class="content-box">
+
+    <div class="box-header">
+        <h3>Interview Details</h3>
+    </div>
+
+    <div class="interview-info-list">
+
+        <div class="interview-info-row">
+            <strong>Interviewer</strong>
+            <span>{{ interview.interviewer }}</span>
+        </div>
+
+        <div class="interview-info-row">
+            <strong>Date</strong>
+            <span>{{ interview.date }}</span>
+        </div>
+
+        <div class="interview-info-row">
+            <strong>Time</strong>
+            <span>{{ interview.time }}</span>
+        </div>
+
+        <div class="interview-info-row">
+            <strong>Location</strong>
+            <span>{{ interview.location }}</span>
+        </div>
+
+        <div class="interview-info-row">
+            <strong>Notes</strong>
+            <span>{{ interview.notes|default:"No notes." }}</span>
+        </div>
+
+    </div>
+
+</div>

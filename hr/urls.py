@@ -11,4 +11,11 @@ urlpatterns = [
     
     path("candidates/", views.candidates, name="candidates"),
     path("candidates/<str:department>/",views.candidate_department, name="candidate_department",),
+    path("candidates/applicant/<int:pk>/", views.candidate_detail, name="candidate_detail",),
+    path("applicant/<int:pk>/status/", views.update_application_status, name="update_application_status",),
+    
+    path("interviews/", views.interviews, name="interviews",),
+    path("interviews/schedule/<int:job_id>/", views.schedule_interview, name="schedule_interview"),
+    path("interviews/<int:pk>/", views.interview_detail, name="interview_detail"),
+    path("interviews/<int:pk>/status/", views.update_interview_status, name="update_interview_status"),
 ]

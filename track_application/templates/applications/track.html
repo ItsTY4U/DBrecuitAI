@@ -10,20 +10,21 @@
         </p>
     </div>
     <div class="track-container glass-white">
-        <div class="back-button-container">
-            <a href="{% url 'home' %}" class="btn btn-outline-alt">
-                <i class="fas fa-arrow-left"></i> Back
-            </a>
-        </div>
             <form class="search-box" hx-get="{% url 'track_application' %}"
                 hx-target="#track-result-container" hx-swap="innerHTML" >
                 <input
                     type="text"
                     name="application_id"
                     placeholder="Enter Application ID">
+                <div class="back-button-container">
+                    <a href="{% url 'home' %}" class="btn btn-outline-alt">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                </div>
                 <button type="submit"  class="btn btn-primary btn-track" >
                     Track Status
                 </button>
+
             </form>
     <div id="track-result-container"></div>
 </main>

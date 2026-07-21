@@ -1,0 +1,71 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+
+<main class="main-dashboard">
+    <header class="dashboard-header">
+        <div class="header-left">
+            <h2>Interview Management</h2>
+        </div>
+    </header>
+    <section class="stats-grid">
+        <div class="stat-card">
+            <h3>{{ total }}</h3>
+            <span>Total Interviews</span>
+        </div>
+        <div class="stat-card">
+            <h3>{{ scheduled }}</h3>
+            <span>Scheduled</span>
+        </div>
+        <div class="stat-card">
+            <h3>{{ ongoing }}</h3>
+            <span>Ongoing</span>
+        </div>
+        <div class="stat-card">
+            <h3>{{ completed }}</h3>
+            <span>Completed</span>
+        </div>
+        <div class="stat-card">
+            <h3>{{ cancelled }}</h3>
+            <span>Cancelled</span>
+        </div>
+    </section>
+    <div class="dashboard-grid">
+        <div class="dash-column">
+            {% include "hr/partials/today_schedule.html" %}
+        </div>
+        <div class="data-column">
+            {% include "hr/partials/interview_schedule.html" %}
+        </div>
+    </div>
+    {% include "hr/partials/interview_cards.html" %}
+    <section class="content-box">
+        <div class="box-header">
+            <h3>Interview by Job Position</h3>
+        </div>
+        <div class="job-grid">
+            {% for item in job_interviews %}
+                {% if item.waiting > 0 %}
+                <div class="job-card">
+                    
+                    <h3>{{ item.job.title }}</h3>
+                    <p>{{ item.job.department }}</p>
+                    <p>
+                        {{ item.waiting }}
+                        applicant{{ item.waiting|pluralize }}
+                        waiting
+                    </p>
+                    <a href="{% url 'schedule_interview' item.job.id %}"
+                        class="btn-schedule">
+                        Schedule Interview
+                    </a>
+                </div>
+                {% endif %}
+            {% empty %}
+                <p>No applicants waiting for interview scheduling.</p>
+            {% endfor %}
+        </div>
+    </section>
+</main>
+
+{% endblock  %}

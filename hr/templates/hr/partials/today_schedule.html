@@ -1,0 +1,25 @@
+<div class="content-box">
+    <div class="box-header">
+        <h3>Today's Schedule</h3>
+    </div>
+    {% for interview in todays_schedule %}
+    <div class="reminder-item">
+        <strong>
+            {{ interview.time|time:"g:i A" }}
+        </strong>
+        <br>
+        {{ interview.interview_type }}
+        <br>
+        {% for applicant in interview.applicants.all %}
+        {{ applicant.full_name }}
+        {% if not forloop.last %}
+        ,
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% empty %}
+    <div class="reminder-item">
+        No Interviews Today.
+    </div>
+    {% endfor %}
+</div>

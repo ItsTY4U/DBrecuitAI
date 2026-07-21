@@ -4,7 +4,7 @@
 <main class="main-dashboard">
             <header class="dashboard-header">
                 <div class="header-left">
-                    <h2>Welcome Back, Admin!</h2>
+                    <h2>Welcome Back, {{ user.username }}!</h2>
                 </div>
                 <div class="header-right">
                     <div class="notif-bell">
@@ -17,28 +17,28 @@
             <section class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-header">
-                        <i class="fas fa-users stat-icon"></i>
+                        {% comment %} <i class="fas fa-users stat-icon"></i> {% endcomment %}
                         <h3>{{ total_applications }}</h3>
                     </div>
                     <span class="stat-label">Total Applicants</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
-                        <i class="fas fa-briefcase stat-icon" style="color:#f1c40f;"></i>
+                        {% comment %} <i class="fas fa-briefcase stat-icon" style="color:#f1c40f;"></i> {% endcomment %}
                         <h3>{{ screening }}</h3>
                     </div>
                     <span class="stat-label">Screening</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
-                        <i class="fas fa-check-square stat-icon" style="color:#e74c3c;"></i>
+                        {% comment %} <i class="fas fa-check-square stat-icon" style="color:#e74c3c;"></i> {% endcomment %}
                         <h3>{{ hired }}</h3>
                     </div>
                     <span class="stat-label">Hired This Month</span>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
-                        <i class="fas fa-file-alt stat-icon" style="color:#8b4513;"></i>
+                        {% comment %} <i class="fas fa-file-alt stat-icon" style="color:#8b4513;"></i> {% endcomment %}
                         <h3>{{ active_jobs }}</h3>
                     </div>
                     <span class="stat-label">Active Job Posts</span>
@@ -56,22 +56,26 @@
                         <div class="pipeline-list">
                             <div class="pipeline-item">
                                 <span class="p-label">Total Applicants</span>
-                                <div class="progress-bar"><div class="progress-fill fill-yellow" style="width: 100%;"></div></div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill fill-yellow" style="width: 100%;"></div></div>
                                 <span class="p-val">{{ total_applications }}</span>
                             </div>
                             <div class="pipeline-item">
                                 <span class="p-label">Screening</span>
-                                <div class="progress-bar"><div class="progress-fill fill-green-dark" style="width: 36%;"></div></div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill fill-green-dark" style="width:{{ screening_percent }}%;"></div></div>
                                 <span class="p-val">{{ screening }}</span>
                             </div>
                             <div class="pipeline-item">
                                 <span class="p-label">Interviewing</span>
-                                <div class="progress-bar"><div class="progress-fill fill-yellow-alt" style="width: 18%;"></div></div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill fill-yellow-alt" style="width:{{ interview_percent }}%;"></div></div>
                                 <span class="p-val">{{ interview_count }}</span>
                             </div>
                             <div class="pipeline-item">
                                 <span class="p-label">Hired</span>
-                                <div class="progress-bar"><div class="progress-fill fill-green-dark" style="width: 0%;"></div></div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill fill-green-dark"  style="width:{{ hired_percent }}%;"></div></div>
                                 <span class="p-val">{{ hired }}</span>
                             </div>
                         </div>
@@ -115,9 +119,9 @@
                             </tr>
                             <!-- App 1 -->
                             {% for application in recent_applications %}
-                            <tr class="applicant-row" style="cursor: pointer;" onclick="window.location.href='applicant-aziel.html'">
+                            <tr class="applicant-row" style="cursor: pointer;" onclick="window.location.href='{% url 'candidate_detail' application.id %}'">
                                 <td class="a-info">
-                                    <div class="avatar"><i class="fas fa-user"></i></div>
+                                    <div class="avatar">{{ application.first_name|first|upper }}{{ application.last_name|first|upper }}</div>
                                     <div class="a-details">
                                         <h4>{{ application.first_name }} {{ application.last_name }}</h4>
                                         <p>{{ application.job.title }}</p>

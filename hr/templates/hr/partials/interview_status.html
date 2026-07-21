@@ -1,0 +1,33 @@
+<div class="content-box">
+    <div class="box-header">
+        <h3>Interview Status<h3>
+    </div>
+    {% if interview.status == "Scheduled" %}
+    <form method="POST" action="{% url "update_interview_status" interview.id %}">
+        {% csrf_token %}
+        <select name="status">
+            <option value="Ongoing">
+                Ongoing
+            </option>
+            <option value="Cancelled">
+                Cancelled
+            </option>
+        </select>
+        <button class="btn-primary-detail">
+            Update Status
+        </button>
+    </form>
+    {% elif interview.status == "Completed" %}
+    <div class="status-success">
+        Interview Completed
+    </div>
+    {% elif interview.status == "Ongoing" %}
+    <div class="status-success">
+        Interview is Ongoing
+    </div>
+    {% else %}
+    <div class="status-danger">
+        Interview Cancelled
+    </div>
+    {% endif %}
+</div>

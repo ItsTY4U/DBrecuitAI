@@ -1,0 +1,123 @@
+{% extends "home_admin.html" %}
+{% load static %}
+{% block admin_body %}
+<main class="main-dashboard">
+    <header class="dashboard-header">
+        <div class="header-left">
+            <a href="{% url 'interviews' %}" class="btn-back-header">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </a>
+            <h2>Schedule Interview</h2>
+            <h3>{{ job.title }}</h3>
+        </div>
+    </header>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="dashboard-grid">
+            <!-- LEFT -->
+            <div class="dash-column">
+                <div class="content-box">
+                    <div class="box-header">
+                        <h3>Select Applicants</h3>
+                    </div>
+                    <div class="select-all-row">
+                        <label>
+                            Select All
+                            <input type="checkbox" id="select-all">
+                        </label>
+                    </div>
+                    <br><br>
+                    {% for applicant in applicants %}
+                    <div class="applicant-card">
+                        <label class="applicant-select">
+                            <div class="avatar">
+                                {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+                            </div>
+                            <div>
+                                <strong>
+                                    {{ applicant.first_name }}
+                                    {{ applicant.last_name }}
+                                </strong>
+                                <br>
+                                AI Score
+                                {{ applicant.ai_score }}%
+                            </div>
+                            <input
+                                type="checkbox"
+                                name="applicants"
+                                value="{{ applicant.id }}"
+                                class="applicant-check">
+                        </label>
+                    </div>
+                    {% empty %}
+                    <p>No applicants waiting.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- RIGHT -->
+            <div class="dash-column">
+                <div class="content-box">
+                    <div class="box-header">
+                        <h3>Interview Details</h3>
+                    </div>
+                    <label>Interview Type</label>
+                    <select
+                        name="interview_type"
+                        required>
+                        {% for value,label in interview.TYPE_CHOICES %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <label>Interviewer</label>
+                    <input
+                        type="text"
+                        name="interviewer"
+                        required>
+                    <label>Date</label>
+                    <input
+                        type="date"
+                        name="date"
+                        required>
+                    <label>Time</label>
+                    <input
+                        type="time"
+                        name="time"
+                        required>
+                    <label>Location</label>
+                    <input
+                        type="text"
+                        name="location"
+                        placeholder="HR Office"
+                        required>
+                    <label>Notes</label>
+                    <textarea
+                        name="notes"
+                        rows="4"></textarea>
+                    <br>
+                    <button class="btn-schedule-form">
+                        Schedule Interview
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</main>
+
+<script>
+
+const selectAll =
+document.getElementById("select-all");
+
+const checks =
+document.querySelectorAll(".applicant-check");
+
+selectAll.addEventListener("change", function(){
+
+    checks.forEach(c => c.checked=this.checked);
+
+});
+
+</script>
+
+{% endblock %}
