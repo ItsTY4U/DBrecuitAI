@@ -14,7 +14,7 @@
                 <div class="a-card-header">
 
                     <div class="mini-avatar">
-                        <i class="fas fa-user"></i>
+                        {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
                     </div>
 
                     <div class="info">
@@ -32,8 +32,15 @@
 
                 <div class="a-card-stats">
 
-                    <span class="ai-score-badge score-high">
-                        {{ application.ai_score|default:"--" }}%
+                    <span class="mini-score
+                        {% if application.ai_score >= 90 %}
+                            score-high
+                        {% elif application.ai_score >= 75 %}
+                            score-mid
+                        {% else %}
+                            score-low
+                        {% endif %}">
+                            {{ application.ai_score }}%
                     </span>
 
                     <span class="a-status">
@@ -45,7 +52,7 @@
                 <div class="a-card-footer">
 
                     <a
-                        {% comment %} href="{% url 'applicant_detail' application.id %}" {% endcomment %}
+                        href="{% url 'candidate_detail' application.id %}"
                         class="btn-manage">
 
                         View Applicant Details

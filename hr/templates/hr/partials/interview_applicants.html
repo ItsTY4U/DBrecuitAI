@@ -1,0 +1,40 @@
+<div class="content-box">
+
+    <div class="box-header">
+        <h3>Applicants ({{ interview.applicants.count }})</h3>
+    </div>
+
+    <div class="applicant-list">
+
+        {% for applicant in interview.applicants.all %}
+
+        <div class="applicant-item">
+
+            <div class="applicant-avatar">
+                {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+            </div>
+
+            <div class="applicant-info">
+
+                <strong>
+                    {{ applicant.first_name }}
+                    {{ applicant.last_name }}
+                </strong>
+
+                <span>
+                    {{ applicant.job.title }}
+                </span>
+
+            </div>
+
+            <div class="applicant-score">
+                AI Score: {{ applicant.ai_score }}%
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>

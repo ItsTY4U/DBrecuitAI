@@ -1,0 +1,87 @@
+<a href="{% url "candidate_department" application.job.department %}" class="back-link-alt" style="margin-bottom:20px;display:inline-block;background:white;">
+    <i class="fas fa-arrow-left"></i>
+    Back to Department
+</a>
+<div class="details-hero-card">
+    <div class="hero-content-wrapper">
+        <div class="hero-avatar">
+            {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+        </div>
+        <div class="hero-left">
+            <span class="hero-badge">
+                {{ application.job.job_type }}
+            </span>
+            <span class="hero-date">
+                Applied on {{ application.created_at|date:"m/d/y" }}
+            </span>
+
+            <h1 class="hero-title">
+                {{ application.first_name }}
+                {% if application.middle_initial  %}
+                    {{ application.middle_initial }}
+                {% endif %}
+                {{ application.last_name}}
+            </h1>
+            <p class="hero-subtitle">
+                {{ application.job.title }}
+            </p>
+        </div>
+    </div>
+
+    <form method="POST" action="{% url 'update_application_status' application.id %}">
+        {% csrf_token %}
+        <select name="status" class="status-select" onchange="this.form.submit()">
+            {% for value, label in application.STATUS_CHOICES %}
+                <option value="{{ value }}"
+                    {% if application.status == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+<div class="details-grid">
+    <div class="eval-column">
+        <div class="eval-card">
+            <h3>AI Insight</h3>
+            <div class="eval-content">
+                <p>
+                    {{ application.ai_summary }}
+                </p>
+                <div class="ai-insight">
+                    <strong>
+                        <i class="fas fa-robot"></i>
+                        AI Score: {{ application.ai_score }}
+                    </strong>
+                    <br>
+                    <small>
+                        {{ application.ai_summary }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="info-column">
+        <div class="info-card">
+            <h3>Candidate Info</h3>
+            <div class="infor-section">
+                <span class="info-label">EMAIL</span>
+                <span class="info-val">
+                    {{ application.email }}
+                </span>
+            </div>
+            <div class="info-label">
+                <span class="info-label">PHONE</span>
+                <span class="info-val">
+                    {{ application.phone }}
+                </span>
+            </div>
+            <div class="info-section">
+                <a href="{{ application.resume.url }}" target="_blank" class="btn-primary"
+                style="width:100%;padding:18px;border-radius:12px;font-weight:800;display:block;text-align:center;">
+                View Resume
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

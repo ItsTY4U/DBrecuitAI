@@ -44,7 +44,7 @@ class Application(models.Model):
     STATUS_CHOICES =[
         ("Draft", "Draft"),
         ("Pending", "Pending"),
-        ("Reviewing","Reviewing"),
+        ("Screening","Screening"),
         ("Shortlisted","Shortlisted"),
         ("Interview","Interview"),
         ("Rejected", "Rejected"),
@@ -79,10 +79,12 @@ class Application(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="Draft"
+        default="Pending"
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    interview_scheduled = models.BooleanField(default=False)
     
     def save(self, *args, **kwargs):
         if not self.application_id:

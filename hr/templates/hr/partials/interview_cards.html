@@ -1,0 +1,95 @@
+{% for item in job_interviews %}
+
+    {% for interview in item.interviews %}
+
+        <div class="content-box" style="margin-top:30px;">
+
+            <div class="box-header">
+
+                <h3>
+                    {{ item.job.title }}
+                    ({{ interview.applicants.count }}
+                    Applicant{{ interview.applicants.count|pluralize }})
+                </h3>
+
+                <a href="{% url 'interview_detail' interview.id %}"
+                    class="view-btn">
+                    View
+                </a>
+
+            </div>
+
+            <table class="interview-table">
+
+                <thead>
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Interview Type</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                {% for applicant in interview.applicants.all %}
+
+                    {% if applicant.job == item.job %}
+
+                    <tr>
+
+                        <td>
+                            <div class="candidate-info">
+
+                                <div class="avatar">
+                                    {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+                                </div>
+
+                                <div>
+                                    <strong>
+                                        {{ applicant.first_name }}
+                                        {{ applicant.last_name }}
+                                    </strong>
+
+                                    <small>
+                                        AI Score: {{ applicant.ai_score }}%
+                                    </small>
+                                </div>
+
+                            </div>
+                        </td>
+
+                        <td>
+                            {{ interview.interview_type }}
+                        </td>
+
+                        <td>
+                            {{ interview.date }}
+                        </td>
+
+                        <td>
+                            {{ interview.time }}
+                        </td>
+
+                        <td>
+                            <span class="status {{ interview.status|lower }}">
+                                {{ interview.status }}
+                            </span>
+                        </td>
+
+                    </tr>
+
+                    {% endif %}
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% endfor %}
+
+{% endfor %}
