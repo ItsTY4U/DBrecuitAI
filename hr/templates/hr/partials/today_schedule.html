@@ -1,25 +1,89 @@
-<div class="content-box">
-    <div class="box-header">
-        <h3>Today's Schedule</h3>
+<div class="today-schedule-box">
+
+    <div class="today-schedule-header">
+        <div>
+            <h3>Today's Schedule</h3>
+            <p>Interviews scheduled for today</p>
+        </div>
+
+        <span class="today-date">
+            {{ todays_schedule|length }} Interview{{ todays_schedule|length|pluralize }}
+        </span>
     </div>
-    {% for interview in todays_schedule %}
-    <div class="reminder-item">
-        <strong>
-            {{ interview.time|time:"g:i A" }}
-        </strong>
-        <br>
-        {{ interview.interview_type }}
-        <br>
-        {% for applicant in interview.applicants.all %}
-        {{ applicant.full_name }}
-        {% if not forloop.last %}
-        ,
-        {% endif %}
+
+
+    <div class="today-interview-list">
+
+        {% for interview in todays_schedule %}
+
+            {% with job=interview.applicants.first.job %}
+
+            <div class="today-interview-card">
+
+                <div class="today-interview-time">
+                    <strong>
+                        {{ interview.time|time:"g:i A" }}
+                    </strong>
+
+                    <span>
+                        {{ interview.interview_type }}
+                    </span>
+                </div>
+
+
+                <div class="today-interview-info">
+
+                    <h4>
+                        {{ job.title }}
+                    </h4>
+
+                    <p>
+                        {{ job.department }}
+                    </p>
+
+                    <span class="candidate-count">
+                        {{ interview.applicants.count }}
+                        Candidate{{ interview.applicants.count|pluralize }}
+                    </span>
+
+                </div>
+
+
+                <div class="today-interview-status">
+
+                    <span class="status-badge status-{{ interview.status|lower }}">
+                        {{ interview.status }}
+                    </span>
+
+                    <a
+                        href="{% url 'interview_detail' interview.pk %}"
+                        class="today-view-btn"
+                    >
+                        View
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% endwith %}
+
+        {% empty %}
+
+            <div class="no-today-interviews">
+                <div class="no-interview-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+
+                <h4>No Interviews Today</h4>
+
+                <p>
+                    There are no interviews scheduled for today.
+                </p>
+            </div>
+
         {% endfor %}
+
     </div>
-    {% empty %}
-    <div class="reminder-item">
-        No Interviews Today.
-    </div>
-    {% endfor %}
+
 </div>

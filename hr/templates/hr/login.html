@@ -21,9 +21,13 @@
                 <p>Please sign in to your HR account</p>
             </div>
             {% if messages %}
-                {% for messages in messages %}
-                    <p class="error-message">{{ message }} </p>
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert alert-error">
+                        {{ message }}
+                    </div>
                 {% endfor %}
+            </div>
             {% endif %}
             <form class="login-form" method="POST">
                 {% csrf_token %}

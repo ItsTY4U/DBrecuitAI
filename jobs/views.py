@@ -9,7 +9,7 @@ def jobs(request):
         query = request.GET.get("q", "")
         department = request.GET.get("department", "")
 
-        jobs = Job.objects.filter(is_active=True)
+        jobs = Job.objects.filter(status="Active")
 
         if query:
             jobs = jobs.filter(
@@ -123,7 +123,7 @@ def upload_resume(request, pk):
     application = Application.objects.create(
         job=job,
         resume=resume,
-        status="Draft",
+        status="Pending",
         first_name="",
         middle_initial="",
         last_name="",

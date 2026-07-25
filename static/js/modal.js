@@ -59,3 +59,59 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 });
+
+const form = document.getElementById("manage-job-form");
+const statusSelect = document.getElementById("status");
+
+form.addEventListener("submit", function(event) {
+
+    if (statusSelect.value === "Inactive") {
+
+        const confirmed = confirm(
+            "Are you sure you want to close this job?\n\n" +
+            "This job will no longer appear in the Active Jobs section " +
+            "and applicants will no longer be able to apply."
+        );
+
+        if (!confirmed) {
+            event.preventDefault();
+        }
+    }
+
+});
+
+
+// interview status
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const statusSelect = document.querySelector(".status-select");
+    const rescheduleFields =
+        document.getElementById("reschedule-fields");
+
+    if (!statusSelect || !rescheduleFields) {
+        return;
+    }
+
+    function toggleRescheduleFields() {
+
+        if (statusSelect.value === "Rescheduled") {
+
+            rescheduleFields.style.display = "grid";
+
+        } else {
+
+            rescheduleFields.style.display = "none";
+
+        }
+
+    }
+
+    statusSelect.addEventListener(
+        "change",
+        toggleRescheduleFields
+    );
+
+    toggleRescheduleFields();
+
+});
