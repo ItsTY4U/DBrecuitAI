@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import date, timedelta
+from django.utils import timezone
 
 # Create your views here.
 def hr_login(request):
@@ -19,7 +20,6 @@ def hr_login(request):
                 
         if user is not None and user.is_staff:
             login(request, user)
-            print("Logged in")
             return redirect("dashboard")
         
         messages.error(request, "Invalid username or password.")
@@ -32,7 +32,7 @@ def dashboard(request):
     total_applications = Application.objects.count()
     screening = Application.objects.filter(status="Screening").count()
     hired = Application.objects.filter(status="Hired").count()
-    active_jobs = Job.objects.filter(is_active=True).count()
+    active_jobs = Job.objects.filter(status="Active").count()
     interview = Application.objects.filter(status="Interview").count()
     #qualified = Application.objects.filter(status="Qualified").count()
     pending_count = Application.objects.filter(status="Pending").count()
@@ -74,7 +74,7 @@ def create_job(request):
             department=request.POST.get("department"),
             job_type=request.POST.get("job_type"),
             description=request.POST.get("description"),
-            is_active=True,
+            status="Active",
         )
         requirements = request.POST.getlist("requirements")
 
@@ -88,10 +88,18 @@ def create_job(request):
 
 @staff_member_required
 def job_management(request):
-    jobs = Job.objects.filter(is_active=True)
+    
+    active_jobs = Job.objects.filter(
+        status="Active"
+    ).order_by("-posted_date")
+    
+    inactive_jobs = Job.objects.filter(
+        status="Inactive"
+    ).order_by("-posted_date")
     
     return render(request, "hr/job_management.html", {
-        "jobs": jobs,
+        "active_jobs": active_jobs,
+        "inactive_jobs": inactive_jobs,
     })
     
 @staff_member_required
@@ -102,7 +110,7 @@ def manage_job(request, pk):
         job.department = request.POST["department"]
         job.job_type = request.POST["job_type"]
         job.description = request.POST["description"]
-        job.is_active = request.POST["is_active"] == "True"
+        job.status = request.POST.get("status", job.status)
         
         job.save()
         return redirect("job_management")
@@ -113,7 +121,7 @@ def manage_job(request, pk):
 @staff_member_required
 def candidates(request):
     departments = (
-        Job.objects.filter(is_active=True)
+        Job.objects.filter(status="Active")
         .values("department")
         .annotate(job_count=Count("id"))
         .order_by("department")
@@ -125,7 +133,7 @@ def candidates(request):
         top_applicants = (
             Application.objects.filter(
                 job__department=dept["department"],
-                job__is_active=True
+                job__status="Active"
             )
             .select_related("job")
             .order_by("-ai_score")[:3]
@@ -145,7 +153,7 @@ def candidates(request):
 def candidate_department(request, department):
     jobs = Job.objects.filter(
         department=department,
-        is_active=True
+        status="Active"
     ).prefetch_related("application")
 
     return render(
@@ -164,7 +172,7 @@ def candidate_detail(request, pk):
         pk=pk
     )
     
-    return render(request, "hr/candidate_detail.html", {"application": application,})
+    return render(request, "hr/candidate_detail.html", {"application": application})
 
 @staff_member_required
 def update_application_status(request, pk):
@@ -189,18 +197,32 @@ def interviews(request):
     
     cancelled = Interview.objects.filter(status="Cancelled").count()
     
-    today = date.today()
+    today = timezone.localdate()
     three_days = today + timedelta(days=3)
+
+    todays_schedule = (
+        Interview.objects.filter(date=today)
+        .prefetch_related("applicants__job")
+        .order_by("time")
+    )
     
     upcoming_interviews = (
         Interview.objects.filter(
-            date__range=[today, three_days]
+            date__gt=today,
+            date__lte=three_days
         )
-        .prefetch_related("applicants")
+        .prefetch_related("applicants__job")
         .order_by("date", "time")
     )
     
-    jobs = ( Job.objects.filter(is_active=True).prefetch_related(
+    overdue_interviews = (
+        Interview.objects.filter(date__lt=today)
+        .exclude(status__in=["Completed", "Cancelled"])
+        .prefetch_related("applicants__job")
+        .order_by("date", "time")
+    )
+    
+    jobs = ( Job.objects.filter(status="Active").prefetch_related(
         Prefetch("application",
             queryset=Application.objects.filter(status="Interview",
                                     interview__isnull=True)
@@ -211,7 +233,7 @@ def interviews(request):
     
     job_interviews = []
 
-    for job in Job.objects.filter(is_active=True):
+    for job in Job.objects.filter(status="Active"):
 
         waiting = Application.objects.filter(
             job=job,
@@ -239,11 +261,15 @@ def interviews(request):
         "ongoing": ongoing,
         "completed": completed,
         "cancelled": cancelled,
-        "upcoming_interviews": upcoming_interviews,
+        
         "jobs": jobs,
         "job_interviews": job_interviews,
         "today": today,
-    }
+        
+        "todays_schedule":todays_schedule,
+        "upcoming_interviews": upcoming_interviews,
+        "overdue_interviews": overdue_interviews,    
+        }
     
     return render(request, "hr/interview.html", context,)
 
@@ -297,10 +323,33 @@ def interview_detail(request, pk):
     
 @staff_member_required
 def update_interview_status(request, pk):
-    interview = get_object_or_404(Interview, pk=pk)
-        
+
+    interview = get_object_or_404(
+        Interview,
+        pk=pk
+    )
+
     if request.method == "POST":
-        interview.status = request.POST["status"]
+
+        status = request.POST.get("status")
+
+        interview.status = status
+
+        # If rescheduled, update date and time
+        if status == "Rescheduled":
+
+            new_date = request.POST.get("date")
+            new_time = request.POST.get("time")
+
+            if new_date:
+                interview.date = new_date
+
+            if new_time:
+                interview.time = new_time
+
         interview.save()
-            
-    return redirect("interview_detail", pk=pk)
+
+    return redirect(
+        "interview_detail",
+        pk=interview.id
+    )

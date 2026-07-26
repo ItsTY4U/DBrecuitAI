@@ -128,7 +128,7 @@ body {
 /* Buttons */
 .btn {
     padding: 14px 32px;
-    border-radius: 50px;
+    border-radius: 15px;
     border: none;
     font-size: 16px;
     font-weight: 700;
@@ -404,6 +404,24 @@ body {
 
 .btn-outline-alt:hover {
     background: #f9f9f9;
+}
+
+.job-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-open {
+    background: #dff3e3;
+    color: #2d6330;
+}
+
+.status-closed {
+    background: #eeeeee;
+    color: #777;
 }
 
 /* Track Page */
@@ -752,8 +770,6 @@ body {
     padding: 4px 10px; 
     border-radius: 4px; 
     font-size: 10px; 
-    background: #2ecc71; 
-    color: white;
 }
 
 .timeline {
@@ -1029,6 +1045,16 @@ body {
     align-items: center;
 }
 
+.alert-error {
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 6px;
+    background: #ffe5e5;
+    color: #c0392b;
+    border: 1px solid #f5b7b1;
+    font-size: 14px;
+}
+
 /* Candidate */
 
 .candidate-filters{
@@ -1167,9 +1193,21 @@ body {
 
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
 .stat-card { 
-    background: white; border-radius: 24px; padding: 30px 25px; border: 1px solid #f0f0f0; 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.04); display: flex; flex-direction: column; 
-    justify-content: space-between; height: 160px; position: relative; transition: transform 0.3s ease, box-shadow 0.3s ease; 
+    background: white; 
+    border-radius: 24px; 
+    padding: 30px 25px; 
+    border: 1px solid #f0f0f0; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.04); 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: space-between; 
+    height: 160px; 
+    position: relative; 
+    transition: transform 0.3s ease, box-shadow 0.3s ease; 
+}
+.stat-card h3 {
+    font-size: 50px;
+    font-weight: 900;
 }
 .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 50px rgba(0,0,0,0.08); }
 .stat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0; border: none; }
@@ -1185,11 +1223,52 @@ body {
 .bar { width: 8px; border-radius: 4px; }
 
 .dashboard-grid { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
-.content-box { background: white; border-radius: 24px; padding: 30px; border: 1px solid #f0f0f0; margin: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
+.content-box { 
+    background: white; 
+    border-radius: 24px; 
+    padding: 30px; 
+    border: 1px solid #f0f0f0; 
+    margin: 20px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+    
+}
+
+.content-box-job { 
+    background-color: rgba(161, 161, 161, 0.534);
+    border-radius: 24px; 
+    padding: 30px; 
+    border: 1px solid #f0f0f0; 
+    margin: 20px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+    
+}
+
 .content-box-manage { background: white; border-radius: 24px; padding: 30px; border: 1px solid #f0f0f0; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.03); display:flex ; }
 .box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
 .box-header h3 { font-size: 18px; font-weight: 900; color: #333; }
 
+.interview-dashboard-grid { 
+    display: grid; 
+    grid-template-columns: 2fr 1fr; 
+    gap: 20px;
+    align-items: start;
+}
+
+.dash-column {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.data-column {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.interview-overdue-wrapper {
+    grid-column: 1 / -1;
+}
 .pipeline-list{
     display:flex;
     flex-direction:column;
@@ -1321,9 +1400,17 @@ body {
 
 .category-card-footer { margin-top: auto; padding-top: 15px; border-top: 1px solid #f9f9f9; text-align: center; }
 .btn-manage {
-    display: block; width: 100%; background: var(--primary); color: white !important;
-    padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; text-decoration: none !important;
+    display: block; 
+    width: 100%; 
+    background: var(--primary); 
+    color: white !important;
+    padding: 10px; 
+    border-radius: 8px; 
+    font-weight: 800; 
+    font-size: 12px; 
+    text-decoration: none !important;
     transition: transform 0.3s;
+    text-align: center;
 }
 .btn-manage:hover { transform: translateY(-2px); }
 .candidates-table th { background: #fff; padding: 20px; text-align: left; font-size: 13px; color: #999; font-weight: 700; border-bottom: 2px solid #f9f9f9; }
@@ -1454,7 +1541,7 @@ body {
 
 .hero-badge-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .hero-badge { background: #2ecc71; color: white; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-.hero-date { font-size: 13px; color: #bbb; font-weight: 700; }
+.hero-date { font-size: 13px; color: #bbb; font-weight: 700; margin-left: 5px; }
 .hero-subtitle { font-size: 16px; font-weight: 700; color: #999; margin-top: 8px; }
 
 .hero-actions-right { display: flex; align-items: center; gap: 20px; }
@@ -2027,6 +2114,187 @@ body {
     word-break: break-word;
 }
 
+/* ========================================
+   TODAY'S INTERVIEW SCHEDULE
+======================================== */
+
+.today-schedule-box {
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 22px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+
+.today-schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+
+.today-schedule-header h3 {
+    margin: 0;
+    font-size: 22px;
+    color: #292929;
+}
+
+
+.today-schedule-header p {
+    margin: 6px 0 0;
+    color: #777;
+    font-size: 14px;
+}
+
+
+.today-date {
+    background: #e9f3e8;
+    color: #28652b;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+/* Interview List */
+
+.today-interview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.today-interview-card {
+    display: grid;
+    grid-template-columns: 150px 1fr auto;
+    align-items: center;
+    gap: 25px;
+
+    padding: 20px;
+
+    border: 1px solid #e5e5e5;
+    border-radius: 14px;
+
+    background: #ffffff;
+
+    transition: 0.2s ease;
+}
+
+
+.today-interview-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+/* Time */
+
+.today-interview-time {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+
+.today-interview-time strong {
+    font-size: 20px;
+    color: #28652b;
+}
+
+
+.today-interview-time span {
+    font-size: 13px;
+    color: #777;
+}
+
+
+/* Job Information */
+
+.today-interview-info h4 {
+    margin: 0 0 5px;
+    font-size: 17px;
+    color: #292929;
+}
+
+
+.today-interview-info p {
+    margin: 0 0 8px;
+    color: #777;
+}
+
+
+.candidate-count {
+    font-size: 13px;
+    color: #555;
+}
+
+
+/* Status */
+
+.today-interview-status {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+
+.today-view-btn {
+    padding: 8px 14px;
+    background: #28652b;
+    color: white;
+    border-radius: 7px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+.today-view-btn:hover {
+    background: #1e4d21;
+}
+
+
+/* No Interviews */
+
+.no-today-interviews {
+    text-align: center;
+    padding: 45px 20px;
+    color: #777;
+}
+
+
+.no-interview-icon {
+    width: 55px;
+    height: 55px;
+    margin: 0 auto 15px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #edf5ed;
+    color: #28652b;
+
+    border-radius: 50%;
+
+    font-size: 22px;
+}
+
+
+.no-today-interviews h4 {
+    margin: 0 0 8px;
+    color: #333;
+}
+
+
+.no-today-interviews p {
+    margin: 0;
+    font-size: 14px;
+}
+
 
 /* =========================================================
    APPLICANTS SECTION
@@ -2070,6 +2338,125 @@ body {
 
     box-shadow:
         0 4px 12px rgba(45, 99, 48, 0.08);
+}
+
+
+/* ========================================
+   INTERVIEW STATUS REMINDER
+======================================== */
+
+.interview-reminder-box {
+    display: flex;
+    gap: 20px;
+
+    margin-bottom: 25px;
+    padding: 22px 25px;
+
+    background: #fff8e5;
+    border: 1px solid #f2d27a;
+
+    border-radius: 16px;
+
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+}
+
+
+.reminder-icon {
+    width: 45px;
+    height: 45px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f5c542;
+    color: white;
+
+    border-radius: 50%;
+
+    font-size: 18px;
+}
+
+
+.reminder-content {
+    flex: 1;
+}
+
+
+.reminder-content h3 {
+    margin: 0 0 6px;
+
+    font-size: 18px;
+    color: #6b5200;
+}
+
+
+.reminder-content p {
+    margin: 0 0 15px;
+
+    color: #6f6340;
+    font-size: 14px;
+}
+
+
+.overdue-interview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+
+.overdue-interview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 12px 15px;
+
+    background: white;
+
+    border: 1px solid #ead9a5;
+    border-radius: 8px;
+}
+
+
+.overdue-interview-item div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+
+.overdue-interview-item strong {
+    color: #333;
+}
+
+
+.overdue-interview-item span {
+    color: #777;
+    font-size: 13px;
+}
+
+
+.reminder-action {
+    padding: 8px 13px;
+
+    background: #28652b;
+    color: white;
+
+    border-radius: 6px;
+
+    text-decoration: none;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+.reminder-action:hover {
+    background: #1e4d21;
 }
 
 
@@ -2311,4 +2698,17 @@ body {
         margin-left: 68px;
     }
 
+}
+
+/* Manage Job Text Area */
+.job-description {
+    width: 100%;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    font-family: 'Montserrat', sans-serif;
+    height: 120px;
+    resize: vertical;
+    text-align: left;
+    box-sizing: border-box;
 }

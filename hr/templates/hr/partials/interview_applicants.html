@@ -31,6 +31,12 @@
                 AI Score: {{ applicant.ai_score }}%
             </div>
 
+            <div class="applicant-actions">
+                <a href="{% url "candidate_detail" applicant.id %}" class="view-btn">
+                    View Details
+                </a>
+            </div>
+
         </div>
 
         {% endfor %}

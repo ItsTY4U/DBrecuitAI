@@ -1,0 +1,40 @@
+{% if overdue_interviews %}
+<div class="interview-reminder-box">
+    <div class="reminder-icon">
+        <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    <div class="reminder-content">
+        <h3>Interview Status Reminder</h3>
+        <p>
+            You have
+            <strong>{{ overdue_interviews|length }}</strong>
+            interview{{ overdue_interviews|length|pluralize }}
+            that have passed their scheduled date but are still marked as
+            <strong>Scheduled</strong>.
+        </p>
+        <div class="overdue-interview-list">
+            {% for interview in overdue_interviews %}
+                {% with job=interview.applicants.first.job %}
+                <div class="overdue-interview-item">
+                    <div>
+                        <strong>
+                            {{ job.title }}
+                        </strong>
+                        <span>
+                            Scheduled for
+                            {{ interview.date|date:"F d, Y" }}
+                        </span>
+                    </div>
+                    <a
+                        href="{% url 'interview_detail' interview.pk %}"
+                        class="reminder-action"
+                    >
+                        Update Status
+                    </a>
+                </div>
+                {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}

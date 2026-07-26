@@ -1,4 +1,4 @@
-<div class="admin-job-card">
+<div class="admin-job-card inactive-job-card">
 
     <span class="a-cat">
         {{ job.department }}
@@ -19,8 +19,8 @@
                 border-top: none;
                 padding-top: 0;">
 
-        <span class="job-status status-open">
-            Active
+        <span class="job-status status-closed">
+            Inactive
         </span>
 
         <a href="{% url 'manage_job' job.pk %}"

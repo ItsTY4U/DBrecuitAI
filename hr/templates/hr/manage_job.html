@@ -14,7 +14,7 @@
             </header>
 
             <div class="content-box-manage" style="max-width: 800px; padding: 40px;">
-                <form action="" method="POST">
+                <form action="" method="POST" id="manage-job-form">
                     {% csrf_token %}
                     <div class="form-group" style="margin-bottom: 25px;">
                         <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Job Title</label>
@@ -40,19 +40,20 @@
 
                     <div class="form-group" style="margin-bottom: 25px;">
                         <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Status</label>
-                        <select name="is_active" style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;">
-                            <option value="True" {% if job.is_active %}seleted{% endif %}>Active</option>
-                            <option value="False" {% if not job.is_active %}selected{% endif %}>Closed</option>
+                        <select name="status" id="status" style="width: 50%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;">
+                            <option value="Active" {% if job.status == "Active" %}selected{% endif %}>
+                                Active
+                            </option> 
+                            <option value="Inactive" {% if job.status == "Inactive" %}selected{% endif %}>
+                                Inactive
+                            </option>
                         </select>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 25px;">
                         <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Description</label>
-                        <textarea name="description"
-                        style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif; height: 120px;">
-                        {{job.description}}</textarea>
+                        <textarea name="description" class="job-description">{{job.description}}</textarea>
                     </div>
-
                     <div class="post-actions" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px; display: flex; gap: 15px; justify-content: flex-end;">
                         <a href="{% url "job_management" %}" class="btn" style="background: #f1f2f6; color: #555; font-weight: 700; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save Changes</button>

@@ -11,6 +11,7 @@
             <span class="hero-badge">
                 {{ application.job.job_type }}
             </span>
+            
             <span class="hero-date">
                 Applied on {{ application.created_at|date:"m/d/y" }}
             </span>
@@ -25,6 +26,7 @@
             <p class="hero-subtitle">
                 {{ application.job.title }}
             </p>
+            <h3>Application ID:</h3><span class="hero-badge">{{ application.application_id }}</span>
         </div>
     </div>
 

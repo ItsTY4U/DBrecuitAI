@@ -86,13 +86,13 @@
                             <h3>Reminders</h3>
                         </div>
                         {% if pending_count %}
-                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='applicant-aziel.html'">
+                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='{% url "candidates" %}'">
                             <i class="fas fa-video" style="color: var(--primary);"></i>
                             Review {{ pending_count }} pending application {{ pending_count|pluralize }}
                         </div>
                         {% endif %}
                         {% if interview_count  %}
-                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='post-job.html'">
+                        <div class="reminder-item" style="cursor: pointer;" onclick="window.location.href='{% url "interviews" %}'">
                             <i class="fas fa-file-alt" style="color: #f1c40f;"></i>
                             {{ interview_count }} candidate{{ interview_count|pluralize }} waiting for interview
                         </div>

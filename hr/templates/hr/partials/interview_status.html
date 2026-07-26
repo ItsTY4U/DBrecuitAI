@@ -1,33 +1,178 @@
-<div class="content-box">
+<div class="content-box interview-status-box">
+
     <div class="box-header">
-        <h3>Interview Status<h3>
+        <h3>Interview Status</h3>
     </div>
-    {% if interview.status == "Scheduled" %}
-    <form method="POST" action="{% url "update_interview_status" interview.id %}">
-        {% csrf_token %}
-        <select name="status">
-            <option value="Ongoing">
-                Ongoing
-            </option>
-            <option value="Cancelled">
-                Cancelled
-            </option>
-        </select>
-        <button class="btn-primary-detail">
-            Update Status
-        </button>
-    </form>
+
+    {% if interview.status == "Scheduled" or interview.status == "Ongoing" %}
+
+        <form method="POST"
+            action="{% url 'update_interview_status' interview.id %}"
+            class="interview-status-form">
+
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="status">
+                    Status
+                </label>
+
+                <select name="status"
+                        id="status"
+                        class="status-select">
+
+                    <option value="Scheduled"
+                        {% if interview.status == "Scheduled" %}selected{% endif %}>
+                        Scheduled
+                    </option>
+
+                    <option value="Ongoing"
+                        {% if interview.status == "Ongoing" %}selected{% endif %}>
+                        Ongoing
+                    </option>
+
+                    <option value="Completed">
+                        Completed
+                    </option>
+
+                    <option value="Rescheduled">
+                        Rescheduled
+                    </option>
+
+                    <option value="Cancelled">
+                        Cancelled
+                    </option>
+
+                </select>
+            </div>
+
+
+            <!-- Reschedule Fields -->
+
+            <div id="reschedule-fields"
+                class="reschedule-fields">
+
+                <div class="form-group">
+
+                    <label for="date">
+                        New Date
+                    </label>
+
+                    <input type="date"
+                        name="date"
+                        id="date"
+                        value="{{ interview.date|date:'Y-m-d' }}">
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="time">
+                        New Time
+                    </label>
+
+                    <input type="time"
+                        name="time"
+                        id="time"
+                        value="{{ interview.time|time:'H:i' }}">
+
+                </div>
+
+            </div>
+
+
+            <button type="submit"
+                    class="btn-primary-detail">
+
+                Update Status
+
+            </button>
+
+        </form>
+
+
     {% elif interview.status == "Completed" %}
-    <div class="status-success">
-        Interview Completed
-    </div>
-    {% elif interview.status == "Ongoing" %}
-    <div class="status-success">
-        Interview is Ongoing
-    </div>
-    {% else %}
-    <div class="status-danger">
-        Interview Cancelled
-    </div>
+
+        <div class="status-success">
+            <strong>Interview Completed</strong>
+            <span>This interview has been completed.</span>
+        </div>
+
+
+    {% elif interview.status == "Rescheduled" %}
+
+        <div class="status-warning">
+
+            <strong>⚠ Interview Rescheduled</strong>
+
+            <span>
+                New schedule:
+                {{ interview.date }}
+                at
+                {{ interview.time }}
+            </span>
+
+        </div>
+
+        <form method="POST"
+            action="{% url 'update_interview_status' interview.id %}"
+            class="interview-status-form">
+
+            {% csrf_token %}
+
+            <div class="form-group">
+
+                <label for="status">
+                    Update Status
+                </label>
+
+                <select name="status"
+                        id="status"
+                        class="status-select">
+
+                    <option value="Scheduled">
+                        Scheduled
+                    </option>
+
+                    <option value="Ongoing">
+                        Ongoing
+                    </option>
+
+                    <option value="Completed">
+                        Completed
+                    </option>
+
+                    <option value="Cancelled">
+                        Cancelled
+                    </option>
+
+                </select>
+
+            </div>
+
+            <button type="submit"
+                    class="btn-primary-detail">
+
+                Update Status
+
+            </button>
+
+        </form>
+
+
+    {% elif interview.status == "Cancelled" %}
+
+        <div class="status-danger">
+
+            <strong>✕ Interview Cancelled</strong>
+
+            <span>
+                This interview has been cancelled.
+            </span>
+
+        </div>
+
     {% endif %}
+
 </div>

@@ -30,9 +30,10 @@
             <span>Cancelled</span>
         </div>
     </section>
-    <div class="dashboard-grid">
+    <div class="interview-dashboard-grid">
         <div class="dash-column">
             {% include "hr/partials/today_schedule.html" %}
+            {% include "hr/partials/overdue_interviews.html" %}
         </div>
         <div class="data-column">
             {% include "hr/partials/interview_schedule.html" %}
