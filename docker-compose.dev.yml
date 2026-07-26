@@ -1,0 +1,7 @@
+services:
+  web:
+    build:
+      dockerfile: Dockerfile
+
+    volumes:
+      - .:/app

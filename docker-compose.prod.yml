@@ -1,0 +1,8 @@
+services:
+  web:
+    build:
+      dockerfile: Dockerfile.prod
+
+    volumes: []
+
+    restart: unless-stopped
