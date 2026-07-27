@@ -3,6 +3,8 @@ from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
 from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
+from django.urls import reverse
+import json
 
 def jobs(request):
     try:
@@ -50,44 +52,32 @@ def apply_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
 
     if request.method == "POST":
-
         application_id = request.POST.get("application_id")
 
         if not application_id:
-            return render(request, "jobs/apply.html", {
-                "job": job,
-                "error": "Application ID is missing."
-            })
+            return HttpResponse("Application ID is missing.", status=400)
 
         application = get_object_or_404(
             Application,
             application_id=application_id,
+            job=job
         )
 
-        application.first_name = request.POST.get("first_name")
-        application.middle_initial = request.POST.get("middle_initial")
-        application.last_name = request.POST.get("last_name")
-        application.email = request.POST.get("email")
-        application.phone = request.POST.get("phone")
+        application.first_name = request.POST.get("first_name", "")
+        application.middle_initial = request.POST.get("middle_initial", "")
+        application.last_name = request.POST.get("last_name", "")
+        application.email = request.POST.get("email", "")
+        application.phone = request.POST.get("phone", "")
         application.status = "Pending"
-
         application.save()
 
-        return render(
-            request,
-            "jobs/partials/success.html",
-            {
-                "application": application
-            }
-        )
+        # ← Just render the partial directly, no redirect needed
+        return render(request, "jobs/partials/application_success.html", {
+            "application": application,
+            "job": job,
+        })
 
-    return render(
-        request,
-        "jobs/apply.html",
-        {
-            "job": job
-        }
-    )
+    return render(request, "jobs/apply.html", {"job": job})
 
 def upload_resume(request, pk):
     job = get_object_or_404(Job, pk=pk)
@@ -107,10 +97,15 @@ def upload_resume(request, pk):
         })
 
     # Only allow PDF files
-    if not resume.name.lower().endswith(".pdf"):
+    allowed_extensions = [".pdf", ".doc", ".docx"]
+
+    if not any(
+        resume.name.lower().endswith(ext)
+        for ext in allowed_extensions
+    ):
         return render(request, "jobs/apply.html", {
             "job": job,
-            "error": "Only PDF files are allowed."
+            "error": "Only PDF, DOC, or DOCX files are allowed."
         })
 
     # Maximum file size: 5 MB
@@ -175,3 +170,13 @@ def upload_resume(request, pk):
             "application": application,
         }
     )
+    
+def application_success(request, application_id):
+    application = get_object_or_404(
+        Application,
+        application_id=application_id
+    )
+    
+    return render(request,"jobs/partials/application_success.html",{
+        "application":application
+    })
