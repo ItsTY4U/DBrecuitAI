@@ -218,6 +218,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    border: 1px solid #ddd;
 }
 
 /* Stats Styling */
@@ -269,6 +270,7 @@ body {
 .content-header {
     width: 100%;
     margin: 0 auto 15px;
+    text-align: center;
 }
 
 .page-title {
@@ -597,125 +599,181 @@ body {
     gap: 15px;
 }
 
-/* Success State */
-.success-content {
-    text-align: center;
-    padding: 20px;
-}
-
-.content-header {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.success-icon {
-    font-size: 80px;
-    color: var(--primary);
-    margin-bottom: 20px;
-}
-
-.success-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 10px;
-}
-
-.success-subtitle {
-    margin-bottom: 40px;
-    color: #555;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.success-details-box {
-    background: white !important;
-    padding: 40px !important;
-    border: 1px solid #eee !important;
-    text-align: left;
-}
-
-.app-id-box {
-    margin-bottom: 40px;
-    text-align: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 30px;
-}
-
-.app-id-label {
-    display: block;
-    font-weight: 700;
-    color: #888;
-    margin-bottom: 5px;
-}
-
-.app-id-val {
-    font-size: 36px;
-    font-weight: 800;
-    color: var(--primary);
-    letter-spacing: 2px;
-}
-
-.app-id-hint {
-    font-size: 13px;
-    color: #999;
-}
-
-.boost-box {
-    border: 1px solid #ddd;
-    border-radius: 12px;
-    padding: 25px;
-    background: #fbfbfb;
-    margin-bottom: 40px;
-    text-align: center;
-}
-
-.boost-header {
+/* ── Application Success Page ─────────────────────────── */
+.success-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
+    text-align: center;
+    padding: 40px 32px;
+    gap: 8px;
 }
 
-.boost-icon {
-    font-size: 40px;
-    color: var(--primary);
-}
-
-.boost-header h3 {
-    color: var(--primary);
+.success-title {
+    font-size: 28px;
     font-weight: 800;
+    color: #2d6a2d;
+    margin: 0;
 }
 
-.boost-text {
+.success-subtitle {
     font-size: 13px;
-    color: #666;
-    margin-bottom: 20px;
+    color: #6b7280;
+    margin: 4px 0 24px 0;
+    max-width: 340px;
 }
 
-.btn-video {
+.success-id-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px 32px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-id-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    margin: 0;
+}
+
+.success-id-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0;
+}
+
+.success-note {
+    background: #fefce8;
+    border-left: 4px solid #facc15;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #854d0e;
+    width: 100%;
+    text-align: center;
+}
+
+.success-boost-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.success-boost-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.success-boost-note {
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e40af;
+    text-align: center;
     width: 100%;
 }
 
 .success-links {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    text-align: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
 }
 
-.s-link {
+.success-links a {
+    font-size: 13px;
+    color: #6b7280;
     text-decoration: none;
-    color: #999;
-    font-weight: 700;
-    font-size: 14px;
 }
 
-.s-link.highlight {
-    color: var(--primary);
+.success-links a:hover {
+    color: #111827;
     text-decoration: underline;
+}
+
+/* Video Placeholder */
+.video-placeholder {
+    width: 100%;
+    max-width: 460px;
+    height: 220px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+}
+
+.video-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+    opacity: 0.5;
+}
+
+.video-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.play-btn {
+    width: 56px;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    transition: all 0.2s;
+}
+
+.play-btn i {
+    color: #ffffff;
+    font-size: 18px;
+    margin-left: 3px;
+}
+
+.video-placeholder:hover .play-btn {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.08);
+}
+
+.video-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+    font-weight: 500;
+    letter-spacing: 0.3px;
 }
 
 /* Utilities */
@@ -1163,7 +1221,8 @@ body {
 .sidebar-menu { 
     flex-grow: 1; list-style: none; padding: 0; }
 .menu-item { 
-    margin: 5px 20px; }
+    margin: 5px 20px; 
+}
 .menu-link {
     display: flex; 
     align-items: center; 
@@ -1175,6 +1234,20 @@ body {
     font-size: 14px; 
     border-radius: 10px; 
     transition: all 0.3s;
+}
+
+.menu-link-logout {
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    padding: 12px 20px; 
+    text-decoration: none !important;
+    color: #666 !important; 
+    font-weight: 700; 
+    font-size: 14px; 
+    border-radius: 10px; 
+    transition: all 0.3s;
+    border: 1px solid #ddd;
 }
 .menu-item.active .menu-link { 
     background: var(--primary); 

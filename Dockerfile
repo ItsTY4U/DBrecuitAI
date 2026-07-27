@@ -22,7 +22,7 @@ RUN pip install --upgrade pip \
 
 # Copy project (single copy)
 COPY . .
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Optional: drop root
 # RUN useradd -m appuser && chown -R appuser /app

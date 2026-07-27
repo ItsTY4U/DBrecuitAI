@@ -1,4 +1,5 @@
 <div class="bg-container dim"></div>
+<div id="apply-flow">
 <div class="form-step active" id="step-2">
                     <div class="step-nav">
                         <div class="step-item" data-step="1">1. Upload Resume</div>
@@ -7,11 +8,12 @@
                     <div class="step-content">
                         <h2 class="step-title">Review your information</h2>
                         <p class="step-subtitle">We've extracted this from your resume. Please check if it's correct.</p>
-                        <form hx-post="{% url 'apply' job.id %}" hx-target="#apply-flow"
-                            hx-swap="innerHTML" enctype="multipart/form-data">
+                        <form hx-post="{% url 'apply' job.pk %}" 
+                            hx-target="#apply-flow"
+                            hx-swap="innerHTML">
                             {% csrf_token %}
                             <div class="form-grid">
-                                <input type="hidden" name="application_id" value="{{ application.pk}}">
+                                <input type="hidden" name="application_id" value="{{ application.application_id}}">
                                 <div class="form-group">
                                     <label>First Name</label>
                                     <input type="text" name="first_name" value="{{application.first_name}}">
@@ -45,3 +47,4 @@
                             </div>
                         </form>
                     </div>
+                </div>
