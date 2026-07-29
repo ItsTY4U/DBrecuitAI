@@ -130,23 +130,39 @@ def upload_resume(request, pk):
             "error": "Resume must be smaller than 5 MB."
         })
 
-    application = Application.objects.create(
-        job=job,
-        resume=resume,
-        status="Pending",
-        first_name="",
-        middle_initial="",
-        last_name="",
-        email="",
-        phone="",
-    )
+    logger.error("BEFORE Application.objects.create")
 
-    logger.error("Application created successfully")
-    logger.error(f"Resume name: {application.resume.name}")
+#    application = Application.objects.create(
+#        job=job,
+#        resume=resume,
+#        status="Pending",
+#        first_name="",
+#        middle_initial="",
+#        last_name="",
+#        email="",
+#        phone="",
+#    )
+
+    application = None
 
     try:
-        print("===== STEP 1: Opening resume =====")
+        logger.error("BEFORE Application.objects.create")
 
+        application = Application.objects.create(
+            job=job,
+            resume=resume,
+            status="Pending",
+            first_name="",
+            middle_initial="",
+            last_name="",
+            email="",
+            phone="",
+        )
+
+        logger.error("AFTER Application.objects.create")
+
+        logger.error("===== STEP 1: Opening resume =====")
+ 
     # Extract text from PDF
         with application.resume.open("rb") as resume_file:
             print("===== STEP 2: Resume opened =====")
@@ -194,20 +210,33 @@ def upload_resume(request, pk):
 
         print("===== STEP 6: Application saved =====")
 
-    except Exception as e:
+#    except Exception as e:
+#        import traceback
+#
+#        logger.error("===== EXCEPTION =====")
+#        logger.error(traceback.format_exc())
+#
+#        # Delete the incomplete application
+#        application.delete()
+#
+#        return render(request, "jobs/apply.html", {
+#            "job": job,
+#            "error": traceback.format_exc(),
+#        })
+
+    except Exception:
         import traceback
 
-        logger.error("===== EXCEPTION =====")
-        logger.error(traceback.format_exc())
+        logger.exception("===== upload_resume FAILED =====")
 
-        # Delete the incomplete application
-        application.delete()
+        if application:
+            application.delete()
 
         return render(request, "jobs/apply.html", {
             "job": job,
             "error": traceback.format_exc(),
         })
-    
+        
     return render(
         request,
         "jobs/partials/personal_info.html",
