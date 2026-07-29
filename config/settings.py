@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     "rest_framework",
     "corsheaders",
     "main",
@@ -150,7 +151,38 @@ STATICFILES_STORAGE = (
     "whitenoise.storage.CompressedManifestStaticFilesStorage"
 )
 
-MEDIA_URL ="/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Cloudflare R2 Media Storage
+
+AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+
+AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+
+AWS_S3_ENDPOINT_URL = (
+    f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com"
+)
+
+AWS_S3_REGION_NAME = "auto"
+
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+AWS_S3_ADDRESSING_STYLE = "virtual"
+
+AWS_DEFAULT_ACL = None
+
+AWS_QUERYSTRING_AUTH = False
+
+AWS_S3_FILE_OVERWRITE = False
+
+MEDIA_URL = os.getenv("R2_PUBLIC_URL") + "/"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")

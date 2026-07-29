@@ -1,3 +1,5 @@
+from email.mime import application
+
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
@@ -5,6 +7,8 @@ from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
 from django.urls import reverse
 import json
+
+from jobs import ai
 
 def jobs(request):
     try:
@@ -127,11 +131,32 @@ def upload_resume(request, pk):
     )
 
     try:
-        # Extract text from PDF
-        resume_text = extract_resume_text(application.resume.path)
+        print("===== STEP 1: Opening resume =====")
+
+    # Extract text from PDF
+        with application.resume.open("rb") as resume_file:
+            print("===== STEP 2: Resume opened =====")
+
+            resume_text = extract_resume_text(resume_file)
+
+            print("===== STEP 3: Resume text extracted =====")
+            print(f"Resume length: {len(resume_text)}")
+
+        print("===== STEP 4: Calling Gemini =====")
 
         # Analyze using Gemini
         ai = analyze_resume(resume_text, job)
+
+        print("========== AI RESPONSE ==========")
+        print(ai)
+
+        print("PHONE VALUE:")
+        print(repr(ai.get("phone")))
+
+        print("PHONE LENGTH:")
+        print(len(str(ai.get("phone", ""))))
+
+        print("===== STEP 5: Gemini finished =====")
 
         application.first_name = ai.get("first_name", "")
         application.middle_initial = ai.get("middle_initial", "")
@@ -153,7 +178,14 @@ def upload_resume(request, pk):
         application.resume_processed = True
         application.save()
 
+        print("===== STEP 6: Application saved =====")
+
     except Exception as e:
+        import traceback
+
+        print("===== ERROR =====")
+        traceback.print_exc()
+
         # Delete the incomplete application
         application.delete()
 
@@ -161,7 +193,7 @@ def upload_resume(request, pk):
             "job": job,
             "error": str(e)
         })
-
+    
     return render(
         request,
         "jobs/partials/personal_info.html",
@@ -170,7 +202,7 @@ def upload_resume(request, pk):
             "application": application,
         }
     )
-    
+
 def application_success(request, application_id):
     application = get_object_or_404(
         Application,
