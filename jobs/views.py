@@ -83,7 +83,16 @@ def apply_job(request, pk):
 
     return render(request, "jobs/apply.html", {"job": job})
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def upload_resume(request, pk):
+
+    logger.error("===== upload_resume CALLED =====")
+    logger.error(f"Method: {request.method}")
+    logger.error(f"FILES: {request.FILES}")
+
     job = get_object_or_404(Job, pk=pk)
 
     if request.method != "POST":
@@ -92,6 +101,8 @@ def upload_resume(request, pk):
         })
 
     resume = request.FILES.get("resume")
+
+    logger.error(f"Resume object: {resume}")
 
     # Check if a file was uploaded
     if not resume:
@@ -129,6 +140,9 @@ def upload_resume(request, pk):
         email="",
         phone="",
     )
+
+    logger.error("Application created successfully")
+    logger.error(f"Resume name: {application.resume.name}")
 
     try:
         print("===== STEP 1: Opening resume =====")
@@ -183,15 +197,15 @@ def upload_resume(request, pk):
     except Exception as e:
         import traceback
 
-        print("===== ERROR =====")
-        traceback.print_exc()
+        logger.error("===== EXCEPTION =====")
+        logger.error(traceback.format_exc())
 
         # Delete the incomplete application
         application.delete()
 
         return render(request, "jobs/apply.html", {
             "job": job,
-            "error": str(e)
+            "error": traceback.format_exc(),
         })
     
     return render(
