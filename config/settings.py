@@ -174,7 +174,12 @@ AWS_QUERYSTRING_AUTH = False
 
 AWS_S3_FILE_OVERWRITE = False
 
-MEDIA_URL = os.getenv("R2_PUBLIC_URL") + "/"
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
+
+if R2_PUBLIC_URL:
+    MEDIA_URL = R2_PUBLIC_URL.rstrip("/") + "/"
+else:
+    MEDIA_URL = "/media/"
 
 STORAGES = {
     "default": {
