@@ -176,6 +176,12 @@ AWS_S3_FILE_OVERWRITE = False
 
 R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
 
+AWS_S3_CUSTOM_DOMAIN = (
+    R2_PUBLIC_URL.replace("https://", "").rstrip("/")
+    if R2_PUBLIC_URL
+    else None
+)
+
 if R2_PUBLIC_URL:
     MEDIA_URL = R2_PUBLIC_URL.rstrip("/") + "/"
 else:
