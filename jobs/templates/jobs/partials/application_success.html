@@ -1,0 +1,47 @@
+<div class="bg-container dim"></div>
+
+<div class="success-wrapper">
+
+    <h2 class="success-title">Application Submitted!</h2>
+    <p class="success-subtitle">
+        Your application has been successfully received. We've sent a
+        confirmation email to your inbox.
+    </p>
+
+    <div class="success-id-card">
+        <p class="success-id-label">Your Unique Application ID:</p>
+        <p class="success-id-value">{{ application.application_id }}</p>
+        <div class="success-note">
+            Please take note of this ID to track your application status manually.
+        </div>
+    </div>
+
+    <div class="success-boost-card">
+        <p class="success-boost-title">Boost your application!</p>
+        <div class="success-boost-note">
+            Complete a quick AI-powered video interview to help us better evaluate your skills.
+            <br>(Highly recommended but optional)
+        </div>
+
+        <!-- Sample Video Placeholder -->
+        <div class="video-placeholder">
+            <div class="video-overlay">
+                <div class="play-btn">
+                    <i class="fas fa-play"></i>
+                </div>
+                <p class="video-label">Watch sample interview</p>
+            </div>
+        </div>
+
+        <a href="" class="btn btn-primary" style="width: 100%; text-align: center;">
+            Start Video Interview
+        </a>
+    </div>
+
+    <div class="success-links">
+        <a href="#">Print Application Details</a>
+        <a href="{% url 'jobs' %}">Browse More Jobs</a>
+        <a href="{% url 'track' %}"><strong>Track status now</strong></a>
+    </div>
+
+</div>
