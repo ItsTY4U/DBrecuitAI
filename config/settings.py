@@ -29,12 +29,14 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "dbrecruit.up.railway.app",
+    "d-brecuit-ai-lk6j.vercel.app",
     "localhost",
     "127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://dbrecruit.up.railway.app",
+    "https://d-brecuit-ai-lk6j.vercel.app",
 ]
 
 # Application definition
