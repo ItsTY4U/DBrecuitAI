@@ -1,73 +1,81 @@
 <div class="category-grid">
-
-{% for card in department_cards %}
-
-<div class="category-card">
-
-    <div class="category-card-header">
-        <h3>{{ card.department }}</h3>
-
-        <span class="count">
-            {{ card.job_count }} Active Job{{ card.job_count|pluralize }}
-        </span>
-    </div>
-
-    <div class="top-applicants-list">
-
-        {% for application in card.top_applicants %}
-
-        <div class="top-applicant-item">
-
-            <div class="applicant-snippet">
-
-                <div class="mini-avatar">
-                    {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+    {% for card in department_cards %}
+    <div class="category-card">
+        <div class="category-card-header">
+            <div class="dept-header-title">
+                <div class="dept-icon-box">
+                    <i class="fas fa-building"></i>
                 </div>
-
-                <div class="info">
-                    <h4>
-                        {{ application.first_name }}
-                        {% if application.middle_initial %}
-                            {{ application.middle_initial }}.
-                        {% endif %}
-                        {{ application.last_name }}
-                    </h4>
-                    <p>{{ application.job.title }}</p>
+                <div>
+                    <h3>{{ card.department }}</h3>
+                    <span class="dept-active-jobs">
+                        {{ card.job_count }} Active Job{{ card.job_count|pluralize }}
+                    </span>
                 </div>
-
             </div>
-
-            <span class="mini-score
-                {% if application.ai_score >= 90 %}
-                    score-high
-                {% elif application.ai_score >= 75 %}
-                    score-mid
-                {% else %}
-                    score-low
-                {% endif %}">
-                    {{ application.ai_score }}%
+            <span class="dept-count-badge">
+                {{ card.total_applicants }} Applicant{{ card.total_applicants|pluralize }}
             </span>
-
         </div>
 
-        {% empty %}
+        <div class="top-applicants-section">
+            <div class="top-applicants-header">
+                <span class="sub-label">
+                    <i class="fas fa-sparkles text-amber"></i> Top AI Matched Candidates
+                </span>
+            </div>
 
-        <p>No applicants yet.</p>
+            <div class="top-applicants-list">
+                {% for application in card.top_applicants %}
+                <a href="{% url 'candidate_detail' application.id %}" class="top-applicant-item" title="Review candidate">
+                    <div class="applicant-snippet">
+                        <div class="mini-avatar">
+                            {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+                        </div>
+                        <div class="info">
+                            <h4>
+                                {{ application.first_name }}
+                                {% if application.middle_initial %}{{ application.middle_initial }}.{% endif %}
+                                {{ application.last_name }}
+                            </h4>
+                            <p>{{ application.job.title }}</p>
+                        </div>
+                    </div>
 
-        {% endfor %}
+                    <span class="mini-score
+                        {% if application.ai_score >= 90 %}
+                            score-high
+                        {% elif application.ai_score >= 75 %}
+                            score-mid
+                        {% else %}
+                            score-low
+                        {% endif %}">
+                        <i class="fas fa-bolt"></i> {{ application.ai_score }}%
+                    </span>
+                </a>
+                {% empty %}
+                <div class="empty-dept-box">
+                    <i class="fas fa-user-clock"></i>
+                    <p>No candidates applied to this department yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
 
+        <div class="category-card-footer">
+            <a href="{% url 'candidate_department' card.department %}" class="btn-manage-dept">
+                <span>View All Candidates ({{ card.total_applicants }})</span>
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
     </div>
-
-    <div class="category-card-footer">
-
-        <a href="{% url 'candidate_department' card.department %}" class="btn-manage">
-            Check All Applications 
-        </a>
-
+    {% empty %}
+    <div class="empty-state-box full-grid-empty">
+        <div class="empty-state-icon">
+            <i class="fas fa-users-slash"></i>
+        </div>
+        <h4>No active departments with job postings</h4>
+        <p>Post a new job opening to start receiving and ranking candidates.</p>
     </div>
-
-</div>
-
-{% endfor %}
-
+    {% endfor %}
 </div>
