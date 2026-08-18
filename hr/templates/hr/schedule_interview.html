@@ -2,102 +2,148 @@
 {% load static %}
 {% block admin_body %}
 <main class="main-dashboard">
+    <div class="page-nav-header">
+        <a href="{% url 'interviews' %}" class="back-link-pill">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Interviews</span>
+        </a>
+    </div>
+
     <header class="dashboard-header">
         <div class="header-left">
-            <a href="{% url 'interviews' %}" class="btn-back-header">
-                <i class="fas fa-arrow-left"></i>
-                Back
-            </a>
-            <h2>Schedule Interview</h2>
-            <h3>{{ job.title }}</h3>
+            <div class="title-with-badge">
+                <h1 class="dashboard-title">Schedule Interview Session</h1>
+                <span class="status-pill status-screening">{{ job.department }}</span>
+            </div>
+            <p class="dashboard-subtitle">Set up interview date, time, and logistics for candidates applying for <strong>{{ job.title }}</strong>.</p>
         </div>
     </header>
-    <form method="POST">
+
+    <form method="POST" id="schedule-interview-form">
         {% csrf_token %}
         <div class="dashboard-grid">
-            <!-- LEFT -->
+            <!-- LEFT: Applicant Selection -->
             <div class="dash-column">
                 <div class="content-box">
                     <div class="box-header">
-                        <h3>Select Applicants</h3>
-                    </div>
-                    <div class="select-all-row">
-                        <label>
-                            Select All
-                            <input type="checkbox" id="select-all">
-                        </label>
-                    </div>
-                    <br><br>
-                    {% for applicant in applicants %}
-                    <div class="applicant-card">
-                        <label class="applicant-select">
-                            <div class="avatar">
-                                {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
-                            </div>
+                        <div class="box-header-title">
+                            <i class="fas fa-user-check header-icon text-green"></i>
                             <div>
-                                <strong>
-                                    {{ applicant.first_name }}
-                                    {{ applicant.last_name }}
-                                </strong>
-                                <br>
-                                AI Score
-                                {{ applicant.ai_score }}%
+                                <h3>Select Candidates</h3>
+                                <p class="box-subtitle">Choose which candidates to invite to this session</p>
                             </div>
-                            <input
-                                type="checkbox"
-                                name="applicants"
-                                value="{{ applicant.id }}"
-                                class="applicant-check">
+                        </div>
+                        <span class="dept-count-badge">{{ applicants|length }} Available</span>
+                    </div>
+
+                    <div class="select-all-container">
+                        <label class="select-all-toggle">
+                            <input type="checkbox" id="select-all">
+                            <span class="toggle-text">Select All Candidates ({{ applicants|length }})</span>
                         </label>
                     </div>
-                    {% empty %}
-                    <p>No applicants waiting.</p>
-                    {% endfor %}
+
+                    <div class="candidate-checklist">
+                        {% for applicant in applicants %}
+                        <label class="candidate-check-card" for="app-{{ applicant.id }}">
+                            <div class="check-left">
+                                <input
+                                    type="checkbox"
+                                    name="applicants"
+                                    value="{{ applicant.id }}"
+                                    id="app-{{ applicant.id }}"
+                                    class="applicant-check custom-checkbox">
+                                <div class="mini-avatar">
+                                    {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+                                </div>
+                                <div class="candidate-check-info">
+                                    <strong>
+                                        {{ applicant.first_name }}
+                                        {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
+                                        {{ applicant.last_name }}
+                                    </strong>
+                                    <span class="applicant-email-sub">{{ applicant.email }}</span>
+                                </div>
+                            </div>
+                            <span class="mini-score
+                                {% if applicant.ai_score >= 90 %}
+                                    score-high
+                                {% elif applicant.ai_score >= 75 %}
+                                    score-mid
+                                {% else %}
+                                    score-low
+                                {% endif %}">
+                                <i class="fas fa-robot"></i> {{ applicant.ai_score }}% Match
+                            </span>
+                        </label>
+                        {% empty %}
+                        <div class="empty-state-box">
+                            <i class="fas fa-user-clock text-amber" style="font-size: 28px; margin-bottom: 8px;"></i>
+                            <h4>No unscheduled candidates</h4>
+                            <p>All candidates in the interview stage for this position already have sessions assigned.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
-            <!-- RIGHT -->
+
+            <!-- RIGHT: Interview Logistics Form -->
             <div class="dash-column">
                 <div class="content-box">
                     <div class="box-header">
-                        <h3>Interview Details</h3>
+                        <div class="box-header-title">
+                            <i class="fas fa-calendar-plus header-icon text-blue"></i>
+                            <div>
+                                <h3>Session Details</h3>
+                                <p class="box-subtitle">Meeting details and interviewer assignments</p>
+                            </div>
+                        </div>
                     </div>
-                    <label>Interview Type</label>
-                    <select
-                        name="interview_type"
-                        required>
-                        {% for value,label in interview.TYPE_CHOICES %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    <label>Interviewer</label>
-                    <input
-                        type="text"
-                        name="interviewer"
-                        required>
-                    <label>Date</label>
-                    <input
-                        type="date"
-                        name="date"
-                        required>
-                    <label>Time</label>
-                    <input
-                        type="time"
-                        name="time"
-                        required>
-                    <label>Location</label>
-                    <input
-                        type="text"
-                        name="location"
-                        placeholder="HR Office"
-                        required>
-                    <label>Notes</label>
-                    <textarea
-                        name="notes"
-                        rows="4"></textarea>
-                    <br>
-                    <button class="btn-schedule-form">
-                        Schedule Interview
-                    </button>
+
+                    <div class="form-grid-single">
+                        <div class="form-group">
+                            <label class="form-label" for="interview_type">Interview Type <span class="required-star">*</span></label>
+                            <select name="interview_type" id="interview_type" class="form-control-custom" required>
+                                {% for value, label in interview.TYPE_CHOICES %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="interviewer">Interviewer / Panel Lead <span class="required-star">*</span></label>
+                            <input type="text" name="interviewer" id="interviewer" class="form-control-custom" placeholder="e.g. Maria Santos (Lead HR)" required>
+                        </div>
+
+                        <div class="form-row-2col">
+                            <div class="form-group">
+                                <label class="form-label" for="date">Interview Date <span class="required-star">*</span></label>
+                                <input type="date" name="date" id="date" class="form-control-custom" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="time">Time <span class="required-star">*</span></label>
+                                <input type="time" name="time" id="time" class="form-control-custom" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="location">Location / Meeting Link <span class="required-star">*</span></label>
+                            <input type="text" name="location" id="location" class="form-control-custom" placeholder="e.g. HR Conference Room B / Google Meet" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="notes">Notes / Special Instructions (Optional)</label>
+                            <textarea name="notes" id="notes" class="form-control-custom textarea-notes" rows="4" placeholder="Bring updated portfolio, prepare coding assessment, etc."></textarea>
+                        </div>
+
+                        <div class="form-actions-bar" style="margin-top: 10px;">
+                            <button type="submit" class="btn-modal-submit" style="width: 100%; justify-content: center; padding: 13px;">
+                                <i class="fas fa-calendar-check"></i>
+                                <span>Confirm & Schedule Interview</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -105,19 +151,17 @@
 </main>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('select-all');
+    const applicantCheckboxes = document.querySelectorAll('.applicant-check');
 
-const selectAll =
-document.getElementById("select-all");
-
-const checks =
-document.querySelectorAll(".applicant-check");
-
-selectAll.addEventListener("change", function(){
-
-    checks.forEach(c => c.checked=this.checked);
-
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            applicantCheckboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+        });
+    }
 });
-
 </script>
-
 {% endblock %}

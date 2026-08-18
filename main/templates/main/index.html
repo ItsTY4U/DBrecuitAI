@@ -3,35 +3,34 @@
 {% block body %}
     <div class="bg-container"></div>
         <!-- Hero Section -->
-        <main class="hero">
-            <div class="hero-content">
-                <h1 class="hero-title">Join the <span class="accent-text">Don Benito's</span> Family</h1>
-                <p class="hero-subtitle">At Don Benito’s Group We believe that our greatest ingredients is our people.</p>
-                <div class="hero-actions">
-                    <a href="{% url 'jobs' %}" class="btn btn-primary btn-lg">
-                        <i class="fas fa-search"></i> Browse Job Openings
-                    </a>
-                    <a href="{% url "track" %}" class="btn btn-secondary btn-lg glass">
-                        <i class="fas fa-tasks"></i> Track Application
-                    </a>
-                </div>
+    <main class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Join the <span class="accent-text">Don Benito's</span> Family</h1>
+            <p class="hero-subtitle">At Don Benito’s Group We believe that our greatest ingredients is our people.</p>
+            <div class="hero-actions">
+                <a href="{% url 'jobs' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-search"></i> Browse Job Openings
+                </a>
+                <a href="{% url "track" %}" class="btn btn-secondary btn-lg glass">
+                    <i class="fas fa-tasks"></i> Track Application
+                </a>
             </div>
-            
-            <!-- Optional: Floating elements or features -->
-            <div class="hero-stats">
-                <div class="mini-stat glass">
-                    <span class="m-val">400+</span>
-                    <span class="m-lbl">Branches</span>
-                </div>
-                <div class="mini-stat glass">
-                    <span class="m-val">1000+</span>
-                    <span class="m-lbl">Employees</span>
-                </div>
-                <div class="mini-stat glass">
-                    <span class="m-val">100%</span>
-                    <span class="m-lbl">Commitment</span>
-                </div>
+        </div>
+        
+        <!-- Optional: Floating elements or features -->
+        <div class="hero-stats">
+            <div class="mini-stat glass">
+                <span class="m-val">400+</span>
+                <span class="m-lbl">Branches</span>
             </div>
-        </main>
-    </div>
+            <div class="mini-stat glass">
+                <span class="m-val">1000+</span>
+                <span class="m-lbl">Employees</span>
+            </div>
+            <div class="mini-stat glass">
+                <span class="m-val">100%</span>
+                <span class="m-lbl">Commitment</span>
+            </div>
+        </div>
+    </main>
 {% endblock %}

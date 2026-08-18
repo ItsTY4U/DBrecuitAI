@@ -1,81 +1,154 @@
+{% load static %}
 
-    {% for job in jobs %}
+{% for role in role_data %}
+<section class="content-box job-applicants-section">
+    <div class="box-header">
+        <div class="box-header-title">
+            <i class="fas fa-briefcase header-icon text-green"></i>
+            <div>
+                <h3>{{ role.job.title }}</h3>
+                <p class="box-subtitle">{{ role.job.job_type }} &bull; Posted {{ role.job.posted_date|date:"M d, Y" }}</p>
+            </div>
+        </div>
+        <div class="role-header-meta">
+            <span class="dept-count-badge">
+                {{ role.total_count }} Candidate{{ role.total_count|pluralize }}
+            </span>
+            {% if role.page_obj.paginator.num_pages > 1 %}
+            <span class="page-info-badge">
+                Page {{ role.page_obj.number }} of {{ role.page_obj.paginator.num_pages }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
 
-    <section class="job-applicants-section">
-
-        <h3>{{ job.title }} Applicants</h3>
-
-        <div class="applicant-card-grid">
-
-            {% for application in job.application.all %}
-
-            <div class="applicant-card">
-
-                <div class="a-card-header">
-
-                    <div class="mini-avatar">
-                        {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
-                    </div>
-
-                    <div class="info">
-                        <h4>
-                            {{ application.first_name }}
-                            {{ application.last_name }}
-                        </h4>
-
-                        <p>
-                            Applied {{ application.created_at|date:"M d, Y" }}
-                        </p>
-                    </div>
-
+    {% if role.page_obj.object_list %}
+    <div class="applicant-card-grid">
+        {% for application in role.page_obj %}
+        <div class="applicant-card">
+            <div class="a-card-header">
+                <div class="avatar">
+                    {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
                 </div>
-
-                <div class="a-card-stats">
-
-                    <span class="mini-score
-                        {% if application.ai_score >= 90 %}
-                            score-high
-                        {% elif application.ai_score >= 75 %}
-                            score-mid
-                        {% else %}
-                            score-low
-                        {% endif %}">
-                            {{ application.ai_score }}%
-                    </span>
-
-                    <span class="a-status">
-                        {{ application.status }}
-                    </span>
-
+                <div class="info">
+                    <h4>
+                        {{ application.first_name }}
+                        {% if application.middle_initial %}{{ application.middle_initial }}.{% endif %}
+                        {{ application.last_name }}
+                    </h4>
+                    <p class="a-applied-date">
+                        <i class="fas fa-clock"></i> Applied {{ application.created_at|date:"M d, Y" }}
+                    </p>
+                    <p class="a-ref-id">
+                        <i class="fas fa-hashtag"></i> {{ application.application_id }}
+                    </p>
                 </div>
-
-                <div class="a-card-footer">
-
-                    <a
-                        href="{% url 'candidate_detail' application.id %}"
-                        class="btn-manage">
-
-                        View Applicant Details
-
-                    </a>
-
-                </div>
-
             </div>
 
-            {% empty %}
+            <div class="a-card-stats">
+                <div class="ai-score-pill
+                    {% if application.ai_score >= 90 %}
+                        score-high
+                    {% elif application.ai_score >= 75 %}
+                        score-mid
+                    {% else %}
+                        score-low
+                    {% endif %}">
+                    <i class="fas fa-robot"></i>
+                    <span><strong>{{ application.ai_score }}%</strong> Match</span>
+                </div>
 
-            <p>No applicants yet.</p>
+                <span class="status-pill status-{{ application.status|lower }}">
+                    {{ application.status }}
+                </span>
+            </div>
 
-            {% endfor %}
-
+            <div class="a-card-footer">
+                <a href="{% url 'candidate_detail' application.id %}" class="btn-review-applicant">
+                    <span>Review Profile</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
         </div>
+        {% endfor %}
+    </div>
 
-    </section>
+    <!-- Per-Role Pagination Controls -->
+    {% if role.page_obj.paginator.num_pages > 1 %}
+    <div class="pagination-controls">
+        <div class="pagination-info">
+            Showing
+            <strong>{{ role.page_obj.start_index }}–{{ role.page_obj.end_index }}</strong>
+            of <strong>{{ role.total_count }}</strong> candidates for this role
+        </div>
+        <div class="pagination-nav">
+            {% if role.page_obj.has_previous %}
+            <a href="?{{ role.page_key }}={{ role.page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="page-btn page-btn-prev">
+                <i class="fas fa-chevron-left"></i>
+                Prev
+            </a>
+            {% else %}
+            <span class="page-btn page-btn-disabled">
+                <i class="fas fa-chevron-left"></i>
+                Prev
+            </span>
+            {% endif %}
 
-    {% empty %}
+            <!-- Page Number Buttons -->
+            {% with num_pages=role.page_obj.paginator.num_pages current=role.page_obj.number %}
+            {% for p in role.page_obj.paginator.page_range %}
+                {% if p == current %}
+                <span class="page-num page-num-active">{{ p }}</span>
+                {% elif p == 1 or p == num_pages or p >= current|add:"-2" and p <= current|add:"2" %}
+                <a href="?{{ role.page_key }}={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                   class="page-num">{{ p }}</a>
+                {% elif p == current|add:"-3" or p == current|add:"3" %}
+                <span class="page-ellipsis">…</span>
+                {% endif %}
+            {% endfor %}
+            {% endwith %}
 
-    <p>No active jobs in this department.</p>
+            {% if role.page_obj.has_next %}
+            <a href="?{{ role.page_key }}={{ role.page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="page-btn page-btn-next">
+                Next
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="page-btn page-btn-disabled">
+                Next
+                <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
-    {% endfor %}
+    {% else %}
+    <div class="empty-state-box full-grid-empty">
+        <div class="empty-state-icon">
+            <i class="fas fa-user-clock"></i>
+        </div>
+        {% if search_query or status_filter %}
+        <h4>No candidates match your filters</h4>
+        <p>Try adjusting your search query or selecting a different status stage.</p>
+        {% else %}
+        <h4>No applicants for this role yet</h4>
+        <p>Applications submitted for this position will be automatically screened and listed here.</p>
+        {% endif %}
+    </div>
+    {% endif %}
 
+</section>
+{% empty %}
+<div class="content-box">
+    <div class="empty-state-box">
+        <div class="empty-state-icon">
+            <i class="fas fa-folder-open"></i>
+        </div>
+        <h4>No active job postings in this department</h4>
+        <p>Create a job post in this department to begin accepting applications.</p>
+    </div>
+</div>
+{% endfor %}

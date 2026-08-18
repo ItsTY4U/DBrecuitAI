@@ -1,33 +1,38 @@
 <div class="admin-job-card inactive-job-card">
-
-    <span class="a-cat">
-        {{ job.department }}
-    </span>
-
-    <h2>
-        {{ job.title }}
-    </h2>
-
-    <span class="a-date">
-        Posted {{ job.posted_date|date:"m-d-y" }}
-    </span>
-
-    <div class="admin-actions"
-            style="flex-direction: column;
-                align-items: stretch;
-                gap: 15px;
-                border-top: none;
-                padding-top: 0;">
-
-        <span class="job-status status-closed">
-            Inactive
+    <div class="job-card-top">
+        <span class="a-dept-badge dept-inactive">
+            <i class="fas fa-building"></i> {{ job.department }}
         </span>
-
-        <a href="{% url 'manage_job' job.pk %}"
-            class="btn btn-primary">
-            Manage
-        </a>
-
+        <span class="job-type-pill">{{ job.job_type }}</span>
     </div>
 
+    <h3 class="job-card-title">{{ job.title }}</h3>
+
+    <div class="job-card-meta">
+        <span class="meta-item">
+            <i class="fas fa-calendar-day"></i> {{ job.posted_date|date:"M d, Y" }}
+        </span>
+        {% if job.requirements_list.count %}
+        <span class="meta-item">
+            <i class="fas fa-list-check"></i> {{ job.requirements_list.count }} Req{{ job.requirements_list.count|pluralize }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="job-card-stats-row">
+        <div class="applicant-stat-chip">
+            <i class="fas fa-users"></i>
+            <span><strong>{{ job.applicant_count|default:0 }}</strong> Applicant{{ job.applicant_count|pluralize }}</span>
+        </div>
+        <span class="status-pill status-screening">Inactive</span>
+    </div>
+
+    <div class="job-card-actions">
+        <a href="{% url 'manage_job' job.pk %}" class="btn-job-edit">
+            <i class="fas fa-pen-to-square"></i> Re-activate / Edit
+        </a>
+        <a href="{% url 'candidate_department' job.department %}" class="btn-job-view">
+            <i class="fas fa-users-viewfinder"></i> Candidates
+        </a>
+    </div>
 </div>

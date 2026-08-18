@@ -1,29 +1,55 @@
-<div class="content-box-job">
+<!-- Active Jobs Section -->
+<div class="content-box job-section-box">
     <div class="box-header">
-        <h3>Active Jobs</h3>
+        <div class="box-header-title">
+            <i class="fas fa-briefcase header-icon text-green"></i>
+            <div>
+                <h3>Active Job Openings</h3>
+                <p class="box-subtitle">Positions currently accepting candidate applications</p>
+            </div>
+        </div>
+        <span class="stat-badge">{{ active_jobs|length }} Active</span>
     </div>
                 
     <div class="admin-job-grid">
-    <!-- Job 1 -->
-                    
-    {% for job in active_jobs %}
-        {% include "hr/partials/job_card.html" %}
-    {% empty %}
-        <p>No active Jobs.</p>
-    {% endfor %}
-
+        {% for job in active_jobs %}
+            {% include "hr/partials/job_card.html" %}
+        {% empty %}
+            <div class="empty-state-box full-grid-empty">
+                <div class="empty-state-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h4>No active jobs</h4>
+                <p>Click "Post New Job" above to create and publish your first opening.</p>
+            </div>
+        {% endfor %}
     </div>
 </div>
-<div class="content-box-job inactive-jobs-box">
+
+<!-- Inactive Jobs Section -->
+<div class="content-box job-section-box inactive-jobs-box">
     <div class="box-header">
-        <h3>Inactive Jobs</h3>
+        <div class="box-header-title">
+            <i class="fas fa-box-archive header-icon text-amber"></i>
+            <div>
+                <h3>Inactive / Closed Positions</h3>
+                <p class="box-subtitle">Archived roles not visible to prospective candidates</p>
+            </div>
+        </div>
+        <span class="stat-badge">{{ inactive_jobs|length }} Inactive</span>
     </div>
 
     <div class="admin-job-grid">
-    {% for job in inactive_jobs %}  
-        {% include "hr/partials/inactive_job_card.html" %}
-    {% empty %}
-        <p>No inactive jobs.</p>
-    {% endfor %}
-        </div>
+        {% for job in inactive_jobs %}  
+            {% include "hr/partials/inactive_job_card.html" %}
+        {% empty %}
+            <div class="empty-state-box full-grid-empty">
+                <div class="empty-state-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <h4>No inactive jobs</h4>
+                <p>All created job postings are currently active.</p>
+            </div>
+        {% endfor %}
+    </div>
 </div>

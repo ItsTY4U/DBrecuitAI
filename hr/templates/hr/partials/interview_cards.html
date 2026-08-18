@@ -1,95 +1,88 @@
 {% for item in job_interviews %}
-
     {% for interview in item.interviews %}
-
-        <div class="content-box" style="margin-top:30px;">
-
-            <div class="box-header">
-
-                <h3>
-                    {{ item.job.title }}
-                    ({{ interview.applicants.count }}
-                    Applicant{{ interview.applicants.count|pluralize }})
-                </h3>
-
-                <a href="{% url 'interview_detail' interview.id %}"
-                    class="view-btn">
-                    View
-                </a>
-
+    <section class="content-box" style="margin-top: 24px;">
+        <div class="box-header">
+            <div class="box-header-title">
+                <i class="fas fa-briefcase header-icon text-green"></i>
+                <div>
+                    <h3>{{ item.job.title }}</h3>
+                    <p class="box-subtitle">{{ interview.interview_type }} &bull; {{ interview.applicants.count }} Candidate{{ interview.applicants.count|pluralize }}</p>
+                </div>
             </div>
+            <a href="{% url 'interview_detail' interview.id %}" class="btn-job-edit">
+                <i class="fas fa-sliders"></i> Manage Session
+            </a>
+        </div>
 
-            <table class="interview-table">
-
+        <div class="table-responsive">
+            <table class="recent-table">
                 <thead>
                     <tr>
                         <th>Candidate</th>
                         <th>Interview Type</th>
-                        <th>Date</th>
+                        <th>Scheduled Date</th>
                         <th>Time</th>
+                        <th>Location</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
-
                 <tbody>
-
-                {% for applicant in interview.applicants.all %}
-
+                    {% for applicant in interview.applicants.all %}
                     {% if applicant.job == item.job %}
-
                     <tr>
-
                         <td>
-                            <div class="candidate-info">
-
+                            <div class="applicant-cell">
                                 <div class="avatar">
                                     {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
                                 </div>
-
                                 <div>
-                                    <strong>
+                                    <div class="applicant-name">
                                         {{ applicant.first_name }}
+                                        {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
                                         {{ applicant.last_name }}
-                                    </strong>
-
-                                    <small>
+                                    </div>
+                                    <span class="mini-score
+                                        {% if applicant.ai_score >= 90 %}
+                                            score-high
+                                        {% elif applicant.ai_score >= 75 %}
+                                            score-mid
+                                        {% else %}
+                                            score-low
+                                        {% endif %}">
                                         AI Score: {{ applicant.ai_score }}%
-                                    </small>
+                                    </span>
                                 </div>
-
                             </div>
                         </td>
-
                         <td>
-                            {{ interview.interview_type }}
+                            <span class="interview-type-pill">{{ interview.interview_type }}</span>
                         </td>
-
                         <td>
-                            {{ interview.date }}
+                            <span class="date-cell"><i class="fas fa-calendar"></i> {{ interview.date|date:"M d, Y" }}</span>
                         </td>
-
                         <td>
-                            {{ interview.time }}
+                            <span class="time-cell"><i class="fas fa-clock"></i> {{ interview.time|time:"g:i A" }}</span>
                         </td>
-
                         <td>
-                            <span class="status {{ interview.status|lower }}">
+                            <span class="location-cell"><i class="fas fa-location-dot text-amber"></i> {{ interview.location|default:"HR Office" }}</span>
+                        </td>
+                        <td>
+                            <span class="status-pill status-{{ interview.status|lower }}">
                                 {{ interview.status }}
                             </span>
                         </td>
-
+                        <td>
+                            <a href="{% url 'candidate_detail' applicant.id %}" class="btn-review-applicant" style="padding: 6px 12px; font-size: 11.5px; width: auto; display: inline-flex;">
+                                Candidate Profile
+                            </a>
+                        </td>
                     </tr>
-
                     {% endif %}
-
-                {% endfor %}
-
+                    {% endfor %}
                 </tbody>
-
             </table>
-
         </div>
-
+    </section>
     {% endfor %}
-
 {% endfor %}
