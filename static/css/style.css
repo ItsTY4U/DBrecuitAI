@@ -529,13 +529,14 @@ body {
     font-weight: 600;
 }
 
-/* AI Loading */
+/* AI Loading 
 .ai-text {
     font-size: 20px;
     font-weight: 700;
     color: var(--primary);
     animation: pulse 1.5s infinite;
 }
+*/
 
 @keyframes pulse {
     0% { opacity: 0.5; }
@@ -4042,4 +4043,4 @@ body {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 1px;
-}
+}
