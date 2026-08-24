@@ -1,46 +1,54 @@
 <div class="content-box">
-
     <div class="box-header">
-        <h3>Applicants ({{ interview.applicants.count }})</h3>
+        <div class="box-header-title">
+            <i class="fas fa-users header-icon text-blue"></i>
+            <div>
+                <h3>Invited Candidates</h3>
+                <p class="box-subtitle">Applicants participating in this interview session</p>
+            </div>
+        </div>
+        <span class="dept-count-badge">{{ interview.applicants.count }} Candidate{{ interview.applicants.count|pluralize }}</span>
     </div>
 
-    <div class="applicant-list">
-
+    <div class="interview-applicant-list">
         {% for applicant in interview.applicants.all %}
-
-        <div class="applicant-item">
-
-            <div class="applicant-avatar">
-                {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+        <div class="interview-applicant-card">
+            <div class="applicant-cell">
+                <div class="avatar">
+                    {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
+                </div>
+                <div>
+                    <div class="applicant-name">
+                        {{ applicant.first_name }}
+                        {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
+                        {{ applicant.last_name }}
+                    </div>
+                    <span class="applicant-email-sub">{{ applicant.email }}</span>
+                </div>
             </div>
 
-            <div class="applicant-info">
-
-                <strong>
-                    {{ applicant.first_name }}
-                    {{ applicant.last_name }}
-                </strong>
-
-                <span>
-                    {{ applicant.job.title }}
+            <div class="applicant-card-right">
+                <span class="mini-score
+                    {% if applicant.ai_score >= 90 %}
+                        score-high
+                    {% elif applicant.ai_score >= 75 %}
+                        score-mid
+                    {% else %}
+                        score-low
+                    {% endif %}">
+                    <i class="fas fa-robot"></i> {{ applicant.ai_score }}% Match
                 </span>
 
-            </div>
-
-            <div class="applicant-score">
-                AI Score: {{ applicant.ai_score }}%
-            </div>
-
-            <div class="applicant-actions">
-                <a href="{% url "candidate_detail" applicant.id %}" class="view-btn">
-                    View Details
+                <a href="{% url 'candidate_detail' applicant.id %}" class="btn-review-applicant" style="width: auto; padding: 7px 14px; font-size: 12px;">
+                    <span>Profile & Resume</span>
+                    <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
-
         </div>
-
+        {% empty %}
+        <div class="empty-state-box">
+            <p>No applicants assigned to this session.</p>
+        </div>
         {% endfor %}
-
     </div>
-
 </div>

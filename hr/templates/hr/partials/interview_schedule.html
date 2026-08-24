@@ -1,42 +1,48 @@
 <div class="content-box">
-
     <div class="box-header">
-        <h3>Upcoming Interviews (Next 3 Days)</h3>
-    </div>
-
-    {% for interview in upcoming_interviews %}
-
-    <div class="upcoming-card">
-
-        <strong>
-            {{ interview.applicants.first.job.title }}
-        </strong>
-
-        <p>{{ interview.interview_type }}</p>
-
-        <small>
-            {{ interview.date|date:"M d" }}
-            •
-            {{ interview.time|time:"g:i A" }}
-        </small>
-
-        <br>
-
-        <small>
-            {{ interview.applicants.count }}
-            candidate{{ interview.applicants.count|pluralize }}
-        </small>
-
-        <span class="status-pill">
-            {{ interview.status }}
+        <div class="box-header-title">
+            <i class="fas fa-clock-rotate-left header-icon text-blue"></i>
+            <div>
+                <h3>Upcoming (Next 3 Days)</h3>
+                <p class="box-subtitle">Scheduled candidate pipeline</p>
+            </div>
+        </div>
+        <span class="dept-count-badge">
+            {{ upcoming_interviews|length }} Upcoming
         </span>
-
     </div>
 
-    {% empty %}
+    <div class="upcoming-interview-list">
+        {% for interview in upcoming_interviews %}
+        <div class="upcoming-interview-card">
+            <div class="upcoming-top-row">
+                <span class="interview-type-pill">{{ interview.interview_type }}</span>
+                <span class="status-pill status-{{ interview.status|lower }}">{{ interview.status }}</span>
+            </div>
+            
+            <h4 class="upcoming-job-title">{{ interview.applicants.first.job.title|default:"Job Position" }}</h4>
+            
+            <div class="upcoming-meta-row">
+                <span class="meta-item"><i class="fas fa-calendar"></i> {{ interview.date|date:"M d, Y" }}</span>
+                <span class="meta-item"><i class="fas fa-clock"></i> {{ interview.time|time:"g:i A" }}</span>
+                <span class="meta-item"><i class="fas fa-user-group"></i> {{ interview.applicants.count }}</span>
+            </div>
 
-    <p>No interviews scheduled.</p>
-
-    {% endfor %}
-
+            <div class="upcoming-footer-action">
+                <a href="{% url 'interview_detail' interview.pk %}" class="btn-review-applicant">
+                    <span>Manage Session</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-box">
+            <div class="empty-state-icon">
+                <i class="fas fa-calendar-plus"></i>
+            </div>
+            <h4>No upcoming sessions</h4>
+            <p>No interviews scheduled within the next 3 days.</p>
+        </div>
+        {% endfor %}
+    </div>
 </div>
