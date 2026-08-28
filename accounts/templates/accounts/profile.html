@@ -1,0 +1,561 @@
+{% extends "profile_template.html" %}
+{% load static %}
+
+{% block content %}
+
+<div class="profile-page">
+
+    {% if messages %}
+        <div class="profile-messages">
+            {% for message in messages %}
+                <div class="profile-message {% if message.tags%} {{ message.tags }} {% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <div class="profile-header">
+        <div>
+            <h1>My Profile</h1>
+            <p>
+                Manage your information and keep track of your applications.
+            </p>
+        </div>
+    </div>
+    <!--Complete Profile Prompt-->
+    {% if not profile.default_resume %}
+    <div class="profile-complete-prompt">
+        <div class="profile-complete-content">
+            <div>
+                <h2>Complte Your Profile</h2>
+                <p>
+                    Upload your resume to receive job recommendation and apply for jobs.
+                </p>
+            </div>
+        </div>
+        {% comment %} <button type="button" class="complete-profile-btn" id="complete-profile-btn">
+            Upload Resume
+        </button> {% endcomment %}
+    </div>
+    {% endif %}
+
+
+    <!-- =========================================
+         PERSONAL INFORMATION
+    ========================================== -->
+
+    <section class="profile-section">
+
+        <div class="section-header">
+
+            <div>
+                <h2>Personal Information</h2>
+
+                <p>
+                    Your personal information and resume.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="profile-edit-btn"
+                id="edit-profile-btn"
+            >
+                Edit Profile
+            </button>
+
+        </div>
+
+
+        <!-- ==============================
+            VIEW MODE
+        =============================== -->
+
+        <div
+            class="profile-info-card"
+            id="profile-view"
+        >
+
+            <div class="profile-info-grid">
+
+                <div class="profile-info-item">
+
+                    <span class="info-label">
+                        Full Name
+                    </span>
+
+                    <span class="info-value">
+                        {{ request.user.get_full_name|default:"Not provided" }}
+                    </span>
+
+                </div>
+
+
+                <div class="profile-info-item">
+
+                    <span class="info-label">
+                        Email Address
+                    </span>
+
+                    <span class="info-value">
+                        {{ request.user.email|default:"Not provided" }}
+                    </span>
+
+                </div>
+
+
+                <div class="profile-info-item">
+
+                    <span class="info-label">
+                        Phone Number
+                    </span>
+
+                    <span class="info-value">
+                        {{ profile.phone|default:"Not provided" }}
+                    </span>
+
+                </div>
+
+
+                <div class="profile-info-item">
+
+                    <span class="info-label">
+                        Address
+                    </span>
+
+                    <span class="info-value">
+                        {{ profile.address|default:"Not provided" }}
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="resume-section">
+
+                <span class="info-label">
+                    Default Resume
+                </span>
+
+                {% if profile.default_resume %}
+
+                    <div class="resume-card">
+
+                        <div class="resume-details">
+
+                            <span class="resume-icon">
+                                📄
+                            </span>
+                            <div>
+
+                                <strong>
+                                    {{ profile.default_resume.name|cut:"resumes/" }}
+                                </strong>
+
+                                <small>
+                                    Your current default resume
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                        <a
+                            href="{{ profile.default_resume.url }}"
+                            target="_blank"
+                            class="resume-btn"
+                        >
+                            View Resume
+                        </a>
+
+                    </div>
+
+                {% else %}
+
+                    <div class="no-resume">
+                        No resume uploaded yet.
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ==============================
+            EDIT MODE
+        =============================== -->
+
+        <div
+            class="profile-info-card profile-edit-card"
+            id="profile-edit"
+            style="display: none;"
+        >
+
+            <form
+                method="POST"
+                enctype="multipart/form-data"
+                id="profile-form"
+            >
+
+                {% csrf_token %}
+
+
+                {% if user_form.non_field_errors %}
+                    <div class="form-error">
+                        {{ user_form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+
+                {% if profile_form.non_field_errors %}
+                    <div class="form-error">
+                        {{ profile_form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+
+                <div class="profile-edit-grid">
+
+                    <!-- First Name -->
+
+                    <div class="form-group">
+
+                        <label for="{{ user_form.first_name.id_for_label }}">
+                            First Name
+                        </label>
+
+                        {{ user_form.first_name }}
+
+                        {% if user_form.first_name.errors %}
+                            <div class="form-error">
+                                {{ user_form.first_name.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- Last Name -->
+
+                    <div class="form-group">
+
+                        <label for="{{ user_form.last_name.id_for_label }}">
+                            Last Name
+                        </label>
+
+                        {{ user_form.last_name }}
+
+                        {% if user_form.last_name.errors %}
+                            <div class="form-error">
+                                {{ user_form.last_name.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- Email -->
+
+                    <div class="form-group">
+
+                        <label for="{{ user_form.email.id_for_label }}">
+                            Email Address
+                        </label>
+
+                        {{ user_form.email }}
+
+                        {% if user_form.email.errors %}
+                            <div class="form-error">
+                                {{ user_form.email.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- Phone -->
+
+                    <div class="form-group">
+
+                        <label for="{{ profile_form.phone.id_for_label }}">
+                            Phone Number
+                        </label>
+
+                        {{ profile_form.phone }}
+
+                        {% if profile_form.phone.errors %}
+                            <div class="form-error">
+                                {{ profile_form.phone.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- Address -->
+
+                    <div class="form-group profile-full-width">
+
+                        <label for="{{ profile_form.address.id_for_label }}">
+                            Address
+                        </label>
+
+                        {{ profile_form.address }}
+
+                        {% if profile_form.address.errors %}
+                            <div class="form-error">
+                                {{ profile_form.address.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- Resume -->
+
+                    <div class="form-group profile-full-width">
+
+                        <label for="{{ profile_form.default_resume.id_for_label }}">
+                            Default Resume
+                        </label>
+
+                        {{ profile_form.default_resume }}
+
+                        {% if profile_form.default_resume.errors %}
+                            <div class="form-error">
+                                {{ profile_form.default_resume.errors }}
+                            </div>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="profile-edit-actions">
+
+                    <button
+                        type="button"
+                        class="profile-cancel-btn"
+                        id="cancel-profile-btn"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="profile-save-btn"
+                        id="save-profile-btn"
+                    >
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================================
+         JOB RECOMMENDATIONS
+    ========================================== -->
+
+    <section class="profile-section">
+
+        <div class="section-header">
+
+            <div>
+                <h2>Recommended Jobs</h2>
+
+                <p>
+                    Jobs that may match your skills and experience.
+                </p>
+            </div>
+
+            <a
+                href="{% url 'jobs' %}"
+                class="view-all-btn"
+            >
+                View All Jobs
+            </a>
+
+        </div>
+
+
+        <div class="job-recommendations">
+
+            {% if recommended_jobs %}
+            
+                {% for recommendation in recommended_jobs %}
+                    <div class="recommendation-card">
+
+                        <div class="recommendation-top">
+                            <div>
+                                <h3>
+                                    {{ recommendation.job.title }}
+                                </h3>
+
+                                <span class="job-department">
+                                    {{ recommendation.job.department }}
+                                </span>
+                            </div>
+                            {% comment %} <span class="match-badge">
+                                {{ recommendation.score }}% Match
+                            </span> {% endcomment %}
+                        </div>
+
+                        {% comment %} <div class="match-bar">
+                            <div class="match-progress" style="width: {{ recommendation.score }}%;"></div>
+                        </div>
+
+                        {% if recommendation.matched_skills %}
+                        
+                            <div class="job-tags">
+                                {% for skill in recommendation.matched_skills %}
+                                
+                                    <span>{{ skill|title }}</span>
+                                {% endfor %}
+                            </div>
+
+                        {% else %}
+
+                            <div class="no-matched-skills">
+                                No matching skills found yet.
+                            </div>
+
+                        {% endif %} {% endcomment %}
+
+                        <!-- View Job -->
+                        <a href="{% url "job_detail" recommendation.job.id %}" class="view-job-btn">
+                            View Job
+                        </a>
+
+                    </div>
+                {% endfor %}
+            {% else %}
+
+                <div class="no-recommendations">
+                    <h3>No Recommendations Available yet.</h3>
+
+                    <p>
+                        Upload and process your resume to receive 
+                        personalized job recommendations.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- =========================================
+        TRACK APPLICATIONS
+    ========================================== -->
+
+    <section class="profile-section">
+
+        <div class="section-header">
+
+            <div>
+                <h2>Track Applications</h2>
+
+                <p>
+                    Check the status of your submitted applications.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="applications-card">
+
+            <div class="applications-table-wrapper">
+
+                <table class="applications-table">
+
+                    <thead>
+
+                        <tr>
+                            <th>Application ID</th>
+                            <th>Position</th>
+                            <th>Applied Date</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+                        {% if applications %}
+                        
+                            {% for application in applications %}
+                            
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            {{ application.application_id }}
+                                        </strong>
+                                    </td>
+
+                                    <td>
+                                        {{ application.job.title }}
+                                    </td>
+
+                                    <td>
+                                        {{ application.created_at|date:"F d, Y" }}
+                                    </td>
+
+                                    <td>
+                                        <span class="status-badge">
+                                            {{ application.status }}
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <a href="#" class="track-btn">
+                                            Track
+                                        </a>
+                                    </td>
+
+                                </tr>
+
+                            {% endfor %}
+
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="no-applications">
+                                    You have not submitted any applications yet.
+                                </td>
+                            </tr>
+
+                        {% endif %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- Resume Processing overlay -->
+    <div id="resume-processing-overlay" class="resume-processing-overlay" style="display: none;">
+        <div class="resume-processing-box">
+            <div class="processing-spinner"></div>
+            <h3 id="processing-title">Saving your profile...</h3>
+            <p id="processing-message">Please wait while we update your information.</p>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

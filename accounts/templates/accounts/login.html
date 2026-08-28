@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+{% load socialaccount %}
+
+{% block content %}
+<div class="bg">
+    <div class="auth-page">
+
+        <div class="auth-card login-card">
+
+            <!-- LOGIN FORM - LEFT SIDE -->
+            <div class="login-form">
+
+                <h1>Welcome Back</h1>
+
+                <p>
+                    Login to continue to your DBRecruitAI account.
+                </p>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <input
+                        type="hidden"
+                        name="next"
+                        value="{{ next }}"
+                    >
+
+                    {% if form.non_field_errors %}
+                        <div class="form-error">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">
+                            Email Address
+                        </label>
+
+                        {{ form.username }}
+
+                        {% if form.username.errors %}
+                            <div class="form-error">
+                                {{ form.username.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}">
+                            Password
+                        </label>
+
+                        <div class="password-wrapper">
+
+                            {{ form.password }}
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                onclick="togglePassword('id_password', this)"
+                            >
+                                👁
+                            </button>
+
+                        </div>
+
+                        {% if form.password.errors %}
+                            <div class="form-error">
+                                {{ form.password.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Login
+                    </button>
+
+                </form>
+
+                <p class="login-switch">
+                    Don't have an account?
+                    <a href="{% url 'signup' %}">
+                        Create an account
+                    </a>
+                </p>
+
+                <div class="social-login">
+                    <div class="social-divider">
+                        <span>OR</span>
+                    </div>
+
+                    <a href="{% provider_login_url 'google' %}" class="google-login-btn">
+                        <i class="fab fa-google"></i>
+                        Continue with Google
+                    </a>
+                </div>
+
+            </div>
+
+
+            <!-- VISUAL PANEL - RIGHT SIDE -->
+            <div class="login-visual">
+
+                <div class="login-visual-content">
+
+                    <h2>Find. Apply. Get Hired.</h2>
+
+                    <p>
+                        Discover job opportunities that match
+                        your skills and experience.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

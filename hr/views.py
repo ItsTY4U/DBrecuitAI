@@ -151,17 +151,23 @@ def candidates(request):
 
 @staff_member_required
 def candidate_department(request, department):
-    jobs = Job.objects.filter(
-        department=department,
-        status="Active"
-    ).prefetch_related("application")
+    department = request.GET.get("department")
+    
+    candidates = Application.objects.filter(
+        job__deparment=department
+    )
+    
+    # jobs = Job.objects.filter(
+    #     department=department,
+    #     status="Active"
+    # ).prefetch_related("application")
 
     return render(
         request,
         "hr/candidate_department.html",
         {
             "department": department,
-            "jobs": jobs,
+            "candidates": candidates,
         }
     )
 

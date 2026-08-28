@@ -60,7 +60,7 @@
 
     <div class="category-card-footer">
 
-        <a href="{% url 'candidate_department' card.department %}" class="btn-manage">
+        <a href="{% url 'candidate_department' %}?department={{ department|urlencode }}" class="btn-manage">
             Check All Applications 
         </a>
 

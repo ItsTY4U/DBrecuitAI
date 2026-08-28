@@ -1,10 +1,14 @@
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
-from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
 from django.urls import reverse
 import json
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
+
+from .models import Job, Application
+from accounts.models import ApplicantProfile
 
 def jobs(request):
     try:
@@ -48,37 +52,108 @@ def job_detail(request, id):
         "job": job
     })  
 
+@login_required(login_url="applicant_login")
 def apply_job(request, pk):
-    job = get_object_or_404(Job, pk=pk)
+    job = get_object_or_404(Job, pk=pk, status="Active")
 
-    if request.method == "POST":
-        application_id = request.POST.get("application_id")
-
-        if not application_id:
-            return HttpResponse("Application ID is missing.", status=400)
-
-        application = get_object_or_404(
-            Application,
-            application_id=application_id,
-            job=job
+    profile, created = ApplicantProfile.objects.get_or_create(
+        user=request.user
+    )
+    
+    # Applicant must have a resume
+    if not profile.default_resume:
+        return render(
+            request,
+            "jobs/partials/application_error.html",
+            {
+                "error": (
+                    "Please upload a default resume in your profile before applying."
+                )
+            }
         )
-
-        application.first_name = request.POST.get("first_name", "")
-        application.middle_initial = request.POST.get("middle_initial", "")
-        application.last_name = request.POST.get("last_name", "")
-        application.email = request.POST.get("email", "")
-        application.phone = request.POST.get("phone", "")
-        application.status = "Pending"
-        application.save()
-
-        # ← Just render the partial directly, no redirect needed
-        return render(request, "jobs/partials/application_success.html", {
-            "application": application,
-            "job": job,
+        
+    # Resume must be processed
+    if not profile.resume_processed or not profile.resume_text:
+        return render(request, "jobs/partials/application_error.html", {
+            "error": ("Your resume has not been processed yet. "
+                    "Please update and process your resume from your profile")
         })
+        
+    # GET request
+    if request.method == "GET":
+        return render(request, "jobs/apply.html", {
+            "job": job,
+            "profile": profile,
+        })
+        
+    # POST request
+    # Prevent duplicate applications
+    existing_application = Application.objects.filter(
+        applicant=request.user,
+        job=job
+    ).first()
+    
+    if existing_application:
+        return render(request, "jobs/partials/application_error.html", {
+            "job": job,
+            "profile": profile,
+            "error": ("You have already applied for this job.")
+        })
+        
+    try:
+        # Create application linked to logged-in applicant
+        application = Application.objects.create(
+            applicant=request.user,
+            job=job,
+            first_name=request.user.first_name,
+            middle_initial=profile.middle_name,
+            last_name=request.user.last_name,
+            email=request.user.email,
+            phone=profile.phone,
+            
+            # use the applicant default resume
+            resume=profile.default_resume,
+            status="Pending"
+        )
+        # Use the already processed resume text 
+        resume_text = profile.resume_text
+        
+        # Run job-specific AI analysis
+        ai = analyze_resume(
+            resume_text,
+            job
+        )
+        
+        application.ai_score = ai.get("score", 0)
+        
+        application.ai_summary = ai.get("summary", "")
+        
+        application.ai_strengths = "\n".join(ai.get("strengths", []))
+        
+        application.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
+        
+        application.resume_processed = True
+        
+        # After AI screening
+        application.status = "Pending"
+        
+        application.save()
+        
+        return render(request, "jobs/partials/application_success.html",
+                    {
+                        "application": application,
+                        "job": job,
+                    })
+        
+    except Exception as e:
+        return render(request, "jobs/partials/application_error.html",
+                    {
+                        "error": (
+                            f"An error occured while processing your application: {str(e)}"
+                        )
+                    })
 
-    return render(request, "jobs/apply.html", {"job": job})
-
+@login_required(login_url="applicant_login")
 def upload_resume(request, pk):
     job = get_object_or_404(Job, pk=pk)
 
