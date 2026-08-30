@@ -69,13 +69,13 @@
             </a>
         </div>
     </div>
-    {% empty %}
-    <div class="empty-state-box full-grid-empty">
-        <div class="empty-state-icon">
-            <i class="fas fa-users-slash"></i>
-        </div>
-        <h4>No active departments with job postings</h4>
-        <p>Post a new job opening to start receiving and ranking candidates.</p>
+
+    <div class="category-card-footer">
+
+        <a href="{% url 'candidate_department' %}?department={{ department|urlencode }}" class="btn-manage">
+            Check All Applications 
+        </a>
+
     </div>
     {% endfor %}
 </div>
