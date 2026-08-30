@@ -29,12 +29,14 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "dbrecruit.up.railway.app",
+    "dbrecruit-ai.vercel.app",
     "localhost",
     "127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://dbrecruit.up.railway.app",
+    "https://dbrecruit-ai.vercel.app",
 ]
 
 # Application definition
@@ -120,15 +122,12 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
+        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
         "NAME": os.getenv("DB_NAME"),
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-        "OPTIONS": {
-            "charset": "utf8mb4",
-        },
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -180,7 +179,49 @@ STATICFILES_STORAGE = (
     "whitenoise.storage.CompressedManifestStaticFilesStorage"
 )
 
-MEDIA_URL ="/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Cloudflare R2 Media Storage
+
+AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+
+AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+
+AWS_S3_ENDPOINT_URL = (
+    f"https://{os.getenv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com"
+)
+
+AWS_S3_REGION_NAME = "auto"
+
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+AWS_S3_ADDRESSING_STYLE = "virtual"
+
+AWS_DEFAULT_ACL = None
+
+AWS_QUERYSTRING_AUTH = False
+
+AWS_S3_FILE_OVERWRITE = False
+
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
+
+AWS_S3_CUSTOM_DOMAIN = (
+    R2_PUBLIC_URL.replace("https://", "").rstrip("/")
+    if R2_PUBLIC_URL
+    else None
+)
+
+if R2_PUBLIC_URL:
+    MEDIA_URL = R2_PUBLIC_URL.rstrip("/") + "/"
+else:
+    MEDIA_URL = "/media/"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")

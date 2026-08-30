@@ -1,63 +1,71 @@
 document.addEventListener("DOMContentLoaded", function () {
-
     const modal = document.getElementById('post-job-modal');
     const openBtn = document.getElementById('open-post-modal');
     const closeBtn = document.getElementById('close-post-modal');
     const cancelBtn = document.getElementById('cancel-modal');
 
-    openBtn.addEventListener('click', () => {
-        modal.classList.add('active');
-    });
-
-    function closeModal() {
-        modal.classList.remove('active');
+    if (openBtn && modal) {
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('active');
+        });
     }
 
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    function closeModal() {
+        if (modal) modal.classList.remove('active');
+    }
 
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-
     const container = document.getElementById("requirements-container");
     const addBtn = document.getElementById("add-requirement");
 
     if (!container || !addBtn) return;
 
     addBtn.addEventListener("click", () => {
-
         const row = document.createElement("div");
         row.className = "requirement-row";
-        row.style.marginTop = "10px";
+        row.style.marginTop = "8px";
 
         row.innerHTML = `
             <input
                 type="text"
                 name="requirements"
+                class="form-input"
                 placeholder="Enter a requirement"
                 required>
 
             <button
                 type="button"
-                class="remove-requirement">
-                ×
+                class="remove-requirement"
+                title="Remove requirement">
+                <i class="fas fa-trash-can"></i>
             </button>
         `;
 
         container.appendChild(row);
     });
 
-    container.addEventListener("click", function(e){
-
-        if(e.target.classList.contains("remove-requirement")){
-
-            e.target.parentElement.remove();
-
+    container.addEventListener("click", function (e) {
+        const removeBtn = e.target.closest(".remove-requirement");
+        if (removeBtn) {
+            const row = removeBtn.closest(".requirement-row");
+            if (row) {
+                row.remove();
+            }
         }
-
     });
-
 });
 
 const form = document.getElementById("manage-job-form");

@@ -9,10 +9,10 @@ client = None
 if settings.GEMINI_API_KEY:
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-def extract_resume_text(pdf_path):
+def extract_resume_text(pdf_file):
     text = ""
     
-    with pdfplumber.open(pdf_path) as pdf:
+    with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
             

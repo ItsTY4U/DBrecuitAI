@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import date, timedelta
 from django.utils import timezone
+from django.core.paginator import Paginator
 
 # Create your views here.
 def hr_login(request):
@@ -88,38 +89,85 @@ def create_job(request):
 
 @staff_member_required
 def job_management(request):
+    active_jobs = (
+        Job.objects.filter(status="Active")
+        .annotate(applicant_count=Count("application", distinct=True))
+        .prefetch_related("requirements_list")
+        .order_by("-posted_date")
+    )
     
-    active_jobs = Job.objects.filter(
-        status="Active"
-    ).order_by("-posted_date")
+    inactive_jobs = (
+        Job.objects.filter(status="Inactive")
+        .annotate(applicant_count=Count("application", distinct=True))
+        .prefetch_related("requirements_list")
+        .order_by("-posted_date")
+    )
     
-    inactive_jobs = Job.objects.filter(
-        status="Inactive"
-    ).order_by("-posted_date")
+    total_active = active_jobs.count()
+    total_inactive = inactive_jobs.count()
+    total_jobs = total_active + total_inactive
     
     return render(request, "hr/job_management.html", {
         "active_jobs": active_jobs,
         "inactive_jobs": inactive_jobs,
+        "total_active": total_active,
+        "total_inactive": total_inactive,
+        "total_jobs": total_jobs,
     })
     
 @staff_member_required
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
-        job.title = request.POST["title"]
-        job.department = request.POST["department"]
-        job.job_type = request.POST["job_type"]
-        job.description = request.POST["description"]
+        job.title = request.POST.get("title", job.title)
+        job.department = request.POST.get("department", job.department)
+        job.job_type = request.POST.get("job_type", job.job_type)
+        job.description = request.POST.get("description", job.description)
         job.status = request.POST.get("status", job.status)
-        
         job.save()
+        
+        # Handle requirements update
+        requirements = request.POST.getlist("requirements")
+        if requirements:
+            job.requirements_list.all().delete()
+            for req in requirements:
+                if req.strip():
+                    Requirement.objects.create(job=job, text=req.strip())
+                    
         return redirect("job_management")
-    return render(request, "hr/manage_job.html",{
-        "job":job,
+        
+    requirements = job.requirements_list.all()
+    applicant_count = Application.objects.filter(job=job).count()
+    
+    return render(request, "hr/manage_job.html", {
+        "job": job,
+        "requirements": requirements,
+        "applicant_count": applicant_count,
     })
     
+import ast
+
+def parse_ai_bullets(text):
+    if not text:
+        return []
+    text = text.strip()
+    if text.startswith("[") and text.endswith("]"):
+        try:
+            items = ast.literal_eval(text)
+            if isinstance(items, list):
+                return [str(i).strip() for i in items if i and str(i).strip()]
+        except Exception:
+            pass
+    lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
+    return lines
+
 @staff_member_required
 def candidates(request):
+    total_candidates = Application.objects.count()
+    screening_count = Application.objects.filter(status="Screening").count()
+    interview_count = Application.objects.filter(status="Interview").count()
+    hired_count = Application.objects.filter(status="Hired").count()
+
     departments = (
         Job.objects.filter(status="Active")
         .values("department")
@@ -130,23 +178,29 @@ def candidates(request):
     department_cards = []
 
     for dept in departments:
+        dept_apps = Application.objects.filter(
+            job__department=dept["department"],
+            job__status="Active"
+        )
+        total_dept_applicants = dept_apps.count()
         top_applicants = (
-            Application.objects.filter(
-                job__department=dept["department"],
-                job__status="Active"
-            )
-            .select_related("job")
+            dept_apps.select_related("job")
             .order_by("-ai_score")[:3]
         )
 
         department_cards.append({
             "department": dept["department"],
             "job_count": dept["job_count"],
+            "total_applicants": total_dept_applicants,
             "top_applicants": top_applicants,
         })
 
     return render(request, "hr/candidates.html", {
         "department_cards": department_cards,
+        "total_candidates": total_candidates,
+        "screening_count": screening_count,
+        "interview_count": interview_count,
+        "hired_count": hired_count,
     })
 
 @staff_member_required
@@ -178,7 +232,14 @@ def candidate_detail(request, pk):
         pk=pk
     )
     
-    return render(request, "hr/candidate_detail.html", {"application": application})
+    strengths = parse_ai_bullets(application.ai_strengths)
+    weaknesses = parse_ai_bullets(application.ai_weaknesses)
+    
+    return render(request, "hr/candidate_detail.html", {
+        "application": application,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+    })
 
 @staff_member_required
 def update_application_status(request, pk):

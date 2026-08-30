@@ -2,11 +2,80 @@
 {% load static %}
 
 {% block admin_body %}
-
 <main class="main-dashboard">
+    <div class="page-nav-header">
+        <a href="{% url 'candidates' %}" class="back-link-pill">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Candidates Overview</span>
+        </a>
+    </div>
+
+    <header class="dashboard-header">
+        <div class="header-left">
+            <div class="title-with-badge">
+                <h1 class="dashboard-title">{{ department }} Department</h1>
+                <span class="status-pill status-hired">{{ total_candidates }} Applicant{{ total_candidates|pluralize }}</span>
+            </div>
+            <p class="dashboard-subtitle">Review and rank candidate submissions organized by active job positions.</p>
+        </div>
+    </header>
+
+    <!-- Search & Filter Toolbar -->
+    <div class="candidate-filter-toolbar">
+        <form method="GET" id="candidateFilterForm" class="filter-form">
+            <!-- Search Input -->
+            <div class="filter-search-wrap">
+                <i class="fas fa-search filter-search-icon"></i>
+                <input
+                    type="text"
+                    id="candidateSearch"
+                    name="search"
+                    value="{{ search_query }}"
+                    placeholder="Search by name, email, or ID…"
+                    class="filter-search-input"
+                    autocomplete="off"
+                >
+                {% if search_query %}
+                <a href="?{% if status_filter %}status={{ status_filter }}{% endif %}" class="filter-clear-btn" title="Clear search">
+                    <i class="fas fa-times"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Status Filter Pills -->
+            <div class="filter-status-pills">
+                <a href="?{% if search_query %}search={{ search_query }}{% endif %}"
+                   class="filter-pill {% if not status_filter %}filter-pill-active{% endif %}">
+                    All
+                </a>
+                {% for choice in status_choices %}
+                <a href="?{% if search_query %}search={{ search_query }}&{% endif %}status={{ choice }}"
+                   class="filter-pill filter-pill-{{ choice|lower }} {% if status_filter == choice %}filter-pill-active{% endif %}">
+                    {{ choice }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <button type="submit" class="btn-filter-apply">
+                <i class="fas fa-filter"></i>
+                Apply
+            </button>
+        </form>
+
+        <!-- Active Filter Summary -->
+        {% if search_query or status_filter %}
+        <div class="filter-active-summary">
+            <i class="fas fa-info-circle"></i>
+            Filtering by
+            {% if search_query %}<strong>"{{ search_query }}"</strong>{% endif %}
+            {% if search_query and status_filter %} &amp; {% endif %}
+            {% if status_filter %}<span class="status-pill status-{{ status_filter|lower }}">{{ status_filter }}</span>{% endif %}
+            — showing filtered results across all roles.
+            <a href="?" class="filter-reset-all">Clear all filters</a>
+        </div>
+        {% endif %}
+    </div>
 
     {% include "hr/partials/candidate_table.html" %}
-
 </main>
-
 {% endblock %}

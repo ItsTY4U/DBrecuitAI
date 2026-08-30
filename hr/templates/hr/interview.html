@@ -1,72 +1,123 @@
 {% extends "home_admin.html" %}
 {% load static %}
 {% block admin_body %}
-
 <main class="main-dashboard">
     <header class="dashboard-header">
         <div class="header-left">
-            <h2>Interview Management</h2>
+            <h1 class="dashboard-title">Interview Management</h1>
+            <p class="dashboard-subtitle">Coordinate hiring sessions, manage today's schedule, and track interview outcomes.</p>
         </div>
     </header>
+
+    <!-- Stats Grid -->
     <section class="stats-grid">
         <div class="stat-card">
-            <h3>{{ total }}</h3>
-            <span>Total Interviews</span>
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-blue">
+                    <i class="fas fa-calendar-days"></i>
+                </div>
+                <span class="stat-badge">Total</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total }}</h3>
+                <span class="stat-label">Total Sessions</span>
+            </div>
         </div>
+
         <div class="stat-card">
-            <h3>{{ scheduled }}</h3>
-            <span>Scheduled</span>
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-purple">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <span class="stat-badge">Upcoming</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ scheduled }}</h3>
+                <span class="stat-label">Scheduled</span>
+            </div>
         </div>
+
         <div class="stat-card">
-            <h3>{{ ongoing }}</h3>
-            <span>Ongoing</span>
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-amber">
+                    <i class="fas fa-video"></i>
+                </div>
+                <span class="stat-badge">Active</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ ongoing }}</h3>
+                <span class="stat-label">Ongoing</span>
+            </div>
         </div>
+
         <div class="stat-card">
-            <h3>{{ completed }}</h3>
-            <span>Completed</span>
-        </div>
-        <div class="stat-card">
-            <h3>{{ cancelled }}</h3>
-            <span>Cancelled</span>
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-green">
+                    <i class="fas fa-circle-check"></i>
+                </div>
+                <span class="stat-badge">Done</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ completed }}</h3>
+                <span class="stat-label">Completed</span>
+            </div>
         </div>
     </section>
-    <div class="interview-dashboard-grid">
+
+    <!-- Overdue Alert if any -->
+    {% include "hr/partials/overdue_interviews.html" %}
+
+    <!-- Schedules Grid -->
+    <div class="dashboard-grid">
         <div class="dash-column">
             {% include "hr/partials/today_schedule.html" %}
-            {% include "hr/partials/overdue_interviews.html" %}
+            
+            <!-- Positions Waiting for Scheduling -->
+            <div class="content-box">
+                <div class="box-header">
+                    <div class="box-header-title">
+                        <i class="fas fa-user-clock header-icon text-amber"></i>
+                        <div>
+                            <h3>Candidates Waiting for Interview</h3>
+                            <p class="box-subtitle">Positions with qualified candidates ready for scheduling</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="waiting-jobs-grid">
+                    {% for item in job_interviews %}
+                        {% if item.waiting > 0 %}
+                        <div class="waiting-job-card">
+                            <div class="waiting-job-info">
+                                <span class="a-dept-badge">{{ item.job.department }}</span>
+                                <h4>{{ item.job.title }}</h4>
+                                <span class="waiting-badge">
+                                    <i class="fas fa-users"></i>
+                                    <strong>{{ item.waiting }}</strong> applicant{{ item.waiting|pluralize }} waiting
+                                </span>
+                            </div>
+                            <a href="{% url 'schedule_interview' item.job.id %}" class="btn-schedule-action">
+                                <i class="fas fa-calendar-plus"></i> Schedule
+                            </a>
+                        </div>
+                        {% endif %}
+                    {% empty %}
+                        <div class="empty-state-box">
+                            <i class="fas fa-check-circle text-green" style="font-size: 28px; margin-bottom: 8px;"></i>
+                            <h4>No candidates waiting</h4>
+                            <p>All candidates in the interview stage have been scheduled.</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
-        <div class="data-column">
+
+        <div class="dash-column">
             {% include "hr/partials/interview_schedule.html" %}
         </div>
     </div>
-    {% include "hr/partials/interview_cards.html" %}
-    <section class="content-box">
-        <div class="box-header">
-            <h3>Interview by Job Position</h3>
-        </div>
-        <div class="job-grid">
-            {% for item in job_interviews %}
-                {% if item.waiting > 0 %}
-                <div class="job-card">
-                    
-                    <h3>{{ item.job.title }}</h3>
-                    <p>{{ item.job.department }}</p>
-                    <p>
-                        {{ item.waiting }}
-                        applicant{{ item.waiting|pluralize }}
-                        waiting
-                    </p>
-                    <a href="{% url 'schedule_interview' item.job.id %}"
-                        class="btn-schedule">
-                        Schedule Interview
-                    </a>
-                </div>
-                {% endif %}
-            {% empty %}
-                <p>No applicants waiting for interview scheduling.</p>
-            {% endfor %}
-        </div>
-    </section>
-</main>
 
-{% endblock  %}
+    <!-- Full Scheduled Sessions List -->
+    {% include "hr/partials/interview_cards.html" %}
+</main>
+{% endblock %}

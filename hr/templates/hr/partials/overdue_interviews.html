@@ -1,35 +1,28 @@
 {% if overdue_interviews %}
-<div class="interview-reminder-box">
-    <div class="reminder-icon">
-        <i class="fas fa-exclamation-triangle"></i>
+<div class="interview-reminder-alert">
+    <div class="reminder-alert-icon">
+        <i class="fas fa-triangle-exclamation"></i>
     </div>
-    <div class="reminder-content">
-        <h3>Interview Status Reminder</h3>
-        <p>
-            You have
-            <strong>{{ overdue_interviews|length }}</strong>
-            interview{{ overdue_interviews|length|pluralize }}
-            that have passed their scheduled date but are still marked as
-            <strong>Scheduled</strong>.
+    <div class="reminder-alert-content">
+        <div class="reminder-alert-header">
+            <h4>Action Required: Past Interview Status</h4>
+            <span class="overdue-count-pill">{{ overdue_interviews|length }} Pending</span>
+        </div>
+        <p class="reminder-alert-desc">
+            The following interviews have passed their scheduled date and require an outcome status (Completed / Cancelled / Rescheduled).
         </p>
         <div class="overdue-interview-list">
             {% for interview in overdue_interviews %}
                 {% with job=interview.applicants.first.job %}
                 <div class="overdue-interview-item">
-                    <div>
-                        <strong>
-                            {{ job.title }}
-                        </strong>
-                        <span>
-                            Scheduled for
-                            {{ interview.date|date:"F d, Y" }}
+                    <div class="overdue-item-info">
+                        <strong>{{ job.title|default:"Job Interview" }}</strong>
+                        <span class="overdue-date-tag">
+                            <i class="fas fa-calendar-xmark"></i> Was on {{ interview.date|date:"M d, Y" }} at {{ interview.time|time:"g:i A" }}
                         </span>
                     </div>
-                    <a
-                        href="{% url 'interview_detail' interview.pk %}"
-                        class="reminder-action"
-                    >
-                        Update Status
+                    <a href="{% url 'interview_detail' interview.pk %}" class="btn-resolve-status">
+                        Update Status <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
                 {% endwith %}

@@ -1,87 +1,212 @@
-<a href="{% url "candidate_department" application.job.department %}" class="back-link-alt" style="margin-bottom:20px;display:inline-block;background:white;">
-    <i class="fas fa-arrow-left"></i>
-    Back to Department
-</a>
-<div class="details-hero-card">
-    <div class="hero-content-wrapper">
-        <div class="hero-avatar">
+<div class="page-nav-header">
+    <a href="{% url 'candidate_department' application.job.department %}" class="back-link-pill">
+        <i class="fas fa-arrow-left"></i>
+        <span>Back to {{ application.job.department }} Candidates</span>
+    </a>
+</div>
+
+<!-- Candidate Hero Profile Card -->
+<div class="candidate-hero-card">
+    <div class="hero-left-profile">
+        <div class="candidate-hero-avatar">
             {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
         </div>
-        <div class="hero-left">
-            <span class="hero-badge">
-                {{ application.job.job_type }}
-            </span>
-            
-            <span class="hero-date">
-                Applied on {{ application.created_at|date:"m/d/y" }}
-            </span>
+        <div class="candidate-hero-details">
+            <div class="hero-tags-row">
+                <span class="hero-badge badge-primary">
+                    <i class="fas fa-building"></i> {{ application.job.department }}
+                </span>
+                <span class="hero-badge badge-type">
+                    {{ application.job.job_type }}
+                </span>
+                <span class="hero-date">
+                    <i class="fas fa-calendar-day"></i> Applied {{ application.created_at|date:"M d, Y" }}
+                </span>
+            </div>
 
-            <h1 class="hero-title">
+            <h1 class="candidate-name">
                 {{ application.first_name }}
-                {% if application.middle_initial  %}
-                    {{ application.middle_initial }}
-                {% endif %}
-                {{ application.last_name}}
+                {% if application.middle_initial %}{{ application.middle_initial }}.{% endif %}
+                {{ application.last_name }}
             </h1>
-            <p class="hero-subtitle">
-                {{ application.job.title }}
+
+            <p class="candidate-target-role">
+                Applied for <strong>{{ application.job.title }}</strong>
             </p>
-            <h3>Application ID:</h3><span class="hero-badge">{{ application.application_id }}</span>
+
+            <div class="app-id-tag">
+                <span>Application Ref:</span>
+                <code>{{ application.application_id }}</code>
+            </div>
         </div>
     </div>
 
-    <form method="POST" action="{% url 'update_application_status' application.id %}">
-        {% csrf_token %}
-        <select name="status" class="status-select" onchange="this.form.submit()">
-            {% for value, label in application.STATUS_CHOICES %}
-                <option value="{{ value }}"
-                    {% if application.status == value %}selected{% endif %}>
-                    {{ label }}
-                </option>
-            {% endfor %}
-        </select>
-    </form>
+    <div class="hero-status-box">
+        <label class="status-change-label">Candidate Stage</label>
+        <form method="POST" action="{% url 'update_application_status' application.id %}" class="status-form">
+            {% csrf_token %}
+            <select name="status" class="status-select-btn status-{{ application.status|lower }}" onchange="this.form.submit()">
+                {% for value, label in application.STATUS_CHOICES %}
+                    <option value="{{ value }}" {% if application.status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
 </div>
-<div class="details-grid">
+
+<!-- Evaluation & Profile 2-Column Grid -->
+<div class="candidate-details-grid">
+    <!-- Left Column: AI Evaluation -->
     <div class="eval-column">
-        <div class="eval-card">
-            <h3>AI Insight</h3>
-            <div class="eval-content">
-                <p>
-                    {{ application.ai_summary }}
-                </p>
-                <div class="ai-insight">
-                    <strong>
-                        <i class="fas fa-robot"></i>
-                        AI Score: {{ application.ai_score }}
-                    </strong>
-                    <br>
-                    <small>
-                        {{ application.ai_summary }}
-                    </small>
+        <!-- AI Score & Summary Card -->
+        <div class="content-box ai-eval-box">
+            <div class="box-header">
+                <div class="box-header-title">
+                    <i class="fas fa-robot header-icon text-green"></i>
+                    <div>
+                        <h3>AI Screening Intelligence</h3>
+                        <p class="box-subtitle">Automated resume parsing and role fit evaluation</p>
+                    </div>
+                </div>
+                <div class="ai-score-badge-large 
+                    {% if application.ai_score >= 90 %}
+                        score-high
+                    {% elif application.ai_score >= 75 %}
+                        score-mid
+                    {% else %}
+                        score-low
+                    {% endif %}">
+                    <span class="score-num">{{ application.ai_score }}%</span>
+                    <span class="score-text">
+                        {% if application.ai_score >= 90 %}
+                            Strong Match
+                        {% elif application.ai_score >= 75 %}
+                            Good Fit
+                        {% else %}
+                            Review Needed
+                        {% endif %}
+                    </span>
                 </div>
             </div>
+
+            <div class="ai-summary-content">
+                <h4 class="ai-section-title">
+                    <i class="fas fa-file-lines"></i> Executive AI Summary
+                </h4>
+                <p class="ai-summary-text">
+                    {{ application.ai_summary|default:"The candidate profile and resume have been processed. Review the detailed breakdown below." }}
+                </p>
+            </div>
+
+            {% if strengths %}
+            <div class="ai-breakdown-section">
+                <h4 class="ai-section-title text-green">
+                    <i class="fas fa-circle-check"></i> Key Strengths & Qualifications
+                </h4>
+                <ul class="ai-points-list strengths-list">
+                    {% for item in strengths %}
+                    <li>
+                        <i class="fas fa-check text-green"></i>
+                        <span>{{ item }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if weaknesses %}
+            <div class="ai-breakdown-section">
+                <h4 class="ai-section-title text-amber">
+                    <i class="fas fa-triangle-exclamation"></i> Potential Gaps / Areas to Probe
+                </h4>
+                <ul class="ai-points-list gaps-list">
+                    {% for item in weaknesses %}
+                    <li>
+                        <i class="fas fa-exclamation text-amber"></i>
+                        <span>{{ item }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
     </div>
+
+    <!-- Right Column: Candidate Info & Actions -->
     <div class="info-column">
-        <div class="info-card">
-            <h3>Candidate Info</h3>
-            <div class="infor-section">
-                <span class="info-label">EMAIL</span>
-                <span class="info-val">
-                    {{ application.email }}
-                </span>
+        <!-- Contact & Profile Card -->
+        <div class="content-box">
+            <div class="box-header">
+                <div class="box-header-title">
+                    <i class="fas fa-id-card header-icon"></i>
+                    <div>
+                        <h3>Candidate Details</h3>
+                        <p class="box-subtitle">Contact info & documents</p>
+                    </div>
+                </div>
             </div>
-            <div class="info-label">
-                <span class="info-label">PHONE</span>
-                <span class="info-val">
-                    {{ application.phone }}
-                </span>
+
+            <div class="contact-info-list">
+                <div class="contact-info-item">
+                    <div class="contact-icon-box">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="contact-text">
+                        <span class="contact-label">Email Address</span>
+                        <a href="mailto:{{ application.email }}" class="contact-val email-link">
+                            {{ application.email }}
+                        </a>
+                    </div>
+                </div>
+
+                <div class="contact-info-item">
+                    <div class="contact-icon-box">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="contact-text">
+                        <span class="contact-label">Phone Number</span>
+                        <a href="tel:{{ application.phone }}" class="contact-val">
+                            {{ application.phone }}
+                        </a>
+                    </div>
+                </div>
             </div>
-            <div class="info-section">
-                <a href="{{ application.resume.url }}" target="_blank" class="btn-primary"
-                style="width:100%;padding:18px;border-radius:12px;font-weight:800;display:block;text-align:center;">
-                View Resume
+
+            <div class="resume-cta-box">
+                {% if application.resume %}
+                <a href="{{ application.resume.url }}" target="_blank" class="btn-resume-view">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Open Full Resume (PDF)</span>
+                    <i class="fas fa-external-link"></i>
+                </a>
+                {% else %}
+                <p class="no-resume-text">No resume file uploaded.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Next Actions Card -->
+        <div class="content-box">
+            <div class="box-header">
+                <div class="box-header-title">
+                    <i class="fas fa-bolt header-icon"></i>
+                    <div>
+                        <h3>Next Actions</h3>
+                        <p class="box-subtitle">Candidate progression</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-candidate-actions">
+                <a href="{% url 'schedule_interview' application.job.id %}" class="candidate-action-btn primary-action">
+                    <i class="fas fa-calendar-plus"></i>
+                    <span>Schedule Interview</span>
+                </a>
+                <a href="mailto:{{ application.email }}?subject=Update regarding your application for {{ application.job.title }}" class="candidate-action-btn">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Send Candidate Email</span>
                 </a>
             </div>
         </div>

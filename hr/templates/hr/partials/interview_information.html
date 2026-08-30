@@ -1,36 +1,60 @@
 <div class="content-box">
-
     <div class="box-header">
-        <h3>Interview Details</h3>
+        <div class="box-header-title">
+            <i class="fas fa-circle-info header-icon text-green"></i>
+            <div>
+                <h3>Session Logistics & Information</h3>
+                <p class="box-subtitle">Meeting details and scheduling parameters</p>
+            </div>
+        </div>
     </div>
 
-    <div class="interview-info-list">
-
-        <div class="interview-info-row">
-            <strong>Interviewer</strong>
-            <span>{{ interview.interviewer }}</span>
+    <div class="session-info-grid">
+        <div class="session-info-card">
+            <div class="session-info-icon">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="session-info-text">
+                <span class="session-label">Interviewer / Lead</span>
+                <strong class="session-value">{{ interview.interviewer }}</strong>
+            </div>
         </div>
 
-        <div class="interview-info-row">
-            <strong>Date</strong>
-            <span>{{ interview.date }}</span>
+        <div class="session-info-card">
+            <div class="session-info-icon">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="session-info-text">
+                <span class="session-label">Scheduled Date</span>
+                <strong class="session-value">{{ interview.date|date:"F d, Y" }}</strong>
+            </div>
         </div>
 
-        <div class="interview-info-row">
-            <strong>Time</strong>
-            <span>{{ interview.time }}</span>
+        <div class="session-info-card">
+            <div class="session-info-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="session-info-text">
+                <span class="session-label">Meeting Time</span>
+                <strong class="session-value">{{ interview.time|time:"g:i A" }}</strong>
+            </div>
         </div>
 
-        <div class="interview-info-row">
-            <strong>Location</strong>
-            <span>{{ interview.location }}</span>
+        <div class="session-info-card">
+            <div class="session-info-icon">
+                <i class="fas fa-location-dot"></i>
+            </div>
+            <div class="session-info-text">
+                <span class="session-label">Meeting Location / Link</span>
+                <strong class="session-value">{{ interview.location|default:"HR Office" }}</strong>
+            </div>
         </div>
-
-        <div class="interview-info-row">
-            <strong>Notes</strong>
-            <span>{{ interview.notes|default:"No notes." }}</span>
-        </div>
-
     </div>
 
+    {% if interview.notes %}
+    <div class="session-notes-box">
+        <h4 class="notes-header"><i class="fas fa-sticky-note"></i> Preparation Notes</h4>
+        <p class="notes-body">{{ interview.notes }}</p>
+    </div>
+    {% endif %}
 </div>
