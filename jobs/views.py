@@ -70,7 +70,6 @@ def apply_job(request, pk):
 
     return render(request, "jobs/apply.html", {"job": job})
 
-
 def upload_resume(request, pk):
 
     job = get_object_or_404(Job, pk=pk)
@@ -130,7 +129,6 @@ def upload_resume(request, pk):
             "application": application,
         }
     )
-
 
 def application_success(request, application_id):
     application = get_object_or_404(

@@ -23,3 +23,5 @@ staticfiles/
 .idea/
 .DS_Store
 jobs/views.txt
+hr.zip
+.gitignore
