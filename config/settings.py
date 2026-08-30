@@ -54,7 +54,8 @@ INSTALLED_APPS = [
     "main",
     "jobs",
     "track_application",
-    "hr"
+    "hr",
+    "templatetags",
 ]
 
 MIDDLEWARE = [

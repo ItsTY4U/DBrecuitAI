@@ -1,5 +1,6 @@
 {% extends "home_admin.html" %}
 {% load static %}
+{% load time_filters %}
 {% block admin_body %}
 <main class="main-dashboard">
     <header class="dashboard-header">
@@ -199,12 +200,9 @@
                                     <span class="role-badge">{{ application.job.title }}</span>
                                 </td>
                                 <td>
-                                    <span class="status-pill status-{{ application.status|lower }}">{{application.status
-                                        }}</span>
+                                    <span class="status-pill status-{{ application.status|lower }}">{{ application.status }}</span>
                                 </td>
-                                <td class="a-time">{{
-                                    application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6"}}
-                                    ago</td>
+                                <td class="a-time">{{ application.created_at|smart_time }}</td>
                                 <td class="a-action">
                                     <i class="fas fa-chevron-right action-arrow"></i>
                                 </td>
