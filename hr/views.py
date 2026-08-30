@@ -205,68 +205,23 @@ def candidates(request):
 
 @staff_member_required
 def candidate_department(request, department):
-    # Shared filters from query params
-    search_query = request.GET.get("search", "").strip()
-    status_filter = request.GET.get("status", "")
-    ITEMS_PER_PAGE = 15
-
-    active_jobs = Job.objects.filter(department=department, status="Active").order_by("title")
-
-    total_candidates = Application.objects.filter(
-        job__department=department,
-        job__status="Active"
-    ).count()
-
-    role_data = []
-    for job in active_jobs:
-        qs = Application.objects.filter(job=job)
-
-        # Apply search filter
-        if search_query:
-            qs = qs.filter(
-                Q(first_name__icontains=search_query) |
-                Q(last_name__icontains=search_query) |
-                Q(email__icontains=search_query) |
-                Q(application_id__icontains=search_query)
-            )
-
-        # Apply status filter
-        if status_filter:
-            qs = qs.filter(status=status_filter)
-
-        qs = qs.order_by("-ai_score", "-created_at")
-
-        # Per-role pagination key: page_<job_id>
-        page_key = f"page_{job.pk}"
-        page_number = request.GET.get(page_key, 1)
-        paginator = Paginator(qs, ITEMS_PER_PAGE)
-        page_obj = paginator.get_page(page_number)
-
-        role_data.append({
-            "job": job,
-            "page_obj": page_obj,
-            "page_key": page_key,
-            "total_count": qs.count(),
-        })
-
-    # Build a query string that preserves search/status but drops page_* keys
-    filter_params = {}
-    if search_query:
-        filter_params["search"] = search_query
-    if status_filter:
-        filter_params["status"] = status_filter
+    department = request.GET.get("department")
+    
+    candidates = Application.objects.filter(
+        job__deparment=department
+    )
+    
+    # jobs = Job.objects.filter(
+    #     department=department,
+    #     status="Active"
+    # ).prefetch_related("application")
 
     return render(
         request,
         "hr/candidate_department.html",
         {
             "department": department,
-            "role_data": role_data,
-            "total_candidates": total_candidates,
-            "search_query": search_query,
-            "status_filter": status_filter,
-            "filter_params": filter_params,
-            "status_choices": ["Pending", "Screening", "Interview", "Hired", "Rejected"],
+            "candidates": candidates,
         }
     )
 

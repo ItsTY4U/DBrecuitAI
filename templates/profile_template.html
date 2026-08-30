@@ -1,17 +1,16 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DBRecruitAI | Join the Don Benito's Family</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <title>Profile|DBRecruitAI</title>
+    <link rel="stylesheet" href="{% static "css/account.css" %}">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="landing-page">
-        <!-- Navigation -->
         <header class="navbar glass">
             <div class="nav-logo">
                 <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
@@ -26,17 +25,20 @@
                 <a href="{% url "applicant_login" %}" class="nav-link">Login</a>
                 <a href="{% url "signup" %}" class="nav-link">Sign Up</a>
                 {% endif %}
-                {% comment %}
-                <a href="{% url 'track' %}" class="nav-link">Track Application</a> {% endcomment %}
             </nav>
         </header>
-    {% block body%}
-    {% endblock %}
-    <footer class="landing-footer glass">
-            <p>&copy; 2026 DBRecruitAI - Powered by Don Benito's. All Rights Reserved.</p>
+
+        {% block content %}
+        {% endblock %}
+
+        <footer class="landing-footer glass">
+            
         </footer>
-    <script src="{% static "js/main.js" %}"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js" integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="anonymous"></script>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
+        integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
+        crossorigin="anonymous">
+    </script>
+    <script src="{% static "js/signup.js" %}"></script>
 </body>
 </html>

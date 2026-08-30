@@ -2260,6 +2260,7 @@ body {
     transform: translateY(-2px);
 }
 
+/* Time */
 .full-grid-empty {
     grid-column: 1 / -1;
     padding: 40px 20px;
@@ -3804,6 +3805,10 @@ body {
     display: block;
 }
 
+
+/* =========================================================
+   RESPONSIVE - MOBILE
+   ========================================================= */
 .status-banner p {
     font-size: 12px;
     margin: 2px 0 0 0;
