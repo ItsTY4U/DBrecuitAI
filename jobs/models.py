@@ -1,7 +1,7 @@
 # Create your models here.
 from django.db import models
 from uuid import uuid4
-
+from django.contrib.auth.models import User
 class Job(models.Model):
     JOB_TYPES = [
         ("FULL-TIME", "Full-Time"),
@@ -53,6 +53,14 @@ class Application(models.Model):
         editable=False
     )
     
+    applicant = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="applicantions",
+        null=True,
+        blank=True,
+    )
+    
     job = models.ForeignKey(
         Job,
         on_delete=models.CASCADE,
@@ -96,4 +104,5 @@ class Application(models.Model):
     ai_summary = models.TextField(blank=True)
     ai_strengths = models.TextField(blank=True)
     ai_weaknesses = models.TextField(blank=True)
+    
     

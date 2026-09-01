@@ -1,20 +1,38 @@
 {% extends "home.html" %}
 {% load static %}
+
 {% block body %}
-<!-- Main Content -->
-        <main class="main-content-wide">
-            <div class="content-header">
-                <h1 class="page-title">Application Form</h1>
+
+<main class="main-content-wide">
+
+    <div class="content-header">
+
+        <h1 class="page-title">
+            Application Form
+        </h1>
+
+    </div>
+
+
+    <div
+        class="apply-container glass-white"
+        id="apply-flow"
+    >
+
+        {% if error %}
+
+            <div class="form-error">
+                {{ error }}
             </div>
-            <!-- Multi-step Container -->
-            <div class="apply-container glass-white" id="apply-flow">
-                
-                <!-- Step 1: Upload -->
-                {% include "jobs/partials/upload_step.html" %}
-                
-                <!-- Step 2: Personal Info -->
-                
-            </div>
-        </main>
+
+        {% else %}
+
+            {% include "jobs/partials/personal_info.html" %}
+
+        {% endif %}
+
+    </div>
+
+</main>
 
 {% endblock %}

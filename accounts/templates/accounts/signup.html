@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="bg">
+    <div class="auth-page">
+        <div class="auth-split">
+        <!-- Left: Image panel -->
+            <div class="auth-image-panel">
+                <img src="{% static 'accounts/img/signup-side.jpg' %}" alt="DBRecruitAI">
+                <div class="auth-image-overlay">
+                    <h2>Find. Apply. Get Hired.</h2>
+                    <p>Join DBRecruitAI and discover opportunities that match your skills.</p>
+                </div>
+            </div>
+            <div class="auth-card">
+                <h1>Create Applicant Account</h1>
+                <p>Join DBRecruitAI and start applying for jobs.</p>
+                
+                <form method="POST" enctype="multipart/form-data">
+
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="form-error">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label>Upload Resume (PDF)</label>
+
+                        {{ form.default_resume }}
+
+                        {% if form.default_resume.errors %}
+                            <div class="form-error">
+                                {{ form.default_resume.errors }}
+                            </div>
+                        {% endif %}
+
+                        <button type="button" id="process-resume-btn" class="btn btn-secondary" data-process-url="{% url "process_signup_resume" %}">
+                            Process Resume
+                        </button>
+
+                        <div id="resume-status" style="margin-top: 10px;">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        {{ form.email }}
+                        {{ form.email.errors }}
+                    </div>
+
+                    <div class="form-group">
+                        <label>First Name</label>
+                        {{ form.first_name }}
+                        {{ form.first_name.errors }}
+                    </div>
+
+                    <div class="form-group">
+                        <label>Middle Name</label>
+                        {{ form.middle_name }}
+                        {{ form.middle_name.errors }}
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        {{ form.last_name }}
+                        {{ form.last_name.errors }}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password1.id_for_label }}">
+                            Password
+                        </label>
+
+                        <div class="password-wrapper">
+                            {{ form.password1 }}
+
+                            {% if form.password1.errors %}
+                                <div class="form-error">
+                                    {{ form.password1.errors }}
+                                </div>
+                            {% endif %}
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                onclick="togglePassword('id_password1', this)"
+                            >
+                                👁
+                            </button>
+                        </div>
+
+                        <!-- Password Strength Meter -->
+                        <div class="strength-meter">
+                            <div
+                                class="strength-bar"
+                                id="strength-bar"
+                            ></div>
+                        </div>
+
+                        <!-- Password Requirements -->
+                        <ul class="strength-checklist">
+                            <li id="rule-length">
+                                At least 8 characters
+                            </li>
+
+                            <li id="rule-upper">
+                                At least 1 capital letter
+                            </li>
+
+                            <li id="rule-number">
+                                At least 1 number
+                            </li>
+
+                            <li id="rule-special">
+                                At least 1 special character (!@#$%&*_ -)
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password2.id_for_label }}">
+                            Confirm Password
+                        </label>
+
+                        <div class="password-wrapper">
+                            {{ form.password2 }}
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                onclick="togglePassword('id_password2', this)"
+                            >
+                                👁
+                            </button>
+                        </div>
+
+                        <div id="password-status" class="password-status neutral">
+                            Enter your password again
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Sign Up
+                    </button>
+                </form>
+
+                <p>
+                    Already have an account?
+                    <a href="{% url 'applicant_login' %}">
+                        Login
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
