@@ -74,12 +74,13 @@ def create_job(request):
             department=request.POST.get("department"),
             job_type=request.POST.get("job_type"),
             description=request.POST.get("description"),
+            requirements=request.POST.get("requirements", ""),
             status="Active",
         )
-        requirements = request.POST.getlist("requirements")
+        key_qualifications = request.POST.getlist("key_qualification")
 
-        for req in requirements:
-            if req.strip():
+        for qualification in key_qualifications:
+            if qualification.strip():
                 Requirement.objects.create(
                     job=job,
                     text=req.strip()
@@ -110,9 +111,21 @@ def manage_job(request, pk):
         job.department = request.POST["department"]
         job.job_type = request.POST["job_type"]
         job.description = request.POST["description"]
+        job.requirements = request.POST.get("requirements", "")
         job.status = request.POST.get("status", job.status)
         
         job.save()
+        
+        key_qualifications = request.POST.getlist(
+            "key_qualifications"
+        )
+        
+        job.requirements_list.all().delete()
+        
+        for qualification in key_qualifications:
+            if qualification.strip():
+                Requirement.objects.create(job=job, text=qualification.strip())
+                
         return redirect("job_management")
     return render(request, "hr/manage_job.html",{
         "job":job,
@@ -178,7 +191,14 @@ def candidate_detail(request, pk):
         pk=pk
     )
     
-    return render(request, "hr/candidate_detail.html", {"application": application})
+    return render(request, "hr/candidate_detail.html", 
+                {
+                    "application": application,
+                    "matched_qualifications": application.ai_matched_qualifications.splitlines(),
+                    "missing_qualifications": application.ai_missing_qualifications.splitlines(),
+                    "strengths": application.ai_strengths.splitlines(),
+                    "weaknesses": application.ai_weaknesses.splitlines(),
+                    })
 
 @staff_member_required
 def update_application_status(request, pk):

@@ -42,7 +42,7 @@
                             <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Job Type</label>
                             <select name="job_type" style="width: 50%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;">
                                 <option value="Full-time"
-                                    {% if job.job_type == "Full-time" %}seleted{% endif %}>
+                                    {% if job.job_type == "Full-time" %}selected{% endif %}>
                                     Full-time</option>
                                 <option value="Part-time"
                                 {% if job.job_type == "Part-time" %}selected{% endif %} >Part-time</option>
@@ -54,6 +54,54 @@
                         <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">Description</label>
                         <textarea name="description" class="job-description">{{job.description}}</textarea>
                     </div>
+
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">
+                            Requirements
+                        </label>
+
+                        <textarea
+                            name="requirements"
+                            rows="6"
+                            style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;"
+                            placeholder="Enter the general requirements for this position..."
+                        >{{ job.requirements }}</textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label style="font-weight: 700; color: #333; margin-bottom: 8px; display: block;">
+                            Key Qualifications
+                        </label>
+
+                        {% if key_qualifications %}
+
+                            {% for qualification in key_qualifications %}
+
+                                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                    <input
+                                        type="text"
+                                        name="key_qualifications"
+                                        value="{{ qualification.text }}"
+                                        style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;"
+                                    >
+                                </div>
+
+                            {% endfor %}
+                        {% else %}
+                            <div style="margin-bottom: 10px;">
+                                <input
+                                    type="text"
+                                    name="key_qualifications"
+                                    placeholder="Enter a key qualification..."
+                                    style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;"
+                                >
+                            </div>
+                        {% endif %}
+                        <small class="form-help">
+                            These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
+                        </small>
+                    </div>
+
                     <div class="post-actions" style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px; display: flex; gap: 15px; justify-content: flex-end;">
                         <a href="{% url "job_management" %}" class="btn" style="background: #f1f2f6; color: #555; font-weight: 700; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save Changes</button>

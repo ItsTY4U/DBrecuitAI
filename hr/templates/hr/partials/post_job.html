@@ -26,15 +26,40 @@
                     <label>Description</label>
                     <textarea name="description" placeholder="Job description..." style="height: 100px;"></textarea>
                 </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="requirements">
+                        Requirements
+                    </label>
+
+                    <textarea
+                        name="requirements"
+                        id="requirements"
+                        rows="5"
+                        placeholder="Enter Requirements need for the Job"
+                    ></textarea>
+                </div>
+
                 <div class="form-group" style="margin-bottom:20px;">
-                    <label>Requirements</label>
-                    <div id="requirements-container">
+                    <label>Key Qualifications</label>
+                    <div id="key-qualifications-container">
                         <div class="requirement-row">
-                            <input type="text" name="requirements" placeholder="Enter a requirement" required>
+                            <input
+                                type="text"
+                                name="key_qualifications"
+                                placeholder="Enter a key qualification"
+                                required
+                            >
                         </div>
                     </div>
-                    <button type="button" class="btn btn-outline-alt" id="add-requirement"style="margin-top:10px;">
-                        + Add Requirement
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-alt"
+                        id="add-key-qualification"
+                        style="margin-top:10px;"
+                    >
+                        + Add Qualification
                     </button>
                 </div>
                 <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">

@@ -23,6 +23,10 @@ class Job(models.Model):
         choices=STATUS_CHOICES,
         default="Active"
     )
+    
+    requirements = models.TextField(
+        blank=True)
+    
 
     def __str__(self):
         return self.title
@@ -104,5 +108,11 @@ class Application(models.Model):
     ai_summary = models.TextField(blank=True)
     ai_strengths = models.TextField(blank=True)
     ai_weaknesses = models.TextField(blank=True)
-    
-    
+    ai_match_level = models.CharField(max_length=30, blank=True)
+    ai_recommendation = models.CharField(max_length=30, blank=True)
+    ai_matched_qualifications = models.TextField(blank=True)
+    ai_missing_qualifications = models.TextField(blank=True)
+    ai_skills_match = models.IntegerField(default=0)
+    ai_experience_match = models.IntegerField(default=0)
+    ai_education_match = models.IntegerField(default=0)
+    ai_qualification_match = models.IntegerField(default=0)

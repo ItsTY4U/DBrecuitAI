@@ -123,20 +123,93 @@ def apply_job(request, pk):
             resume_text,
             job
         )
-        
+
+        # ==============================
+        # AI OVERALL RESULTS
+        # ==============================
+
         application.ai_score = ai.get("score", 0)
-        
-        application.ai_summary = ai.get("summary", "")
-        
-        application.ai_strengths = "\n".join(ai.get("strengths", []))
-        
-        application.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
-        
+
+        application.ai_match_level = ai.get(
+            "match_level",
+            ""
+        )
+
+        application.ai_recommendation = ai.get(
+            "recommendation",
+            ""
+        )
+
+
+        # ==============================
+        # AI SUMMARY
+        # ==============================
+
+        application.ai_summary = ai.get(
+            "summary",
+            ""
+        )
+
+
+        # ==============================
+        # AI STRENGTHS / WEAKNESSES
+        # ==============================
+
+        application.ai_strengths = "\n".join(
+            ai.get("strengths", [])
+        )
+
+        application.ai_weaknesses = "\n".join(
+            ai.get("weaknesses", [])
+        )
+
+
+        # ==============================
+        # QUALIFICATION ANALYSIS
+        # ==============================
+
+        application.ai_matched_qualifications = "\n".join(
+            ai.get("matched_qualifications", [])
+        )
+
+        application.ai_missing_qualifications = "\n".join(
+            ai.get("missing_qualifications", [])
+        )
+
+
+        # ==============================
+        # AI COMPONENT SCORES
+        # ==============================
+
+        application.ai_skills_match = ai.get(
+            "skills_match",
+            0
+        )
+
+        application.ai_experience_match = ai.get(
+            "experience_match",
+            0
+        )
+
+        application.ai_education_match = ai.get(
+            "education_match",
+            0
+        )
+
+        application.ai_qualification_match = ai.get(
+            "qualification_match",
+            0
+        )
+
+
+        # ==============================
+        # APPLICATION STATUS
+        # ==============================
+
         application.resume_processed = True
-        
-        # After AI screening
+
         application.status = "Pending"
-        
+
         application.save()
         
         return render(request, "jobs/partials/application_success.html",
