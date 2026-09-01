@@ -96,7 +96,7 @@
                 </div>
 
                 <div class="pipeline-list">
-                    <!--<div class="pipeline-item">
+                    <div class="pipeline-item">
                         <div class="p-info">
                             <span class="p-dot dot-yellow"></span>
                             <span class="p-label">Total Applicants</span>
@@ -108,7 +108,7 @@
                             <span class="p-val">{{ total_applications }}</span>
                             <span class="p-percent">100%</span>
                         </div>
-                    </div> -->
+                    </div>
 
                     <div class="pipeline-item">
                         <div class="p-info">
@@ -199,12 +199,12 @@
                                     <span class="role-badge">{{ application.job.title }}</span>
                                 </td>
                                 <td>
-                                    <span class="status-pill status-{{ application.status|lower }}">{{application.status
-                                        }}</span>
+                                    <span class="status-pill status-{{ application.status|lower }}">{{
+                                        application.status }}</span>
                                 </td>
                                 <td class="a-time">{{
-                                    application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6"}}
-                                    ago</td>
+                                    application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6"
+                                    }} ago</td>
                                 <td class="a-action">
                                     <i class="fas fa-chevron-right action-arrow"></i>
                                 </td>
