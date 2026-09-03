@@ -754,7 +754,7 @@ body {
             rgba(27, 61, 48, 0.92),
             rgba(27, 61, 48, 0.10)
         ),
-        url("/static/accounts/images/auth-bg.jpg");
+        url("../images/bg.jpg");
 
     background-size: cover;
     background-position: center;
