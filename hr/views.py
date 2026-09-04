@@ -2,41 +2,58 @@ from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement
 from .models import Interview
 from django.db.models import Q, Count, Prefetch
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import date, timedelta
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from django.contrib.auth import logout
-from django.shortcuts import redirect
-
 from django.views.decorators.cache import never_cache
 
 # Create your views here.
+@never_cache
 def hr_login(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-        
-        user = authenticate(request, username=username, email=email, password=password)
-                
-        if user is not None and user.is_staff:
-            login(request, user)
-            return redirect("dashboard")
-        
-        messages.error(request, "Invalid username or password.")
-        
-    return render(request, "hr/login.html")
+    if request.user.is_authenticated and request.user.is_staff:
+        next_url = request.POST.get("next") or request.GET.get("next")
+        if next_url:
+            return redirect(next_url)
+        return redirect("dashboard")
 
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        next_url = request.POST.get("next") or request.GET.get("next")
+        
+        user = authenticate(request, username=username, password=password)
+        if user is None and "@" in username:
+            try:
+                user_obj = User.objects.get(email__iexact=username)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except (User.DoesNotExist, User.MultipleObjectsReturned):
+                pass
+                
+        if user is not None:
+            if user.is_staff:
+                login(request, user)
+                if next_url:
+                    return redirect(next_url)
+                return redirect("dashboard")
+            else:
+                messages.error(request, "This account does not have admin/staff permissions.")
+        else:
+            messages.error(request, "Invalid username or password.")
+        
+    return render(request, "hr/login.html", {"next": request.GET.get("next", "")})
+
+@never_cache
 def hr_logout(request):
     logout(request)
     return redirect("hr_login")
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def dashboard(request):
     total_applications = Application.objects.count()
     screening = Application.objects.filter(status="Screening").count()
@@ -76,7 +93,7 @@ def dashboard(request):
     return render(request, "hr/dashboard.html", content)
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def create_job(request):
     if request.method == "POST":
         job = Job.objects.create(
@@ -97,7 +114,7 @@ def create_job(request):
     return redirect("job_management")
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def job_management(request):
     active_jobs = (
         Job.objects.filter(status="Active")
@@ -126,7 +143,7 @@ def job_management(request):
     })
 
 @never_cache    
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
@@ -173,7 +190,7 @@ def parse_ai_bullets(text):
     return lines
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def candidates(request):
     total_candidates = Application.objects.count()
     screening_count = Application.objects.filter(status="Screening").count()
@@ -216,7 +233,7 @@ def candidates(request):
     })
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def candidate_department(request, department):
     # Shared filters from query params
     search_query = request.GET.get("search", "").strip()
@@ -284,7 +301,7 @@ def candidate_department(request, department):
     )
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def candidate_detail(request, pk):
     application = get_object_or_404(
         Application.objects.select_related("job"),
@@ -301,7 +318,7 @@ def candidate_detail(request, pk):
     })
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
     
@@ -312,7 +329,7 @@ def update_application_status(request, pk):
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def interviews(request):
     
     total = Interview.objects.count()
@@ -402,7 +419,7 @@ def interviews(request):
     return render(request, "hr/interview.html", context,)
 
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def schedule_interview(request, job_id):
     
     job = get_object_or_404(Job, pk=job_id)
@@ -440,7 +457,7 @@ def schedule_interview(request, job_id):
 
     
 @never_cache
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def interview_detail(request, pk):
     interview = get_object_or_404(
         Interview.objects.prefetch_related(
@@ -453,7 +470,7 @@ def interview_detail(request, pk):
     )
 
 @never_cache    
-@staff_member_required
+@staff_member_required(login_url="hr_login")
 def update_interview_status(request, pk):
 
     interview = get_object_or_404(

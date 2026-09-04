@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [
     "dbrecruit-ai.vercel.app",
     "localhost",
     "127.0.0.1",
+    "testserver",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -75,6 +76,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+LOGIN_URL = "applicant_login"
 LOGIN_REDIRECT_URL = "profile"
 LOGOUT_REDIRECT_URL = "applicant_login"
 
