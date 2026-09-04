@@ -129,7 +129,7 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", "5432"),
 
         # Keep PostgreSQL connections alive between requests.
-        "CONN_MAX_AGE": 60,
+        "CONN_MAX_AGE": 0,
     }
 }
 
