@@ -12,10 +12,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 
-
-def hr_logout(request):
-    logout(request)
-    return redirect("hr_login")
+from django.views.decorators.cache import never_cache
 
 # Create your views here.
 def hr_login(request):
@@ -35,7 +32,11 @@ def hr_login(request):
         
     return render(request, "hr/login.html")
 
+def hr_logout(request):
+    logout(request)
+    return redirect("hr_login")
 
+@never_cache
 @staff_member_required
 def dashboard(request):
     total_applications = Application.objects.count()
@@ -75,6 +76,7 @@ def dashboard(request):
     }
     return render(request, "hr/dashboard.html", content)
 
+@never_cache
 @staff_member_required
 def create_job(request):
     if request.method == "POST":
@@ -95,6 +97,7 @@ def create_job(request):
                 )
     return redirect("job_management")
 
+@never_cache
 @staff_member_required
 def job_management(request):
     active_jobs = (
@@ -122,7 +125,8 @@ def job_management(request):
         "total_inactive": total_inactive,
         "total_jobs": total_jobs,
     })
-    
+
+@never_cache    
 @staff_member_required
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
@@ -169,6 +173,7 @@ def parse_ai_bullets(text):
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
     return lines
 
+@never_cache
 @staff_member_required
 def candidates(request):
     total_candidates = Application.objects.count()
@@ -211,6 +216,7 @@ def candidates(request):
         "hired_count": hired_count,
     })
 
+@never_cache
 @staff_member_required
 def candidate_department(request, department):
     # Shared filters from query params
@@ -278,6 +284,7 @@ def candidate_department(request, department):
         }
     )
 
+@never_cache
 @staff_member_required
 def candidate_detail(request, pk):
     application = get_object_or_404(
@@ -294,6 +301,7 @@ def candidate_detail(request, pk):
         "weaknesses": weaknesses,
     })
 
+@never_cache
 @staff_member_required
 def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
@@ -304,6 +312,7 @@ def update_application_status(request, pk):
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
+@never_cache
 @staff_member_required
 def interviews(request):
     
@@ -393,6 +402,7 @@ def interviews(request):
     
     return render(request, "hr/interview.html", context,)
 
+@never_cache
 @staff_member_required
 def schedule_interview(request, job_id):
     
@@ -428,7 +438,9 @@ def schedule_interview(request, job_id):
             "interview": Interview,
             }
     )
+
     
+@never_cache
 @staff_member_required
 def interview_detail(request, pk):
     interview = get_object_or_404(
@@ -440,7 +452,8 @@ def interview_detail(request, pk):
     return render(
         request, "hr/interview_detail.html",{"interview": interview,}
     )
-    
+
+@never_cache    
 @staff_member_required
 def update_interview_status(request, pk):
 
