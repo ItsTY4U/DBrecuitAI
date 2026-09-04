@@ -45,12 +45,12 @@
             <!-- Status Filter Pills -->
             <div class="filter-status-pills">
                 <a href="?{% if search_query %}search={{ search_query }}{% endif %}"
-                   class="filter-pill {% if not status_filter %}filter-pill-active{% endif %}">
+                    class="filter-pill {% if not status_filter %}filter-pill-active{% endif %}">
                     All
                 </a>
                 {% for choice in status_choices %}
                 <a href="?{% if search_query %}search={{ search_query }}&{% endif %}status={{ choice }}"
-                   class="filter-pill filter-pill-{{ choice|lower }} {% if status_filter == choice %}filter-pill-active{% endif %}">
+                    class="filter-pill filter-pill-{{ choice|lower }} {% if status_filter == choice %}filter-pill-active{% endif %}">
                     {{ choice }}
                 </a>
                 {% endfor %}

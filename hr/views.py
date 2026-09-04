@@ -259,7 +259,7 @@ def candidate_department(request, department):
             "job": job,
             "page_obj": page_obj,
             "page_key": page_key,
-            "total_count": qs.count(),
+            "total_count": page_obj.paginator.count, #qs.count(),
         })
 
     # Build a query string that preserves search/status but drops page_* keys
