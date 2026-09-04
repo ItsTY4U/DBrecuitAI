@@ -63,7 +63,7 @@
         </div>
 
         <div class="category-card-footer">
-            <a href="{% url 'candidate_department' card.department %}" class="btn-manage-dept">
+            <a href="{% url 'candidate_department' %} ?department={{card.department|urlencode }}" class="btn-manage-dept">
                 <span>View All Candidates ({{ card.total_applicants }})</span>
                 <i class="fas fa-arrow-right"></i>
             </a>

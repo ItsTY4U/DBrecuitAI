@@ -188,8 +188,7 @@
                             <tr class="applicant-row"
                                 onclick="window.location.href='{% url 'candidate_detail' application.id %}'">
                                 <td class="a-info">
-                                    <div class="avatar">{{ application.first_name|first|upper }}{{
-                                        application.last_name|first|upper }}</div>
+                                    <div class="avatar">{{ application.first_name|first|upper }}{{ application.last_name|first|upper }}</div>
                                     <div class="a-details">
                                         <h4>{{ application.first_name }} {{ application.last_name }}</h4>
                                         <p>{{ application.email }}</p>
@@ -199,8 +198,7 @@
                                     <span class="role-badge">{{ application.job.title }}</span>
                                 </td>
                                 <td>
-                                    <span class="status-pill status-{{ application.status|lower }}">{{
-                                        application.status }}</span>
+                                    <span class="status-pill status-{{ application.status|lower }}">{{ application.status }}</span>
                                 </td>
                                 <td class="a-time">{{
                                     application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6"
