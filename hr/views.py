@@ -9,6 +9,14 @@ from datetime import date, timedelta
 from django.utils import timezone
 from django.core.paginator import Paginator
 
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+
+
+def hr_logout(request):
+    logout(request)
+    return redirect("hr_login")
+
 # Create your views here.
 def hr_login(request):
     if request.method == "POST":
