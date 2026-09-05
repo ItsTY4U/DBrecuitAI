@@ -85,7 +85,11 @@ def signup(request):
                 None
             )
 
-            login(request, user)
+            login(
+                request, 
+                user,
+                backend="django.contrib.auth.backends.ModelBackend"
+                )
 
             next_url = request.POST.get("next")
 
