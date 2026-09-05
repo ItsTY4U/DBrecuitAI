@@ -46,18 +46,27 @@ class TrackApplicationTests(TestCase):
         self.assertContains(response, "Accountant")
         self.assertContains(response, "Screening")
 
-    def test_active_application_polls(self):
-        """Active applications contain the 10s poll trigger."""
+    def test_track_page_loads_supabase_sdk(self):
+        """Track page contains the Supabase JS client CDN."""
+        response = self.client.get(reverse("track"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2")
+
+    def test_active_application_subscribes_to_realtime(self):
+        """Active applications subscribe to Supabase Realtime channel and do not poll."""
         response = self.client.get(
             reverse("track_application"),
             {"application_id": self.app_active.application_id}
         )
-        self.assertContains(response, 'hx-trigger="every 10s"')
+        self.assertContains(response, "application-status-")
+        self.assertContains(response, "postgres_changes")
+        self.assertNotContains(response, 'hx-trigger="every 10s"')
 
-    def test_terminal_application_stops_polling(self):
-        """Completed applications do not keep polling every 10s."""
+    def test_terminal_application_stops_realtime(self):
+        """Completed applications do not subscribe to Realtime updates and do not poll."""
         response = self.client.get(
             reverse("track_application"),
             {"application_id": self.app_hired.application_id}
         )
+        self.assertNotContains(response, "application-status-")
         self.assertNotContains(response, 'hx-trigger="every 10s"')
