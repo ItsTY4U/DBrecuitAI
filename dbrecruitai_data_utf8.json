@@ -1,0 +1,1818 @@
+[
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "admin",
+    "model": "logentry"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "auth",
+    "model": "permission"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "auth",
+    "model": "group"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "auth",
+    "model": "user"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "contenttypes",
+    "model": "contenttype"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "sessions",
+    "model": "session"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "jobs",
+    "model": "job"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "jobs",
+    "model": "requirement"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "jobs",
+    "model": "application"
+  }
+},
+{
+  "model": "contenttypes.contenttype",
+  "fields": {
+    "app_label": "hr",
+    "model": "interview"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "5e3mmitm7ihqfysrn71ktz2v315378vk",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQRP-FsyG0he7i0Xu_gSwsSNXQpLQn479Lkx40c3vzZt7C0b5lt9e4upnFVXTi8ss8hWcsR8EPKvdFhqVs6-zlocizrXJaOL5up_t3kKnmtjbR2wgjKhtYGWCjR98CvW1cA2o0QSWlgTiFDi0hU4-QmmCHwSfx-QLYezej:1wgnQa:kbyCmPKHr86wkSiTv01UMW316bY1LLqvs05ckkXNOZM",
+    "expire_date": "2026-07-20T17:48:20.075Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "90nq5yccm1sdqtq210ol3dlnp35qkluu",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQRP-FsyG0he7i0Xu_gSwsSNXQpLQn479Lkx40c3vzZt7C0b5lt9e4upnFVXTi8ss8hWcsR8EPKvdFhqVs6-zlocizrXJaOL5up_t3kKnmtjbR2wgjKhtYGWCjR98CvW1cA2o0QSWlgTiFDi0hU4-QmmCHwSfx-QLYezej:1wmB0t:bTTOTIB0xd9wwwJhAuUJQZ5TUGj9Cjme7eYSOq1ZcOA",
+    "expire_date": "2026-08-04T14:00:03.727Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "orzz5i9m3xvrqup0osbp20ko9nycy3j0",
+  "fields": {
+    "session_data": ".eJxVjEEOwiAQAP_C2ZAiCwWP3n0DYWFXqgaS0p6MfzckPeh1ZjJvEeK-lbB3WsOSxUUocfplGNOT6hD5Eeu9ydTqti4oRyIP2-WtZXpdj_ZvUGIvYwtEpLSxoI0DPTsGUDkmq1gjoVFIwDBlZ23SePaceGaa2LvsAX0Sny_baThH:1wpiy5:VVDnWbjyeUya0pW_x8tCUAdvLmDqlQJTO_b7Y1sBruA",
+    "expire_date": "2026-08-14T08:51:49.919Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "yc8yvgznn7nf6wngispoh3rtlc5p54oz",
+  "fields": {
+    "session_data": ".eJxVjMEOwiAQRP-FsyG0he7i0Xu_gSwsSNXQpLQn479Lkx40c3vzZt7C0b5lt9e4upnFVXTi8ss8hWcsR8EPKvdFhqVs6-zlocizrXJaOL5up_t3kKnmtjbR2wgjKhtYGWCjR98CvW1cA2o0QSWlgTiFDi0hU4-QmmCHwSfx-QLYezej:1wnHzG:M1kJ3aPaZzVN7evYgH0bgtk2C4Mp4q30ZDcxZ-FMXzw",
+    "expire_date": "2026-08-07T15:38:58.475Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "zjvsi1icpid7nwj0xpqiw4lgeucg4sm8",
+  "fields": {
+    "session_data": ".eJxVjEEOwiAQAP_C2ZAiCwWP3n0DYWFXqgaS0p6MfzckPeh1ZjJvEeK-lbB3WsOSxUUocfplGNOT6hD5Eeu9ydTqti4oRyIP2-WtZXpdj_ZvUGIvYwtEpLSxoI0DPTsGUDkmq1gjoVFIwDBlZ23SePaceGaa2LvsAX0Sny_baThH:1wnpqC:NrBLrUP_wulGO-uaFYEetsKlXxg1vF2FiY5rfJwNhmI",
+    "expire_date": "2026-08-09T03:47:52.011Z"
+  }
+},
+{
+  "model": "jobs.job",
+  "pk": 1,
+  "fields": {
+    "title": "Sales Staff",
+    "department": "Sales",
+    "job_type": "FULL-TIME",
+    "description": "The Sales Manager is responsible for overseeing the sales team and ensuring that sales targets are achieved. They develop strategies to increase sales, manage customer relationships, and monitor sales performance to help the business grow.",
+    "posted_date": "2026-07-04",
+    "status": "Active"
+  }
+},
+{
+  "model": "jobs.job",
+  "pk": 2,
+  "fields": {
+    "title": "Admin Staff",
+    "department": "Administrative",
+    "job_type": "FULL-TIME",
+    "description": "Supports daily office operations by organizing files, handling messages, scheduling meetings, and assisting team members. Helps maintain a smooth and efficient workflow in the office.",
+    "posted_date": "2026-07-04",
+    "status": "Active"
+  }
+},
+{
+  "model": "jobs.job",
+  "pk": 6,
+  "fields": {
+    "title": "Warehouse Helper",
+    "department": "Warehouse",
+    "job_type": "FULL-TIME",
+    "description": "The Warehouse Bodegero is responsible for receiving, storing, and organizing products in the warehouse. They ensure that all items are properly handled, recorded, and prepared for delivery or distribution. The bodegero helps maintain cleanliness and order in the warehouse to support smooth daily operations.",
+    "posted_date": "2026-07-06",
+    "status": "Active"
+  }
+},
+{
+  "model": "jobs.job",
+  "pk": 7,
+  "fields": {
+    "title": "Sales Manager",
+    "department": "Sales",
+    "job_type": "FULL-TIME",
+    "description": "The Sales Manager is responsible for overseeing the sales team and ensuring that sales targets are achieved. They develop strategies to increase sales, manage customer relationships, and monitor sales performance to help the business grow.",
+    "posted_date": "2026-07-07",
+    "status": "Active"
+  }
+},
+{
+  "model": "jobs.job",
+  "pk": 8,
+  "fields": {
+    "title": "Security Guard",
+    "department": "Security",
+    "job_type": "Full-time",
+    "description": "Secure the facilities and keep it safe",
+    "posted_date": "2026-07-24",
+    "status": "Inactive"
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 1,
+  "fields": {
+    "job": 1,
+    "text": "Management Skills"
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 2,
+  "fields": {
+    "job": 2,
+    "text": "Assistant Experience"
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 3,
+  "fields": {
+    "job": 2,
+    "text": "Content Editing Skills"
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 4,
+  "fields": {
+    "job": 2,
+    "text": "Marketing Savvy"
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 6,
+  "fields": {
+    "job": 6,
+    "text": "Receive and check incoming deliveries."
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 7,
+  "fields": {
+    "job": 6,
+    "text": "Organize and store products in the correct warehouse locations."
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 8,
+  "fields": {
+    "job": 7,
+    "text": "Manage and supervise the sales team."
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 9,
+  "fields": {
+    "job": 7,
+    "text": "Monitor daily and monthly sales performance."
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 10,
+  "fields": {
+    "job": 7,
+    "text": "Prepare sales reports and analyze sales data."
+  }
+},
+{
+  "model": "jobs.requirement",
+  "pk": 11,
+  "fields": {
+    "job": 8,
+    "text": "GoodLuck"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 19,
+  "fields": {
+    "application_id": "4CE9410D",
+    "job": 1,
+    "first_name": "Tyrone Justin",
+    "middle_initial": "S.",
+    "last_name": "Santos",
+    "email": "tyrnesantos04@gmail.com",
+    "phone": "09683975504",
+    "resume": "resume/RESUMEKO.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T07:20:25.034Z",
+    "interview_scheduled": false,
+    "ai_score": 15,
+    "ai_summary": "Tyrone Justin S. Santos's resume indicates a strong focus on IT, software development, and UI/UX design, which is clearly articulated in his stated career objective and listed technical skills. While he possesses general communication and critical thinking skills and has academic achievements (With Honor Senior High School, Cisco certifications), there is no evidence of sales experience, management skills, or a desire to pursue a career in sales. His qualifications are fundamentally misaligned with the requirements of a Sales Staff role, especially one that details responsibilities typically associated with a Sales Manager.",
+    "ai_strengths": "['Self-reported strong communication skills', 'Demonstrated critical thinking ability (self-reported)', 'Academic achievement (Senior High School with honors)', 'Detail-oriented (as stated in objective)']",
+    "ai_weaknesses": "['No documented sales experience', 'No evidence of management skills or leadership roles', 'Stated career objective is for IT/Software Development/UI/UX design, not sales', 'Skills listed are predominantly technical and not relevant to a sales position', 'Lack of professional work experience in any field, particularly sales or management']"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 20,
+  "fields": {
+    "application_id": "62E42E70",
+    "job": 1,
+    "first_name": "Tyrone Justin",
+    "middle_initial": "S.",
+    "last_name": "Santos",
+    "email": "tyrnesantos04@gmail.com",
+    "phone": "09683975504",
+    "resume": "resume/RESUMEKO_sTkjSIy.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T17:15:24.129Z",
+    "interview_scheduled": false,
+    "ai_score": 10,
+    "ai_summary": "The applicant, Tyrone Justin Santos, appears to be an IT graduate seeking an entry-level position in software development or UI/UX design, as stated in their objectives. Their listed skills are primarily in UI/UX designing and front-end development, with general soft skills like communications and critical thinking. The resume lacks any relevant experience in sales or management, which is a core requirement and responsibility for the Sales Staff role as described (which aligns more with a Sales Manager's duties). Their career aspirations and skill set are entirely misaligned with this position.",
+    "ai_strengths": "['Possesses Communications Skills and Critical Thinking, which are generally beneficial in professional roles.', 'Described as highly motivated and detail-oriented in their objective statement.', 'Eager to apply academic knowledge and develop professional skills.']",
+    "ai_weaknesses": "['Lacks any demonstrated management experience, which is a key requirement for the role.', 'No prior experience or background in sales.', 'Career objectives are explicitly focused on IT, software development, and UI/UX design, indicating a fundamental misalignment with a sales position.', 'Technical skills (UI/UX Designing, Front-end Development, Cisco Packet Tracer) are not relevant to a sales role.', 'No quantifiable achievements or experience in a sales or leadership capacity.']"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 21,
+  "fields": {
+    "application_id": "E30777A9",
+    "job": 6,
+    "first_name": "Ryomen",
+    "middle_initial": "",
+    "last_name": "Sukona",
+    "email": "sukonadegoat@gmail.com",
+    "phone": "0975463246",
+    "resume": "resume/RESUMEKO_PY2ql94.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T17:16:16.638Z",
+    "interview_scheduled": true,
+    "ai_score": 25,
+    "ai_summary": "The applicant, Tyrone Justin S. Santos, presents a resume that is poorly aligned with the Warehouse Helper position. While he lists general soft skills such as 'Communications Skills' and 'Critical Thinking,' his primary focus, objective, and listed technical skills (UI/UX Designing, Front-end Development, Cisco certifications) are geared towards IT and software development roles. There is no mention of experience or skills relevant to receiving, storing, organizing, or handling products in a warehouse environment. Furthermore, there's a discrepancy between his objective stating 'IT graduate' and the education attainment only listing up to Senior High School, indicating a potential lack of attention to detail or a generic objective statement. This application is a significant mismatch for the required role.",
+    "ai_strengths": "[\"Lists 'Communications Skills' which is generally useful in any team environment.\", \"Lists 'Critical Thinking' which can aid in problem-solving.\", \"Received 'With Honor' in Senior High School, suggesting diligence and academic aptitude.\"]",
+    "ai_weaknesses": "['No direct experience or stated skills relevant to warehouse operations (receiving, storing, organizing products).', 'Technical skills listed (UI/UX Designing, Front-end Development, Cisco Packet Tracer) are completely irrelevant to a Warehouse Helper role.', \"Applicant's stated career objective is for 'software development or UI/UX design,' which is misaligned with the Warehouse Helper position.\", \"Discrepancy between the objective stating 'IT graduate' and the education attainment only listing up to Senior High School.\", 'No mention of physical aptitude or willingness for manual labor typically required in a warehouse setting.']"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 22,
+  "fields": {
+    "application_id": "65797A53",
+    "job": 2,
+    "first_name": "Tyrone Justin",
+    "middle_initial": "S.",
+    "last_name": "Santos",
+    "email": "tyrnesantos04@gmail.com",
+    "phone": "09683975504",
+    "resume": "resume/RESUMEKO_TWyrts4.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T17:18:27.357Z",
+    "interview_scheduled": false,
+    "ai_score": 18,
+    "ai_summary": "Tyrone Justin Santos is an IT graduate seeking an entry-level position in software development or UI/UX design, as explicitly stated in his objective. While he demonstrates good communication and critical thinking skills and academic achievement, his resume lacks any mention of assistant experience, content editing skills, or marketing savvy, which are crucial for the Admin Staff role. His listed skills (UI/UX designing, front-end development) and certifications (Cisco Packet Tracer) are technical and do not align with the administrative requirements. The applicant's professional aspirations appear entirely misaligned with this particular job opening.",
+    "ai_strengths": "['Possesses good communication skills.', 'Demonstrates critical thinking abilities.', \"Achieved 'With Honor' in Senior High School, indicating diligence.\", 'Motivated to learn and develop professional skills.']",
+    "ai_weaknesses": "['No explicit assistant experience provided.', 'Lacks content editing skills, a key requirement.', 'Does not demonstrate marketing savvy.', 'Career objective is not aligned with an administrative role.', 'Primary skills listed are technical (UI/UX, front-end development) and not relevant to the Admin Staff position.']"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 23,
+  "fields": {
+    "application_id": "83990E09",
+    "job": 7,
+    "first_name": "BLESSICA",
+    "middle_initial": "",
+    "last_name": "JUAN",
+    "email": "alldesignsworld@gmail.com",
+    "phone": "+048 253 8565 58554",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T20:18:26.102Z",
+    "interview_scheduled": false,
+    "ai_score": 0,
+    "ai_summary": "Blessica Juan's resume indicates a strong background and education in Web/UI Design and Computer Information Systems, with proficiency in various Adobe design tools. However, the applicant has no stated experience, skills, or qualifications related to sales, sales management, team supervision, sales performance monitoring, or customer relationship management, which are all critical requirements for the Sales Manager position. The applicant's profile is entirely misaligned with the job description.",
+    "ai_strengths": "['Strong technical skills in various Adobe design software (Photoshop, Dreamweaver, Illustrator, XD, Flash).', 'Solid educational background with multiple degrees in Computer Information Systems (Masters, Bachelors, Diploma).', 'Experience implied as a Web/UI Designer (based on resume title).']",
+    "ai_weaknesses": "['Complete lack of sales experience at any level.', 'No demonstrated experience in team management or supervision, which is a core requirement.', 'Absence of skills related to sales performance monitoring, reporting, or data analysis.', 'No indication of experience in developing sales strategies or managing customer relationships.', \"The applicant's entire professional profile and education are geared towards design and IT, not sales or business management.\"]"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 24,
+  "fields": {
+    "application_id": "5D9F33D4",
+    "job": 7,
+    "first_name": "",
+    "middle_initial": "",
+    "last_name": "",
+    "email": "",
+    "phone": "",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16_mEHBsb3.pdf",
+    "resume_processed": false,
+    "status": "Draft",
+    "created_at": "2026-07-06T20:21:22.347Z",
+    "interview_scheduled": false,
+    "ai_score": 0,
+    "ai_summary": "",
+    "ai_strengths": "",
+    "ai_weaknesses": ""
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 25,
+  "fields": {
+    "application_id": "B7660508",
+    "job": 7,
+    "first_name": "BLESSICA",
+    "middle_initial": "",
+    "last_name": "JUAN",
+    "email": "alldesignsworld@gmail.com",
+    "phone": "+048 253 8565 58554",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16_PxmGjTX.pdf",
+    "resume_processed": true,
+    "status": "Interview",
+    "created_at": "2026-07-06T20:23:04.986Z",
+    "interview_scheduled": false,
+    "ai_score": 5,
+    "ai_summary": "Blessica Juan's resume indicates a strong background in Computer Information Systems with multiple degrees and high proficiency in various Adobe Creative Suite applications, positioning her as a skilled Web/UI Designer. However, her profile contains no experience, skills, or qualifications related to sales, sales management, team supervision, performance monitoring, or sales data analysis, which are the fundamental requirements for the Sales Manager position.",
+    "ai_strengths": "['Strong educational background in Computer Information Systems (Masters, Bachelors, Diploma).', 'High proficiency in multiple Adobe Creative Suite tools (Photoshop, Illustrator, XD, Dreamweaver, Flash).']",
+    "ai_weaknesses": "['Complete lack of experience in sales or sales management roles.', 'No demonstrated ability to manage, supervise, or lead a sales team.', 'Absence of experience in monitoring daily/monthly sales performance or achieving sales targets.', 'No mentioned experience in preparing sales reports or analyzing sales data.', \"The applicant's professional focus as a 'WEB/UI DESIGNER' is entirely unrelated to the sales domain.\"]"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 26,
+  "fields": {
+    "application_id": "B72F02E8",
+    "job": 7,
+    "first_name": "BLESSICA",
+    "middle_initial": "",
+    "last_name": "JUAN",
+    "email": "alldesignsworld@gmail.com",
+    "phone": "+048 253 8565 58554",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16_PtYyJBl.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-06T20:27:03.172Z",
+    "interview_scheduled": false,
+    "ai_score": 5,
+    "ai_summary": "Blessica Juan's resume presents a background primarily in Web/UI Design, with a strong educational foundation in Computer Information Systems (Masters, Bachelor, and Diploma). Her listed skills are entirely focused on design software (Adobe Photoshop, Dreamweaver, Illustrator, XD, Flash). There is no mention of sales experience, management responsibilities, target achievement, sales reporting, or customer relationship management. The applicant's profile does not align with the requirements for a Sales Manager position.",
+    "ai_strengths": "['Strong proficiency in various Adobe design software (e.g., Photoshop, Flash, Illustrator).', 'Solid educational background in Computer Information Systems.']",
+    "ai_weaknesses": "['Lack of any relevant sales experience.', 'No stated experience in managing or supervising a sales team.', 'Absence of skills or experience related to monitoring sales performance, preparing sales reports, or analyzing sales data.', 'Educational background and current job title (WEB/UI DESIGNER) are entirely unrelated to sales or sales management.', 'No work experience details provided beyond job title.']"
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 27,
+  "fields": {
+    "application_id": "B8853DB5",
+    "job": 2,
+    "first_name": "Blessica",
+    "middle_initial": "",
+    "last_name": "Juan",
+    "email": "alldesignsworld@gmail.com",
+    "phone": "+048 253 8565 58554",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16_4d5nudS.pdf",
+    "resume_processed": true,
+    "status": "Draft",
+    "created_at": "2026-07-23T06:08:51.157Z",
+    "interview_scheduled": false,
+    "ai_score": 25,
+    "ai_summary": "Blessica Juan presents as a skilled Web/UI Designer with a strong educational background in Computer Information Systems and extensive proficiency in Adobe creative software. However, her resume lacks any mention of direct administrative or assistant experience, which is a core requirement for the Admin Staff position. While her design skills could be tangentially related to content creation for marketing purposes, they do not directly align with the general office operations, content editing, or broad marketing savvy typically expected for an administrative role. The provided education dates appear inconsistent with her stated age.",
+    "ai_strengths": "High proficiency in various Adobe creative suite applications (Photoshop, Dreamweaver, Illustrator, XD, Flash).\nSolid educational foundation in Computer Information Systems with multiple degrees.\nSkills in web/UI design demonstrate an understanding of visual content creation that could support marketing materials.",
+    "ai_weaknesses": "No stated assistant or general administrative work experience.\nLack of direct evidence of skills required for daily office operations such as organizing files, scheduling, or message handling.\nContent editing skills are primarily in design software, not administrative document editing or proofreading.\nThe applicant's profile is heavily focused on design and IT, which does not match the administrative nature of the role.\nInconsistency between stated age and education completion dates."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 28,
+  "fields": {
+    "application_id": "A5BEBC60",
+    "job": 1,
+    "first_name": "BLESSICA",
+    "middle_initial": "",
+    "last_name": "JUAN",
+    "email": "alldesignsworld@gmail.com",
+    "phone": "+048 253 8565 58554",
+    "resume": "resume/Resume-CV-Templates-Word-doc-16_S0lSrp5.pdf",
+    "resume_processed": true,
+    "status": "Draft",
+    "created_at": "2026-07-23T06:14:27.749Z",
+    "interview_scheduled": false,
+    "ai_score": 5,
+    "ai_summary": "The applicant, Blessica Juan, presents a background as a Web/UI Designer with multiple degrees in Computer Information Systems. Her listed skills are exclusively focused on Adobe creative suite for design purposes. The resume contains no information regarding sales experience, management skills, customer relationship management, or strategic planning, which are all critical requirements for the Sales Manager role described.",
+    "ai_strengths": "Strong technical proficiency in web/UI design software (Adobe Photoshop, Dreamweaver, Illustrator, XD, Flash).\nSolid educational foundation with multiple degrees in Computer Information Systems.",
+    "ai_weaknesses": "No stated experience in sales or sales management.\nLack of any demonstrated or mentioned management skills, which is a core requirement.\nEducational background and technical skills are entirely irrelevant to a sales management position.\nAbsence of information regarding experience with sales targets, customer relationship management, or strategy development.\nNo work experience section provided to assess relevant professional history."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 29,
+  "fields": {
+    "application_id": "F4C34B06",
+    "job": 1,
+    "first_name": "John",
+    "middle_initial": "",
+    "last_name": "Doe",
+    "email": "E-mail",
+    "phone": "Phone Number",
+    "resume": "resume/Resume.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-26T03:30:06.721Z",
+    "interview_scheduled": false,
+    "ai_score": 55,
+    "ai_summary": "John Doe presents a strong background in retail sales and customer service, with extensive experience in various brands. He has demonstrated an ability to meet sales goals, build customer relationships, and has shown nascent leadership skills through assisting in coworker training. However, his resume's stated objective for a graphic design role presents a significant misalignment with this sales position. While he possesses some of the required 'Management Skills' (training coworkers), he lacks explicit experience in developing sales strategies, overseeing a sales team, or monitoring sales performance at a managerial level, as described in the job details.",
+    "ai_strengths": "Extensive experience in retail sales and customer service across multiple brands (American Eagle, Planet Beach, Heartbreaker, Victoria's Secret).\nProven ability to meet company sales goals and sell memberships/retail.\nDemonstrated nascent leadership skills by assisting in the training of coworkers.\nStrong organizational skills and responsibility, including running operating procedures and handling cash/deposits.\nExcellent communication skills with clients to fulfill their needs.",
+    "ai_weaknesses": "The resume objective explicitly states a career goal in graphic design, which is a direct contradiction to a sales role and indicates a potential lack of long-term commitment to a sales career.\nLacks explicit experience in developing overarching sales strategies, overseeing an entire sales team, or monitoring broader sales performance, which are key aspects of the provided job description.\nNo direct managerial title or experience managing a team of sales staff."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 32,
+  "fields": {
+    "application_id": "C82CF23C",
+    "job": 1,
+    "first_name": "Im A.",
+    "middle_initial": "",
+    "last_name": "Sample",
+    "email": "imasample3@xxx.com",
+    "phone": "(402) 291-5678",
+    "resume": "resume/resume-sample_WRIXtRS.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-27T04:25:33.589Z",
+    "interview_scheduled": false,
+    "ai_score": 93,
+    "ai_summary": "Im A. Sample presents as an experienced business professional with a strong background in customer service supervision and telemarketing, demonstrating robust management skills crucial for a Sales Manager role. The applicant has a proven ability to lead and develop teams, manage operations, administer budgets, and contribute to business planning. Direct sales experience is also evident through achieving incentive awards. This combination of leadership, operational management, and sales acumen makes the applicant highly suitable for overseeing a sales team and driving growth.",
+    "ai_strengths": "Strong Management and Supervisory Experience: Directly supervised a 20-person telemarketing unit, including hiring, training, and performance evaluation.\nStrategic and Operational Planning: Proficient in preparing annual budgets and developing business plans, aligning with a Sales Manager's responsibilities to achieve targets and grow the business.\nCustomer Relationship Management: Demonstrated ability to assess customer satisfaction and resolve complex issues, vital for maintaining strong customer relationships.\nSales Acumen: Received 'Incentive Awards for sales efforts' as a Customer Service Representative, indicating direct sales capability and a results-oriented approach.\nEmployee Development: Experience in providing orientation and training to new staff members, essential for team growth and performance enhancement.",
+    "ai_weaknesses": "Primary Management Experience in Customer Service: While strong, the management experience is primarily within customer service supervision rather than explicitly managing an external or direct sales force.\nLimited Detail on Sales Strategy Implementation: The resume mentions developing business plans and sales efforts but lacks specific examples of sales growth strategies implemented or quantitative sales targets achieved at a managerial level."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 33,
+  "fields": {
+    "application_id": "42A05CEA",
+    "job": 1,
+    "first_name": "IM",
+    "middle_initial": "A.",
+    "last_name": "SAMPLE III",
+    "email": "imasample3@xxx.com",
+    "phone": "(402) 291-5678",
+    "resume": "resume/resume-sample.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-29T07:31:31.707Z",
+    "interview_scheduled": false,
+    "ai_score": 95,
+    "ai_summary": "IM A. Sample III is a highly qualified candidate for a Sales Manager role, aligning well with the detailed job description and 'Management Skills' requirement. With extensive experience as a Customer Service Supervisor, this applicant has demonstrated strong capabilities in overseeing a 20-person telemarketing unit, including hiring, training, evaluating employees, preparing budgets, and developing business plans. They have a proven track record in customer satisfaction, resolving complex issues, and have received incentive awards for direct sales efforts.",
+    "ai_strengths": "Exceptional Management Skills: Proven experience in supervising operations, staff (20-person unit), hiring, training, evaluating employees, administering budgets, and developing business plans.\nStrong Customer Relationship Management: Skilled in assessing customer satisfaction and resolving sensitive and complex issues, crucial for client retention and growth.\nDemonstrated Sales Acumen: Received 'Incentive Awards for sales efforts' and experience in recommending products to meet customer needs, indicating a direct contribution to revenue generation.\nLeadership and Training Abilities: Provided orientation and training to new staff members, fostering team development.\nStrong Communication and Human Relations Skills: Described as a 'take charge' person with excellent interpersonal abilities, essential for leading a sales team.",
+    "ai_weaknesses": "While a Customer Service Supervisor role often involves sales targets, the resume could more explicitly detail experience in 'monitoring sales performance' or 'overseeing sales team specific targets' within a dedicated sales department context, rather than a general telemarketing unit.\nEducational background is in Management of Human Resources, which is excellent for people management, but not directly in sales strategy or business administration, although a BS in Management is broadly applicable."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 34,
+  "fields": {
+    "application_id": "59FC53E2",
+    "job": 6,
+    "first_name": "",
+    "middle_initial": "",
+    "last_name": "",
+    "email": "",
+    "phone": "",
+    "resume": "resume/cv-template.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-29T07:36:45.370Z",
+    "interview_scheduled": false,
+    "ai_score": 0,
+    "ai_summary": "The provided document is a resume template with instructions on how to fill it out, rather than an actual applicant's resume. Therefore, no specific information about an individual's work experience, education, or skills relevant to the Warehouse Helper role can be extracted or evaluated. A proper assessment requires a fully completed resume.",
+    "ai_strengths": "Not applicable - no specific applicant data provided.",
+    "ai_weaknesses": "No specific applicant information available for evaluation.\nUnable to assess experience in receiving/checking deliveries.\nUnable to assess experience in organizing/storing products."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 39,
+  "fields": {
+    "application_id": "3026A18E",
+    "job": 2,
+    "first_name": "N/A",
+    "middle_initial": "",
+    "last_name": "Applicant",
+    "email": "N/A",
+    "phone": "N/A",
+    "resume": "resume/cv-template_cA79N67.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-29T08:39:35.494Z",
+    "interview_scheduled": false,
+    "ai_score": 0,
+    "ai_summary": "The provided document is a generic resume template with instructions for an applicant to fill out, rather than an actual applicant's resume. Therefore, there is no specific information regarding experience, skills, or achievements to evaluate against the job description for Admin Staff. Without an actual resume, it is impossible to assess the candidate's qualifications for Assistant Experience, Content Editing Skills, or Marketing Savvy.",
+    "ai_strengths": "The template itself is well-structured and guides the user to provide achievement-oriented bullet points, which would be beneficial if populated.\nPrompts for quantitative examples in work experience, which can strengthen an actual resume's impact.",
+    "ai_weaknesses": "No actual applicant data provided, rendering evaluation impossible.\nThe template does not explicitly prompt for 'Content Editing Skills' or 'Marketing Savvy,' meaning an applicant would need to proactively incorporate these if they possess them.\nNo specific examples of 'Assistant Experience' are present to assess alignment with job requirements."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 41,
+  "fields": {
+    "application_id": "BBD75BCB",
+    "job": 6,
+    "first_name": "ABCD",
+    "middle_initial": "I",
+    "last_name": "z",
+    "email": "mntnacc0@gmail.com",
+    "phone": "09123456789",
+    "resume": "resume/cv-template_UhTiI35.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-29T09:06:57.543Z",
+    "interview_scheduled": false,
+    "ai_score": 5,
+    "ai_summary": "The provided document is a resume template, not an actual applicant's resume with specific details. Therefore, it is impossible to evaluate an applicant's qualifications, experience, or skills for the Warehouse Helper position. The template itself outlines good practices for resume writing but contains no substantive content for assessment.",
+    "ai_strengths": "N/A (Provided document is a template, not an applicant's resume)",
+    "ai_weaknesses": "Complete absence of applicant-specific information (education, work experience, achievements, skills)\nNo details available to match against the job requirements for receiving, storing, organizing products, or maintaining cleanliness."
+  }
+},
+{
+  "model": "jobs.application",
+  "pk": 42,
+  "fields": {
+    "application_id": "AB6CBBBC",
+    "job": 6,
+    "first_name": "ABCD",
+    "middle_initial": "I",
+    "last_name": "z",
+    "email": "mntnacc0@gmail.com",
+    "phone": "09123456789",
+    "resume": "resume/cv-template.pdf",
+    "resume_processed": true,
+    "status": "Pending",
+    "created_at": "2026-07-29T16:22:49.283Z",
+    "interview_scheduled": false,
+    "ai_score": 0,
+    "ai_summary": "The provided document is a resume template containing instructions and placeholder text, rather than an actual applicant's resume. As such, there is no specific information about an individual's work experience, education, or skills to evaluate against the requirements of the Warehouse Helper position. A proper assessment of qualifications, strengths, and weaknesses is not possible without concrete applicant data.",
+    "ai_strengths": "N/A - No applicant data provided.",
+    "ai_weaknesses": "N/A - No applicant data provided for evaluation against job requirements.\nLack of information regarding experience in receiving and checking incoming deliveries.\nNo details on ability to organize and store products in warehouse locations.\nAbsence of any work history or achievements relevant to warehouse operations."
+  }
+},
+{
+  "model": "hr.interview",
+  "pk": 1,
+  "fields": {
+    "interview_type": "Technical Interview",
+    "interviewer": "Admin",
+    "date": "2026-07-27",
+    "time": "10:00:00",
+    "location": "Baliwag Office",
+    "notes": "2 other interviewers will be join later on to the interview",
+    "status": "Scheduled",
+    "created_at": "2026-07-17T13:40:48.021Z",
+    "applicants": [
+      21
+    ]
+  }
+},
+{
+  "model": "hr.interview",
+  "pk": 2,
+  "fields": {
+    "interview_type": "HR Interview",
+    "interviewer": "Admin",
+    "date": "2026-07-18",
+    "time": "10:30:00",
+    "location": "Baliwag Office",
+    "notes": "",
+    "status": "Ongoing",
+    "created_at": "2026-07-17T14:23:25.262Z",
+    "applicants": [
+      19
+    ]
+  }
+},
+{
+  "model": "hr.interview",
+  "pk": 3,
+  "fields": {
+    "interview_type": "Technical Interview",
+    "interviewer": "Admin Gojo",
+    "date": "2026-07-24",
+    "time": "10:30:00",
+    "location": "Baliwag HR Office",
+    "notes": "",
+    "status": "Ongoing",
+    "created_at": "2026-07-21T14:36:17.895Z",
+    "applicants": [
+      23,
+      25
+    ]
+  }
+},
+{
+  "model": "hr.interview",
+  "pk": 4,
+  "fields": {
+    "interview_type": "HR Interview",
+    "interviewer": "Yuan",
+    "date": "2026-07-25",
+    "time": "10:00:00",
+    "location": "Baliwag Office",
+    "notes": "",
+    "status": "Completed",
+    "created_at": "2026-07-23T05:54:01.989Z",
+    "applicants": [
+      22
+    ]
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "add_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "change_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "delete_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view log entry",
+    "content_type": [
+      "admin",
+      "logentry"
+    ],
+    "codename": "view_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "add_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "change_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "delete_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view permission",
+    "content_type": [
+      "auth",
+      "permission"
+    ],
+    "codename": "view_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "add_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "change_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "delete_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view group",
+    "content_type": [
+      "auth",
+      "group"
+    ],
+    "codename": "view_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add user",
+    "content_type": [
+      "auth",
+      "user"
+    ],
+    "codename": "add_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change user",
+    "content_type": [
+      "auth",
+      "user"
+    ],
+    "codename": "change_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete user",
+    "content_type": [
+      "auth",
+      "user"
+    ],
+    "codename": "delete_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view user",
+    "content_type": [
+      "auth",
+      "user"
+    ],
+    "codename": "view_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "add_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "change_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "delete_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view content type",
+    "content_type": [
+      "contenttypes",
+      "contenttype"
+    ],
+    "codename": "view_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "add_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "change_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "delete_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view session",
+    "content_type": [
+      "sessions",
+      "session"
+    ],
+    "codename": "view_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add job",
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "codename": "add_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change job",
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "codename": "change_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete job",
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "codename": "delete_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view job",
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "codename": "view_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add requirement",
+    "content_type": [
+      "jobs",
+      "requirement"
+    ],
+    "codename": "add_requirement"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change requirement",
+    "content_type": [
+      "jobs",
+      "requirement"
+    ],
+    "codename": "change_requirement"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete requirement",
+    "content_type": [
+      "jobs",
+      "requirement"
+    ],
+    "codename": "delete_requirement"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view requirement",
+    "content_type": [
+      "jobs",
+      "requirement"
+    ],
+    "codename": "view_requirement"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add application",
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "codename": "add_application"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change application",
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "codename": "change_application"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete application",
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "codename": "delete_application"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view application",
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "codename": "view_application"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can add interview",
+    "content_type": [
+      "hr",
+      "interview"
+    ],
+    "codename": "add_interview"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can change interview",
+    "content_type": [
+      "hr",
+      "interview"
+    ],
+    "codename": "change_interview"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can delete interview",
+    "content_type": [
+      "hr",
+      "interview"
+    ],
+    "codename": "delete_interview"
+  }
+},
+{
+  "model": "auth.permission",
+  "fields": {
+    "name": "Can view interview",
+    "content_type": [
+      "hr",
+      "interview"
+    ],
+    "codename": "view_interview"
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$xWnlNCwDsIDtBkJ3WCqQ0s$0ifcpp2ByBMQXWlGqJOXeqaxG8wuaeLeQLmwXDTMVv0=",
+    "last_login": "2026-07-31T08:51:49.910Z",
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "tyrnesantos04@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-07-03T15:58:12Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 1,
+  "fields": {
+    "action_time": "2026-07-03T16:02:30.278Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "1",
+    "object_repr": "Sales Manager",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 2,
+  "fields": {
+    "action_time": "2026-07-04T14:03:04.212Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "1",
+    "object_repr": "Sales Manager",
+    "action_flag": 2,
+    "change_message": "[{\"added\": {\"name\": \"requirement\", \"object\": \"Management Skills\"}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 3,
+  "fields": {
+    "action_time": "2026-07-04T14:44:14.172Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "2",
+    "object_repr": "Admin Staff",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}, {\"added\": {\"name\": \"requirement\", \"object\": \"Assistant Experience\"}}, {\"added\": {\"name\": \"requirement\", \"object\": \"Content Editing Skills\"}}, {\"added\": {\"name\": \"requirement\", \"object\": \"Marketing Savvy\"}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 4,
+  "fields": {
+    "action_time": "2026-07-04T17:27:18.477Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "8",
+    "object_repr": "DE48ED4F -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 5,
+  "fields": {
+    "action_time": "2026-07-04T17:27:26.030Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "7",
+    "object_repr": "3328469B -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 6,
+  "fields": {
+    "action_time": "2026-07-04T17:27:31.780Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "6",
+    "object_repr": "B938DAE6 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 7,
+  "fields": {
+    "action_time": "2026-07-04T17:27:37.874Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "5",
+    "object_repr": "96DE217D -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 8,
+  "fields": {
+    "action_time": "2026-07-04T17:27:40.892Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "4",
+    "object_repr": "7018935B -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 9,
+  "fields": {
+    "action_time": "2026-07-04T17:27:45.503Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "3",
+    "object_repr": "DDF65740 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 10,
+  "fields": {
+    "action_time": "2026-07-04T17:27:48.276Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "2",
+    "object_repr": "362A28F7 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 11,
+  "fields": {
+    "action_time": "2026-07-04T17:27:53.747Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "1",
+    "object_repr": "E55F1191 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 12,
+  "fields": {
+    "action_time": "2026-07-04T17:28:30.863Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "10",
+    "object_repr": "F96552CA - Tyrone Santos",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 13,
+  "fields": {
+    "action_time": "2026-07-04T17:35:33.206Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "11",
+    "object_repr": "D5EDBB2D - Juan Cruz",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 14,
+  "fields": {
+    "action_time": "2026-07-05T13:34:08.516Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "11",
+    "object_repr": "D5EDBB2D - Juan Cruz",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 15,
+  "fields": {
+    "action_time": "2026-07-05T13:34:12.326Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "10",
+    "object_repr": "F96552CA - Tyrone Santos",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 16,
+  "fields": {
+    "action_time": "2026-07-05T13:34:14.810Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "9",
+    "object_repr": "E0B239D6 - Tyrone Santos",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 17,
+  "fields": {
+    "action_time": "2026-07-05T15:21:30.786Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "auth",
+      "user"
+    ],
+    "object_id": "1",
+    "object_repr": "admin",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Email address\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 18,
+  "fields": {
+    "action_time": "2026-07-05T18:12:54.144Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "5",
+    "object_repr": "WareHouse Helper",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 19,
+  "fields": {
+    "action_time": "2026-07-05T18:12:58.569Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "4",
+    "object_repr": "WareHouse Helper",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 20,
+  "fields": {
+    "action_time": "2026-07-05T18:13:03.763Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "3",
+    "object_repr": "WareHouse Helper",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 21,
+  "fields": {
+    "action_time": "2026-07-06T03:04:23.921Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "12",
+    "object_repr": "A3CD858A - Toji Zenin",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 22,
+  "fields": {
+    "action_time": "2026-07-06T03:17:39.919Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "1",
+    "object_repr": "Sales Staff",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\", \"Description\", \"Is active\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 23,
+  "fields": {
+    "action_time": "2026-07-06T03:20:58.298Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "13",
+    "object_repr": "D053A802 - Tyrone Santos",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 24,
+  "fields": {
+    "action_time": "2026-07-06T07:19:06.069Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "13",
+    "object_repr": "D053A802 - Tyrone Santos",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 25,
+  "fields": {
+    "action_time": "2026-07-06T07:19:11.068Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "18",
+    "object_repr": "EAE72B12 - Tyrone Justin Santos",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 26,
+  "fields": {
+    "action_time": "2026-07-06T07:19:30.113Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "17",
+    "object_repr": "BD2FD558 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 27,
+  "fields": {
+    "action_time": "2026-07-06T07:19:33.534Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "16",
+    "object_repr": "E7883AF9 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 28,
+  "fields": {
+    "action_time": "2026-07-06T07:19:39.622Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "15",
+    "object_repr": "B76A488F - Tyrone Santos",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 29,
+  "fields": {
+    "action_time": "2026-07-06T07:19:43.300Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "14",
+    "object_repr": "9463FEB4 -  ",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 30,
+  "fields": {
+    "action_time": "2026-07-06T07:19:46.081Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "application"
+    ],
+    "object_id": "12",
+    "object_repr": "A3CD858A - Toji Zenin",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 31,
+  "fields": {
+    "action_time": "2026-07-06T07:59:16.134Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "6",
+    "object_repr": "Warehouse Helper",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 32,
+  "fields": {
+    "action_time": "2026-07-23T06:24:17.031Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "1",
+    "object_repr": "Sales Staff",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\", \"Description\", \"Is active\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 33,
+  "fields": {
+    "action_time": "2026-07-23T16:42:58.348Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "7",
+    "object_repr": "Sales Manager",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\", \"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 34,
+  "fields": {
+    "action_time": "2026-07-23T16:43:03.497Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "6",
+    "object_repr": "Warehouse Helper",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 35,
+  "fields": {
+    "action_time": "2026-07-23T16:43:08.806Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "2",
+    "object_repr": "Admin Staff",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\", \"Description\", \"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 36,
+  "fields": {
+    "action_time": "2026-07-23T16:43:14.261Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "1",
+    "object_repr": "Sales Staff",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Status\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 37,
+  "fields": {
+    "action_time": "2026-07-23T16:50:37.838Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "jobs",
+      "job"
+    ],
+    "object_id": "8",
+    "object_repr": "Security Guard",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Job type\", \"Description\"]}}]"
+  }
+}
+]

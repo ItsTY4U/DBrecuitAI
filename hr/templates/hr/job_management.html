@@ -1,25 +1,63 @@
 {% extends "home_admin.html" %}
 {% load static %}
 {% block admin_body %}
-    <main class="main-dashboard">
-            <header class="dashboard-header">
-                <div class="header-left">
-                    <h2>Job Management</h2>
-                </div>
-                {% comment %} <div class="header-right">
-                    <div class="notif-bell">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                </div> {% endcomment %}
-            </header>
+<main class="main-dashboard">
+    <header class="dashboard-header">
+        <div class="header-left">
+            <h1 class="dashboard-title">Job Management</h1>
+            <p class="dashboard-subtitle">Create, monitor, and configure active hiring roles across all departments.</p>
+        </div>
+        <div class="header-right">
+            <button type="button" class="btn-header-action" id="open-post-modal">
+                <i class="fas fa-plus"></i>
+                <span>Post New Job</span>
+            </button>
+        </div>
+    </header>
 
-            <div style="margin-bottom: 25px; text-align: right;">
-                <button type="button" class="btn btn-primary" id="open-post-modal">
-                    <i class="fas fa-plus"></i> Post New Job
-                </button>            
+    <!-- Job Stats Summary -->
+    <section class="stats-grid job-summary-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-green">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <span class="stat-badge">Live</span>
             </div>
-            
-            {% include "hr/partials/job_grid.html" %}
-            {% include "hr/partials/post_job.html" %}
-        </main>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_active }}</h3>
+                <span class="stat-label">Active Job Openings</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-amber">
+                    <i class="fas fa-box-archive"></i>
+                </div>
+                <span class="stat-badge">Closed</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_inactive }}</h3>
+                <span class="stat-label">Inactive / Archived</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-blue">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <span class="stat-badge">Total</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_jobs }}</h3>
+                <span class="stat-label">Total Created Roles</span>
+            </div>
+        </div>
+    </section>
+
+    {% include "hr/partials/job_grid.html" %}
+    {% include "hr/partials/post_job.html" %}
+</main>
 {% endblock %}

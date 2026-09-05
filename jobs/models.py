@@ -2,6 +2,7 @@
 from django.db import models
 from uuid import uuid4
 from django.contrib.auth.models import User
+
 class Job(models.Model):
     JOB_TYPES = [
         ("FULL-TIME", "Full-Time"),
@@ -109,6 +110,13 @@ class Application(models.Model):
     ai_summary = models.TextField(blank=True)
     ai_strengths = models.TextField(blank=True)
     ai_weaknesses = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"]),                          # dashboard counts, filters
+            models.Index(fields=["job", "status"]),                   # candidate_department per-role filtering
+            models.Index(fields=["-ai_score", "-created_at"]),        # matches .order_by("-ai_score", "-created_at")
+        ]
     ai_match_level = models.CharField(max_length=30, blank=True)
     ai_recommendation = models.CharField(max_length=30, blank=True)
     ai_matched_qualifications = models.TextField(blank=True)

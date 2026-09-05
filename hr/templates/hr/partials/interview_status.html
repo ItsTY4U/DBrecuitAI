@@ -1,178 +1,91 @@
-<div class="content-box interview-status-box">
-
+<div class="content-box">
     <div class="box-header">
-        <h3>Interview Status</h3>
+        <div class="box-header-title">
+            <i class="fas fa-sliders header-icon text-green"></i>
+            <div>
+                <h3>Status Management</h3>
+                <p class="box-subtitle">Track and update interview outcome</p>
+            </div>
+        </div>
     </div>
 
-    {% if interview.status == "Scheduled" or interview.status == "Ongoing" %}
-
-        <form method="POST"
-            action="{% url 'update_interview_status' interview.id %}"
-            class="interview-status-form">
-
-            {% csrf_token %}
-
-            <div class="form-group">
-                <label for="status">
-                    Status
-                </label>
-
-                <select name="status"
-                        id="status"
-                        class="status-select">
-
-                    <option value="Scheduled"
-                        {% if interview.status == "Scheduled" %}selected{% endif %}>
-                        Scheduled
-                    </option>
-
-                    <option value="Ongoing"
-                        {% if interview.status == "Ongoing" %}selected{% endif %}>
-                        Ongoing
-                    </option>
-
-                    <option value="Completed">
-                        Completed
-                    </option>
-
-                    <option value="Rescheduled">
-                        Rescheduled
-                    </option>
-
-                    <option value="Cancelled">
-                        Cancelled
-                    </option>
-
-                </select>
+    <!-- Status Banner Display -->
+    {% if interview.status == "Completed" %}
+        <div class="status-banner status-banner-success">
+            <i class="fas fa-circle-check"></i>
+            <div>
+                <strong>Interview Completed</strong>
+                <p>This session has concluded successfully.</p>
             </div>
-
-
-            <!-- Reschedule Fields -->
-
-            <div id="reschedule-fields"
-                class="reschedule-fields">
-
-                <div class="form-group">
-
-                    <label for="date">
-                        New Date
-                    </label>
-
-                    <input type="date"
-                        name="date"
-                        id="date"
-                        value="{{ interview.date|date:'Y-m-d' }}">
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label for="time">
-                        New Time
-                    </label>
-
-                    <input type="time"
-                        name="time"
-                        id="time"
-                        value="{{ interview.time|time:'H:i' }}">
-
-                </div>
-
-            </div>
-
-
-            <button type="submit"
-                    class="btn-primary-detail">
-
-                Update Status
-
-            </button>
-
-        </form>
-
-
-    {% elif interview.status == "Completed" %}
-
-        <div class="status-success">
-            <strong>Interview Completed</strong>
-            <span>This interview has been completed.</span>
         </div>
-
-
-    {% elif interview.status == "Rescheduled" %}
-
-        <div class="status-warning">
-
-            <strong>⚠ Interview Rescheduled</strong>
-
-            <span>
-                New schedule:
-                {{ interview.date }}
-                at
-                {{ interview.time }}
-            </span>
-
-        </div>
-
-        <form method="POST"
-            action="{% url 'update_interview_status' interview.id %}"
-            class="interview-status-form">
-
-            {% csrf_token %}
-
-            <div class="form-group">
-
-                <label for="status">
-                    Update Status
-                </label>
-
-                <select name="status"
-                        id="status"
-                        class="status-select">
-
-                    <option value="Scheduled">
-                        Scheduled
-                    </option>
-
-                    <option value="Ongoing">
-                        Ongoing
-                    </option>
-
-                    <option value="Completed">
-                        Completed
-                    </option>
-
-                    <option value="Cancelled">
-                        Cancelled
-                    </option>
-
-                </select>
-
-            </div>
-
-            <button type="submit"
-                    class="btn-primary-detail">
-
-                Update Status
-
-            </button>
-
-        </form>
-
-
     {% elif interview.status == "Cancelled" %}
-
-        <div class="status-danger">
-
-            <strong>✕ Interview Cancelled</strong>
-
-            <span>
-                This interview has been cancelled.
-            </span>
-
+        <div class="status-banner status-banner-danger">
+            <i class="fas fa-circle-xmark"></i>
+            <div>
+                <strong>Interview Cancelled</strong>
+                <p>This session was marked as cancelled.</p>
+            </div>
         </div>
-
+    {% elif interview.status == "Ongoing" %}
+        <div class="status-banner status-banner-active">
+            <i class="fas fa-video"></i>
+            <div>
+                <strong>Session in Progress</strong>
+                <p>Interview is currently taking place.</p>
+            </div>
+        </div>
     {% endif %}
 
+    <form method="POST" action="{% url 'update_interview_status' interview.id %}" class="interview-status-form">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label" for="interview-status-select">Change Session Status</label>
+            <select name="status" id="interview-status-select" class="form-control-custom" onchange="handleStatusChange(this.value)">
+                <option value="Scheduled" {% if interview.status == "Scheduled" %}selected{% endif %}>Scheduled</option>
+                <option value="Ongoing" {% if interview.status == "Ongoing" %}selected{% endif %}>Ongoing (Active)</option>
+                <option value="Completed" {% if interview.status == "Completed" %}selected{% endif %}>Completed</option>
+                <option value="Rescheduled" {% if interview.status == "Rescheduled" %}selected{% endif %}>Rescheduled</option>
+                <option value="Cancelled" {% if interview.status == "Cancelled" %}selected{% endif %}>Cancelled</option>
+            </select>
+        </div>
+
+        <!-- Conditional Reschedule Date/Time -->
+        <div id="reschedule-container" class="reschedule-fields-box" style="display: {% if interview.status == 'Rescheduled' %}block{% else %}none{% endif %};">
+            <div class="reschedule-box-header">
+                <i class="fas fa-calendar-days text-amber"></i>
+                <span>Set New Date & Time</span>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label class="form-label" for="reschedule-date">New Date</label>
+                <input type="date" name="date" id="reschedule-date" class="form-control-custom" value="{{ interview.date|date:'Y-m-d' }}">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="reschedule-time">New Time</label>
+                <input type="time" name="time" id="reschedule-time" class="form-control-custom" value="{{ interview.time|time:'H:i' }}">
+            </div>
+        </div>
+
+        <div class="form-actions-bar" style="margin-top: 18px;">
+            <button type="submit" class="btn-modal-submit" style="width: 100%; justify-content: center; padding: 12px;">
+                <i class="fas fa-floppy-disk"></i>
+                <span>Update Session Status</span>
+            </button>
+        </div>
+    </form>
 </div>
+
+<script>
+function handleStatusChange(value) {
+    const container = document.getElementById('reschedule-container');
+    if (container) {
+        if (value === 'Rescheduled') {
+            container.style.display = 'block';
+        } else {
+            container.style.display = 'none';
+        }
+    }
+}
+</script>

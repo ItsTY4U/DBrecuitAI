@@ -28,6 +28,7 @@ def signup(request):
 
     if request.user.is_authenticated:
         return redirect("home")
+        return redirect("home")
 
     form = ApplicantSignupForm()
 
@@ -142,9 +143,7 @@ def process_profile_resume(profile):
         return False
     
     try:
-        resume_path = profile.default_resume.path
-        
-        resume_text = extract_resume_text(resume_path)
+        resume_text = extract_resume_text(profile.default_resume)
         
         parsed_data = parse_resume(resume_text)
         
@@ -290,22 +289,19 @@ def process_signup_resume(request):
         )
         
     try:
+        # Extract resume text directly from uploaded file
+        resume_text = extract_resume_text(resume)
         
-        temp_path = default_storage.save(
-            f"temp_resumes/{resume.name}",
-            resume
-        )
-        
-        full_path = default_storage.path(temp_path)
-        
-        # Extract resume text
-        resume_text = extract_resume_text(full_path)
+        if not resume_text or not resume_text.strip():
+            return JsonResponse(
+                {
+                    "error": "Unable to extract text from the resume. Please ensure the PDF contains readable text (not a scanned image)."
+                },
+                status=400
+            )
         
         # Parse resume with Gemini
         parsed_data = parse_resume(resume_text)
-        
-        # Delete temp file
-        default_storage.delete(temp_path)
         
         if not parsed_data:
             return JsonResponse(
@@ -314,7 +310,7 @@ def process_signup_resume(request):
                 },
                 status=400
             )
-        # Save proceed resume data temp
+        # Save processed resume data to session
         request.session["signup_resume_text"] = resume_text
         request.session["signup_resume_data"] = parsed_data
         
@@ -330,7 +326,7 @@ def process_signup_resume(request):
         
         return JsonResponse(
             {
-                "error": "An error occured while processing the resume."
+                "error": "An error occurred while processing the resume."
             },
             status=500
         )

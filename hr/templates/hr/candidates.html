@@ -1,17 +1,71 @@
 {% extends "home_admin.html" %}
 {% load static %}
 {% block admin_body %}
-
 <main class="main-dashboard">
     <header class="dashboard-header">
         <div class="header-left">
-            <h2>Candidates Management</h2>
+            <h1 class="dashboard-title">Candidates Management</h1>
+            <p class="dashboard-subtitle">Track candidate applications, review AI screening rankings, and manage hiring stages.</p>
         </div>
     </header>
+
+    <!-- Candidate Stats Grid -->
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-blue">
+                    <i class="fas fa-users"></i>
+                </div>
+                <span class="stat-badge">Total</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_candidates }}</h3>
+                <span class="stat-label">Total Applicants</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-amber">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <span class="stat-badge">Screening</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ screening_count }}</h3>
+                <span class="stat-label">In Screening</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-purple">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <span class="stat-badge">Interviews</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ interview_count }}</h3>
+                <span class="stat-label">Interview Stage</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-green">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <span class="stat-badge">Hired</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ hired_count }}</h3>
+                <span class="stat-label">Hired Candidates</span>
+            </div>
+        </div>
+    </section>
     
     <div id="candidate-table">
         {% include "hr/partials/candidate_departments.html" %}
     </div>
 </main>
-
 {% endblock %}

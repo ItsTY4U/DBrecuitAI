@@ -1,0 +1,14 @@
+LOAD DATABASE
+    FROM mysql://pgloader:Pgloader_123@dbrecruitai-mysql80:3306/dbrecruitai_database
+    INTO postgresql://postgres.djoocaqpxkngsnnmkefu:N6zQgQfUani8b75f@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres
+
+WITH
+    include no drop,
+    create tables,
+    create indexes,
+    reset sequences,
+    foreign keys,
+    data only
+
+CAST
+    type tinyint when (= precision 1) to boolean using tinyint-to-boolean;

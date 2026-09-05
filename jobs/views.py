@@ -1,6 +1,7 @@
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
+from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
 from django.urls import reverse
 import json
@@ -26,13 +27,6 @@ def jobs(request):
         if department:
             jobs = jobs.filter(department=department)
 
-        if request.headers.get("HX-Request"):
-            return render(
-                request,
-                "jobs/partials/jobs_list.html",
-                {"jobs": jobs},
-            )
-
         return render(
             request,
             "jobs/jobs.html",
@@ -45,12 +39,12 @@ def jobs(request):
             f"<pre>{traceback.format_exc()}</pre>",
             status=500
         )
-
+        
 def job_detail(request, id):
     job = get_object_or_404(Job, id=id)
     return render(request, "jobs/job_detail.html", {
         "job": job
-    })  
+    }) 
 
 @login_required(login_url="applicant_login")
 def apply_job(request, pk):
@@ -228,6 +222,7 @@ def apply_job(request, pk):
 
 @login_required(login_url="applicant_login")
 def upload_resume(request, pk):
+
     job = get_object_or_404(Job, pk=pk)
 
     if request.method != "POST":
@@ -244,7 +239,7 @@ def upload_resume(request, pk):
             "error": "Please upload a resume."
         })
 
-    # Only allow PDF files
+    # Allowed resume file types
     allowed_extensions = [".pdf", ".doc", ".docx"]
 
     if not any(
@@ -263,6 +258,8 @@ def upload_resume(request, pk):
             "error": "Resume must be smaller than 5 MB."
         })
 
+    # Create the application and save the resume.
+    # AI processing is intentionally NOT performed here.
     application = Application.objects.create(
         job=job,
         resume=resume,
@@ -274,61 +271,7 @@ def upload_resume(request, pk):
         phone="",
     )
 
-    try:
-        # Extract text from PDF
-        resume_text = extract_resume_text(application.resume.path)
-
-        # Analyze using Gemini
-        ai = analyze_resume(resume_text, job)
-
-        application.first_name = ai.get("first_name", "")
-        application.middle_initial = ai.get("middle_initial", "")
-        application.last_name = ai.get("last_name", "")
-        application.email = ai.get("email", "")
-        application.phone = ai.get("phone", "")
-
-        application.ai_score = ai.get("score", 0)
-        application.ai_summary = ai.get("summary", "")
-        
-        # Match Info
-        application.ai_match_level = ai.get("match_level", "")
-        application.ai_recommendation = ai.get("recommendation", "")
-        
-        # AI Score Breakdown
-        application.ai_skills_match = ai.get("skills_match", 0)
-        application.ai_experience_match = ai.get("experience_match", 0)
-        application.ai_education_match = ai.get("education_match", 0)
-        application.ai_qualification_match = ai.get("qualification_match", 0)
-        
-        # Qualifications
-        application.ai_matched_qualifications = "\n".join(
-            ai.get("matched_qualifications", [])
-        )
-        
-        application.ai_missing_qualifications = "\n".join(
-            ai.get("missing_qualification", [])
-        )
-
-        application.ai_strengths = "\n".join(
-            ai.get("strengths", [])
-        )
-
-        application.ai_weaknesses = "\n".join(
-            ai.get("weaknesses", [])
-        )
-
-        application.resume_processed = True
-        application.save()
-
-    except Exception as e:
-        # Delete the incomplete application
-        application.delete()
-
-        return render(request, "jobs/apply.html", {
-            "job": job,
-            "error": str(e)
-        })
-
+    # Immediately proceed to the personal information step.
     return render(
         request,
         "jobs/partials/personal_info.html",
@@ -337,13 +280,13 @@ def upload_resume(request, pk):
             "application": application,
         }
     )
-    
+
 def application_success(request, application_id):
     application = get_object_or_404(
         Application,
         application_id=application_id
     )
     
-    return render(request,"jobs/partials/application_success.html",{
-        "application":application
+    return render(request, "jobs/partials/application_success.html", {
+        "application": application
     })

@@ -1,21 +1,30 @@
 document.addEventListener("DOMContentLoaded", function () {
-
     const modal = document.getElementById('post-job-modal');
     const openBtn = document.getElementById('open-post-modal');
     const closeBtn = document.getElementById('close-post-modal');
     const cancelBtn = document.getElementById('cancel-modal');
 
-    openBtn.addEventListener('click', () => {
-        modal.classList.add('active');
-    });
-
-    function closeModal() {
-        modal.classList.remove('active');
+    if (openBtn && modal) {
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('active');
+        });
     }
 
-    closeBtn.addEventListener('click', closeModal);
-    cancelBtn.addEventListener('click', closeModal);
+    function closeModal() {
+        if (modal) modal.classList.remove('active');
+    }
 
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Close on backdrop click
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -26,11 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!container || !addBtn) return;
 
     addBtn.addEventListener("click", () => {
-
         const row = document.createElement("div");
 
         row.className = "requirement-row";
-        row.style.marginTop = "10px";
+        row.style.marginTop = "8px";
 
         row.innerHTML = `
             <input
@@ -41,8 +49,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             <button
                 type="button"
-                class="remove-requirement">
-                ×
+                class="remove-requirement"
+                title="Remove requirement">
+                <i class="fas fa-trash-can"></i>
             </button>
         `;
 

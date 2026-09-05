@@ -31,6 +31,9 @@ services:
   database:
     image: mysql:8.4
     container_name: dbrecruitai-database
+    command:
+      - mysqld
+      - --mysql-native-password=ON
 
     restart: unless-stopped
 

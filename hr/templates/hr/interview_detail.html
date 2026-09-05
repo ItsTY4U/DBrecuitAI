@@ -2,36 +2,40 @@
 {% load static %}
 
 {% block admin_body %}
-<main class="interview-detail-page">
+<main class="main-dashboard">
+    <div class="page-nav-header">
+        <a href="{% url 'interviews' %}" class="back-link-pill">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Interviews</span>
+        </a>
+    </div>
+
     <header class="dashboard-header">
         <div class="header-left">
-            <a href="{% url "interviews" %}" class="btn-back-header">
-                <i class="fas fa-arrow-left"></i>
-                Back
-            </a>
-            <div>
-                <h2>{{ interview.applicants.first.job.title }}</h2>
-                <p>{{ interview.interview_type }}</p>
+            <div class="title-with-badge">
+                <h1 class="dashboard-title">{{ interview.applicants.first.job.title|default:"Interview Session" }}</h1>
+                <span class="interview-type-pill">{{ interview.interview_type }}</span>
             </div>
+            <p class="dashboard-subtitle">
+                <i class="fas fa-building"></i> {{ interview.applicants.first.job.department }} &bull;
+                <i class="fas fa-calendar"></i> {{ interview.date|date:"F d, Y" }} at {{ interview.time|time:"g:i A" }}
+            </p>
         </div>
         <div class="header-right">
-            <span class="status-badge">
+            <span class="status-pill status-{{ interview.status|lower }}">
                 {{ interview.status }}
             </span>
         </div>
     </header>
-    <div class="interview-detail-grid">
-        <div class="interview-detail-main">
+
+    <div class="dashboard-grid">
+        <div class="dash-column" style="display: flex; flex-direction: column; gap: 24px;">
             {% include "hr/partials/interview_information.html" %}
             {% include "hr/partials/interview_applicants.html" %}
         </div>
-        <div class="interview-detail-sidebar">
+        <div class="dash-column">
             {% include "hr/partials/interview_status.html" %}
         </div>
     </div>
-
 </main>
-
-
-
-{% endblock  %}
+{% endblock %}
