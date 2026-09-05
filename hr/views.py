@@ -217,6 +217,14 @@ def candidates(request):
         .annotate(job_count=Count("id"))
         .order_by("department")
     )
+    dept_applicant_counts = {
+        item["job__department"]: item["total"]
+        for item in (
+            Application.objects.filter(job__status="Active")
+            .values("job__department")
+            .annotate(total=Count("id"))
+        )
+    }
 
     department_cards = []
 
