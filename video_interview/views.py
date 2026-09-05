@@ -243,10 +243,18 @@ def submit_answer_api(request, application_id):
 
         video_file = request.FILES.get("video")
         if video_file and not skipped:
-            # Generate custom filename
+            # Validate file extension
             ext = ".webm"
             if video_file.name and "." in video_file.name:
-                ext = "." + video_file.name.split(".")[-1]
+                ext = "." + video_file.name.split(".")[-1].lower()
+
+            if ext not in [".webm", ".mp4"]:
+                return JsonResponse({"error": "Only .webm and .mp4 video files are allowed."}, status=400)
+
+            # Validate max file size (50MB)
+            if video_file.size > 50 * 1024 * 1024:
+                return JsonResponse({"error": "Video file exceeds the 50MB limit."}, status=400)
+
             filename = f"{application.application_id}_q{question_number}{ext}"
             video_file.name = filename
             response.video_clip = video_file

@@ -1,60 +1,125 @@
 {% if application %}
-<div id="track-result-container">
-    <div {% if application.status != "Hired" and application.status != "Rejected" %}hx-get="{% url 'track_application' %}" hx-trigger="every 10s" hx-vals='{"application_id":"{{ application.application_id }}"}' hx-swap="outerHTML"{% endif %}>
-            <div class="result-header">
-                <div class="r-title-group">
-                    <h2>{{ application.job.title }}</h2>
-                    <span class="r-date">
-                        Applied on {{ application.created_at }}
-                    </span>
-                </div>
-                <div class="status-badge">
-                    {{ application.status }}
-                </div>
-            </div>
-            <div class="timeline">
-                <div class="t-node completed">
-                    <div class="t-icon"></div>
-                    <div class="t-info">
-                        <h3>Application Received</h3>
-                        <p>We have successfully received your application.</p>
-                    </div>
-                </div>
-                {% if application.status == "Screening" or application.status == "Interview" or application.status == "Hired" %}
-                <div class="t-node completed">
-                {% else %}
-                <div class="t-node">
-                {% endif %}
-                    <div class="t-icon"></div>
-                    <div class="t-info">
-                        <h3>AI Screening</h3>
-                        <p>Your application is being reviewed.</p>
-                    </div>
-                </div>
-                {% if application.status == "Interview" or application.status == "Hired" %}
-                <div class="t-node completed">
-                {% else %}
-                <div class="t-node">
-                {% endif %}
-                    <div class="t-icon"></div>
-                    <div class="t-info">
-                        <h3>Interview</h3>
-                        <p>Interview process.</p>
-                    </div>
-                </div>
-                {% if application.status == "Hired" %}
-                <div class="t-node completed">
-                {% else %}
-                <div class="t-node">
-                {% endif %}
-                    <div class="t-icon"></div>
-                    <div class="t-info">
-                        <h3>Final Decision</h3>
-                        <p>HR will contact you.</p>
-                    </div>
-                </div>
-            </div>
+<div class="tracking-result">
+    <div class="result-header">
+        <div class="r-title-group">
+            <h2>{{ application.job.title }}</h2>
+            <span class="r-date">
+                Applied on {{ application.created_at }}
+            </span>
+        </div>
+        <div class="status-badge">
+            {{ application.status }}
+        </div>
     </div>
+    <div class="timeline">
+        <div class="t-node completed">
+            <div class="t-icon"></div>
+            <div class="t-info">
+                <h3>Application Received</h3>
+                <p>We have successfully received your application.</p>
+            </div>
+        </div>
+        {% if application.status == "Screening" or application.status == "Interview" or application.status == "Hired" %}
+        <div class="t-node completed">
+        {% else %}
+        <div class="t-node">
+        {% endif %}
+            <div class="t-icon"></div>
+            <div class="t-info">
+                <h3>AI Screening</h3>
+                <p>Your application is being reviewed.</p>
+            </div>
+        </div>
+        {% if application.status == "Interview" or application.status == "Hired" %}
+        <div class="t-node completed">
+        {% else %}
+        <div class="t-node">
+        {% endif %}
+            <div class="t-icon"></div>
+            <div class="t-info">
+                <h3>Interview</h3>
+                <p>Interview process.</p>
+            </div>
+        </div>
+        {% if application.status == "Hired" %}
+        <div class="t-node completed">
+        {% else %}
+        <div class="t-node">
+        {% endif %}
+            <div class="t-icon"></div>
+            <div class="t-info">
+                <h3>Final Decision</h3>
+                <p>HR will contact you.</p>
+            </div>
+        </div>
+    </div>
+
+    {% if application.status != "Hired" and application.status != "Rejected" %}
+    <script>
+    (function() {
+        const applicationId = "{{ application.application_id }}";
+        const supabaseUrl = "{{ supabase_url|default:'https://djoocaqpxkngsnnmkefu.supabase.co' }}";
+        const supabaseAnonKey = "{{ supabase_anon_key|default:'' }}";
+
+        if (!window.supabase) {
+            console.warn("Supabase SDK not loaded yet.");
+            return;
+        }
+
+        if (!supabaseAnonKey) {
+            console.info("Supabase Realtime: Provide SUPABASE_ANON_KEY in your environment for live status updates.");
+            return;
+        }
+
+        // Clean up previous channel subscription if exists
+        if (window._appStatusChannel && window._supabaseClient) {
+            try {
+                window._supabaseClient.removeChannel(window._appStatusChannel);
+            } catch (e) {
+                console.error("Error removing old Supabase channel:", e);
+            }
+        }
+
+        if (!window._supabaseClient) {
+            window._supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        }
+
+        window._appStatusChannel = window._supabaseClient
+            .channel(`application-status-${applicationId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'jobs_application',
+                filter: `application_id=eq.${applicationId}`
+            }, payload => {
+                console.log('Realtime status update received:', payload.new);
+                const newStatus = payload.new ? payload.new.status : null;
+                if (!newStatus) return;
+
+                // 1. Instant optimistic update to status badge
+                const badge = document.querySelector('.status-badge');
+                if (badge) {
+                    badge.textContent = newStatus;
+                }
+
+                // 2. Re-fetch tracking partial via HTMX to update timeline nodes
+                if (window.htmx) {
+                    window.htmx.ajax('GET', "{% url 'track_application' %}?application_id=" + encodeURIComponent(applicationId), {
+                        target: '#track-result-container',
+                        swap: 'innerHTML'
+                    });
+                }
+            })
+            .subscribe((status) => {
+                console.log(`Supabase Realtime subscription status [${applicationId}]:`, status);
+            });
+    })();
+    </script>
+    {% endif %}
+</div>
+{% elif rate_limited %}
+<div class="track-container">
+    <h3 style="color: #e74c3c;"><i class="fas fa-exclamation-triangle"></i> Too many requests. Please wait a moment before tracking again.</h3>
 </div>
 {% else %}
 <div class="track-container">

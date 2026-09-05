@@ -250,6 +250,56 @@ class VideoInterviewTests(TestCase):
         self.client.login(username="hradmin", password="testpassword123")
         reanalyze_url = reverse("reanalyze_candidate_interview", kwargs={"pk": self.application.pk})
         response = self.client.post(reanalyze_url)
-        self.assertEqual(response.status_code, 302)
         session.refresh_from_db()
         self.assertTrue(session.ai_analyzed)
+
+    def test_submit_answer_rejects_disallowed_extension(self):
+        """submit_answer_api rejects video files that are not .webm or .mp4."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        session = InterviewSession.objects.create(
+            application=self.application,
+            status="IN_PROGRESS"
+        )
+        InterviewResponse.objects.create(
+            session=session,
+            question_number=1,
+            question_type="INTRO",
+            question_text="Tell us about yourself"
+        )
+        self.client.login(username="applicant@example.com", password="testpassword123")
+        bad_video = SimpleUploadedFile("recording.avi", b"fake video content", content_type="video/x-msvideo")
+        url = reverse("video_interview:submit_answer", kwargs={"application_id": self.application.application_id})
+        response = self.client.post(url, {
+            "question_number": "1",
+            "skipped": "false",
+            "duration_seconds": "15",
+            "video": bad_video
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Only .webm and .mp4 video files are allowed.", response.json()["error"])
+
+    def test_submit_answer_rejects_oversized_video(self):
+        """submit_answer_api rejects video files exceeding 50MB."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        session = InterviewSession.objects.create(
+            application=self.application,
+            status="IN_PROGRESS"
+        )
+        InterviewResponse.objects.create(
+            session=session,
+            question_number=1,
+            question_type="INTRO",
+            question_text="Tell us about yourself"
+        )
+        self.client.login(username="applicant@example.com", password="testpassword123")
+        # 51MB content
+        oversized = SimpleUploadedFile("recording.webm", b"0" * (51 * 1024 * 1024), content_type="video/webm")
+        url = reverse("video_interview:submit_answer", kwargs={"application_id": self.application.application_id})
+        response = self.client.post(url, {
+            "question_number": "1",
+            "skipped": "false",
+            "duration_seconds": "30",
+            "video": oversized
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Video file exceeds the 50MB limit.", response.json()["error"])

@@ -114,14 +114,21 @@ def apply_job(request, pk):
         })
         
     try:
-        # Use the already processed resume text 
-        resume_text = profile.resume_text
-        
-        # Run job-specific AI analysis first
-        ai = analyze_resume(
-            resume_text,
-            job
-        )
+        # Attempt AI analysis with safe fallback if Gemini rate limits or times out
+        ai = {}
+        try:
+            resume_text = profile.resume_text
+            if resume_text:
+                ai = analyze_resume(resume_text, job)
+        except Exception as ai_err:
+            import logging
+            logging.getLogger(__name__).warning("Gemini resume analysis fallback triggered: %s", ai_err)
+            ai = {
+                "score": 0,
+                "summary": "AI evaluation queued.",
+                "strengths": [],
+                "weaknesses": [],
+            }
         
         # Create complete application in a single INSERT
         application = Application.objects.create(

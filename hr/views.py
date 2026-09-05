@@ -227,21 +227,22 @@ def candidates(request):
         )
     }
 
-    department_cards = []
+    # Fetch top candidates across all active jobs in a single query and group in memory
+    dept_top_applicants = defaultdict(list)
+    for app in (
+        Application.objects.filter(job__status="Active")
+        .select_related("job")
+        .order_by("-ai_score", "-created_at")
+    ):
+        dept = app.job.department
+        if len(dept_top_applicants[dept]) < 3:
+            dept_top_applicants[dept].append(app)
 
+    department_cards = []
     for dept in departments:
         dept_name = dept["department"]
-        # Look up applicant count in memory (O(1)) instead of querying database per department
         total_dept_applicants = dept_applicant_counts.get(dept_name, 0)
-
-        top_applicants = (
-            Application.objects.filter(
-                job__department=dept_name,
-                job__status="Active"
-            )
-            .select_related("job")
-            .order_by("-ai_score")[:3]
-        )
+        top_applicants = dept_top_applicants.get(dept_name, [])
 
         department_cards.append({
             "department": dept_name,
