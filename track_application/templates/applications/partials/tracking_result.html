@@ -117,6 +117,10 @@
     </script>
     {% endif %}
 </div>
+{% elif rate_limited %}
+<div class="track-container">
+    <h3 style="color: #e74c3c;"><i class="fas fa-exclamation-triangle"></i> Too many requests. Please wait a moment before tracking again.</h3>
+</div>
 {% else %}
 <div class="track-container">
     <h3>No application record has been found.</h3>

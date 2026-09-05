@@ -10,6 +10,14 @@ def track(request):
     })
 
 def track_application(request):
+    from main.rate_limit import is_rate_limited
+
+    if is_rate_limited(request, "track_search", max_requests=30, window_seconds=60):
+        return render(request, "applications/partials/tracking_result.html", {
+            "application": None,
+            "rate_limited": True,
+        })
+
     application_id = request.GET.get("application_id", "").strip()
     application = Application.objects.filter(
         application_id=application_id
@@ -17,6 +25,6 @@ def track_application(request):
     
     return render(request, "applications/partials/tracking_result.html", {
         "application": application,
-        "supabase_url": getattr(settings, "SUPABASE_URL", "https://djoocaqpxkngsnnmkefu.supabase.co"),
+        "supabase_url": getattr(settings, "SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co"),
         "supabase_anon_key": getattr(settings, "SUPABASE_ANON_KEY", ""),
     })

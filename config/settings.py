@@ -27,18 +27,26 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-local-dev-only-key"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
+DEFAULT_ALLOWED_HOSTS = [
     "dbrecruit.up.railway.app",
     "dbrecruit-ai.vercel.app",
+    ".vercel.app",
     "localhost",
     "127.0.0.1",
     "testserver",
 ]
+env_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = list(dict.fromkeys(DEFAULT_ALLOWED_HOSTS + env_hosts))
 
 CSRF_TRUSTED_ORIGINS = [
     "https://dbrecruit.up.railway.app",
     "https://dbrecruit-ai.vercel.app",
 ]
+env_csrf = [c.strip() for c in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if c.strip()]
+if env_csrf:
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS + env_csrf))
+
+CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
 
 # Application definition
 
@@ -122,6 +130,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+IS_VERCEL = bool(os.getenv("VERCEL"))
+
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
@@ -129,10 +139,11 @@ DATABASES = {
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+        # Use Transaction Pooler (6543) by default in serverless (Vercel) to prevent connection exhaustion
+        "PORT": os.getenv("DB_PORT", "6543" if IS_VERCEL else "5432"),
 
-        # Keep PostgreSQL connections alive between requests.
-        "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "600")),
+        # In serverless environments, close connections at request end (0); in persistent servers, keep alive (600)
+        "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "0" if IS_VERCEL else "600")),
     }
 }
 
@@ -245,3 +256,20 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Supabase Realtime Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+
+# Production Security Hardening
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+# Static files cache headers for production CDN / browser caching
+WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0

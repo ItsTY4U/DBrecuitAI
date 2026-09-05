@@ -12,6 +12,8 @@ from jobs.models import Job, Application
 )
 class TrackApplicationTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
         self.client = Client()
         self.job = Job.objects.create(
             title="Accountant",
@@ -70,3 +72,13 @@ class TrackApplicationTests(TestCase):
         )
         self.assertNotContains(response, "application-status-")
         self.assertNotContains(response, 'hx-trigger="every 10s"')
+
+    def test_track_application_rate_limiting(self):
+        """Track application throttles requests exceeding rate limit."""
+        from django.core.cache import cache
+        cache.clear()
+        for _ in range(30):
+            self.client.get(reverse("track_application"), {"application_id": "APP123"})
+
+        response = self.client.get(reverse("track_application"), {"application_id": "APP123"})
+        self.assertContains(response, "Too many requests. Please wait a moment before tracking again.")
