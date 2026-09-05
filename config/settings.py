@@ -241,3 +241,7 @@ STORAGES = {
 }
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+
+# Supabase Realtime Configuration
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
