@@ -1,3 +1,4 @@
+import os
 from django.db import models
 from jobs.models import Application, Job
 
@@ -80,6 +81,12 @@ class InterviewSession(models.Model):
         return self.status in ["PENDING", "IN_PROGRESS"]
 
 
+def interview_video_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1].lower() or ".webm"
+    app_id = instance.session.application.application_id
+    return f"videos/{app_id}_q{instance.question_number}{ext}"
+
+
 class InterviewResponse(models.Model):
     """
     Stores the video recording, transcription, and AI score/feedback for each of the 5 questions.
@@ -99,7 +106,7 @@ class InterviewResponse(models.Model):
     question_text = models.CharField(max_length=500)
 
     video_clip = models.FileField(
-        upload_to="interview_videos/clips/",
+        upload_to=interview_video_upload_path,
         null=True,
         blank=True
     )
@@ -114,9 +121,32 @@ class InterviewResponse(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Clean up previous video clip in storage when replaced
+        if self.pk:
+            try:
+                old_resp = InterviewResponse.objects.get(pk=self.pk)
+                if (
+                    old_resp.video_clip
+                    and old_resp.video_clip.name != (self.video_clip.name if self.video_clip else None)
+                ):
+                    old_resp.video_clip.delete(save=False)
+            except InterviewResponse.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.video_clip:
+            try:
+                self.video_clip.delete(save=False)
+            except Exception:
+                pass
+        super().delete(*args, **kwargs)
+
     class Meta:
         ordering = ["question_number"]
         unique_together = [("session", "question_number")]
 
     def __str__(self):
         return f"Q{self.question_number} Response for {self.session.application.application_id}"
+

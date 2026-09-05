@@ -113,8 +113,9 @@ def start_interview_view(request, application_id):
         messages.error(request, "This interview has already been completed or abandoned.")
         return redirect("profile")
 
-    # If retaking or previously started, clear old responses
-    session.responses.all().delete()
+    # If retaking or previously started, clear old responses and delete their video clips from storage
+    for old_resp in session.responses.all():
+        old_resp.delete()
 
     # 1. Two standard intro questions
     questions = [

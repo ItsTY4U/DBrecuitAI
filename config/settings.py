@@ -212,7 +212,8 @@ AWS_DEFAULT_ACL = None
 
 AWS_QUERYSTRING_AUTH = False
 
-AWS_S3_FILE_OVERWRITE = False
+# Overwrite existing objects with same key in R2 bucket instead of creating duplicates
+AWS_S3_FILE_OVERWRITE = True
 
 R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
 
@@ -222,10 +223,13 @@ AWS_S3_CUSTOM_DOMAIN = (
     else None
 )
 
+MEDIA_ROOT = BASE_DIR / "media"
+
 if R2_PUBLIC_URL:
     MEDIA_URL = R2_PUBLIC_URL.rstrip("/") + "/"
 else:
     MEDIA_URL = "/media/"
+
 
 STORAGES = {
     "default": {
