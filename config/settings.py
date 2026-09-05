@@ -57,9 +57,11 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "main",
+    "accounts",
     "jobs",
     "track_application",
-    "hr"
+    "hr",
+    "video_interview",
 ]
 
 SITE_ID = 1

@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement
 from .models import Interview
+from video_interview.models import InterviewSession
 from django.db.models import Q, Count, Prefetch
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -337,12 +338,61 @@ def candidate_detail(request, pk):
     
     strengths = parse_ai_bullets(application.ai_strengths)
     weaknesses = parse_ai_bullets(application.ai_weaknesses)
+
+    interview_session = InterviewSession.objects.filter(
+        application=application
+    ).prefetch_related("responses").first()
+
+    interview_responses = []
+    if interview_session:
+        interview_responses = interview_session.responses.all().order_by("question_number")
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
         "strengths": strengths,
         "weaknesses": weaknesses,
+        "interview_session": interview_session,
+        "interview_responses": interview_responses,
     })
+
+@never_cache
+@staff_member_required(login_url="hr_login")
+def reset_candidate_interview(request, pk):
+    application = get_object_or_404(Application, pk=pk)
+    session = InterviewSession.objects.filter(application=application).first()
+    if session:
+        session.can_retake = True
+        session.status = "PENDING"
+        session.save()
+        messages.success(
+            request,
+            f"Video interview for {application.first_name} {application.last_name} has been reset to allow a retake."
+        )
+    return redirect("candidate_detail", pk=pk)
+
+
+@never_cache
+@staff_member_required(login_url="hr_login")
+def reanalyze_candidate_interview(request, pk):
+    application = get_object_or_404(Application, pk=pk)
+    session = InterviewSession.objects.filter(application=application).first()
+    if session and session.status == "COMPLETED":
+        try:
+            from video_interview.ai import analyze_interview_session
+            analyze_interview_session(session)
+            messages.success(
+                request,
+                f"Video interview for {application.first_name} {application.last_name} was re-analyzed by Gemini AI successfully."
+            )
+        except Exception as e:
+            messages.error(
+                request,
+                f"Failed to re-analyze video interview: {e}"
+            )
+    else:
+        messages.warning(request, "Only completed interview sessions can be analyzed.")
+    return redirect("candidate_detail", pk=pk)
+
 
 @never_cache
 @staff_member_required(login_url="hr_login")

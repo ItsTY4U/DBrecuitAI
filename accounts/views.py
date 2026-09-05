@@ -137,9 +137,12 @@ def process_profile_resume(profile):
         return False
     
     try:
-        resume_path = profile.default_resume.path
+        try:
+            resume_input = profile.default_resume.path
+        except (NotImplementedError, AttributeError):
+            resume_input = profile.default_resume.open("rb")
         
-        resume_text = extract_resume_text(resume_path)
+        resume_text = extract_resume_text(resume_input)
         
         parsed_data = parse_resume(resume_text)
         
@@ -248,7 +251,7 @@ def profile(request):
     
     applications = Application.objects.filter(
         applicant=request.user
-    ).select_related("job").order_by("-created_at")
+    ).select_related("job", "video_interview").order_by("-created_at")
 
     return render(
         request,
@@ -285,22 +288,12 @@ def process_signup_resume(request):
         )
         
     try:
-        
-        temp_path = default_storage.save(
-            f"temp_resumes/{resume.name}",
-            resume
-        )
-        
-        full_path = default_storage.path(temp_path)
-        
-        # Extract resume text
-        resume_text = extract_resume_text(full_path)
+        resume.seek(0)
+        # Extract resume text directly from the uploaded file
+        resume_text = extract_resume_text(resume)
         
         # Parse resume with Gemini
         parsed_data = parse_resume(resume_text)
-        
-        # Delete temp file
-        default_storage.delete(temp_path)
         
         if not parsed_data:
             return JsonResponse(

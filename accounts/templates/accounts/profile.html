@@ -487,7 +487,7 @@
                             <th>Position</th>
                             <th>Applied Date</th>
                             <th>Status</th>
-                            <th></th>
+                            <th>Video Interview</th>
                         </tr>
 
                     </thead>
@@ -519,9 +519,23 @@
                                     </td>
 
                                     <td>
-                                        <a href="#" class="track-btn">
-                                            Track
-                                        </a>
+                                        {% if application.video_interview.status == "COMPLETED" %}
+                                            <button type="button" class="track-btn" disabled style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-circle-check"></i> Completed
+                                            </button>
+                                        {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
+                                            <button type="button" class="track-btn" disabled style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-lock"></i> Attempted
+                                            </button>
+                                        {% elif application.video_interview.can_retake %}
+                                            <a href="{% url 'video_interview:welcome' application.application_id %}" class="track-btn" style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-rotate-right"></i> Retake Interview
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'video_interview:welcome' application.application_id %}" class="track-btn" style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
+                                                <i class="fas fa-video"></i> Take Video Interview
+                                            </a>
+                                        {% endif %}
                                     </td>
 
                                 </tr>

@@ -132,6 +132,193 @@
             </div>
             {% endif %}
         </div>
+
+        <!-- AI Video Interview Intelligence Card -->
+        <div class="content-box ai-eval-box" style="margin-top: 24px;">
+            <div class="box-header">
+                <div class="box-header-title">
+                    <i class="fas fa-video header-icon text-green"></i>
+                    <div>
+                        <h3>AI Video Interview Intelligence</h3>
+                        <p class="box-subtitle">Multimodal Gemini evaluation & recorded question responses</p>
+                    </div>
+                </div>
+                {% if interview_session and interview_session.final_score %}
+                <div class="ai-score-badge-large 
+                    {% if interview_session.final_score >= 90 %}
+                        score-high
+                    {% elif interview_session.final_score >= 75 %}
+                        score-mid
+                    {% else %}
+                        score-low
+                    {% endif %}">
+                    <span class="score-num">{{ interview_session.final_score }}%</span>
+                    <span class="score-text">
+                        {% if interview_session.final_score >= 90 %}
+                            Strong Match
+                        {% elif interview_session.final_score >= 75 %}
+                            Good Fit
+                        {% else %}
+                            Review Needed
+                        {% endif %}
+                    </span>
+                </div>
+                {% else %}
+                <div>
+                    {% if not interview_session or interview_session.status == "PENDING" %}
+                        <span class="status-pill status-pending" style="padding: 6px 12px; font-size: 12px;">Not Taken</span>
+                    {% elif interview_session.status == "IN_PROGRESS" %}
+                        <span class="status-pill" style="background: #3498db; color: #fff; padding: 6px 12px; font-size: 12px;">In Progress</span>
+                    {% elif interview_session.status == "ABANDONED" %}
+                        <span class="status-pill status-rejected" style="padding: 6px 12px; font-size: 12px;">Abandoned</span>
+                    {% else %}
+                        <span class="status-pill status-screening" style="padding: 6px 12px; font-size: 12px;">Under Review</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Session Status Details & HR Reset Button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(0,0,0,0.03); border-radius: 8px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size: 13px; color: #555;">
+                    <strong>Interview Status:</strong>
+                    {% if not interview_session or interview_session.status == "PENDING" %}
+                        <span style="color: #777;">Applicant has not taken the optional video interview yet.</span>
+                    {% elif interview_session.status == "COMPLETED" %}
+                        <span style="color: #27ae60; font-weight: 600;"><i class="fas fa-circle-check"></i> Completed on {{ interview_session.completed_at|date:"M d, Y h:i A" }}</span>
+                    {% elif interview_session.status == "ABANDONED" %}
+                        <span style="color: #e74c3c; font-weight: 600;"><i class="fas fa-lock"></i> Exited while in progress</span>
+                    {% elif interview_session.status == "IN_PROGRESS" %}
+                        <span style="color: #2980b9; font-weight: 600;"><i class="fas fa-spinner fa-spin"></i> Currently taking interview</span>
+                    {% endif %}
+                </div>
+
+                {% if interview_session %}
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    {% if interview_session.status == "COMPLETED" %}
+                    <form method="POST" action="{% url 'reanalyze_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Re-run Gemini AI analysis on the recorded video clips for this applicant?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2980b9; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-brain"></i> Re-run AI Analysis
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{% url 'reset_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Allow candidate to retake the video interview? This resets the lock for technical issues.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #e67e22; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-rotate-right"></i> Reset / Allow Retake
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if interview_session and interview_session.status == "COMPLETED" %}
+                <!-- Executive Summary -->
+                <div class="ai-summary-content">
+                    <h4 class="ai-section-title">
+                        <i class="fas fa-brain"></i> Executive Communication & Fit Summary
+                    </h4>
+                    <p class="ai-summary-text">
+                        {{ interview_session.overall_summary|default:"Gemini multimodal analysis complete. Review individual question scores and feedback below." }}
+                    </p>
+                </div>
+
+                {% if interview_session.overall_feedback %}
+                <div class="ai-breakdown-section" style="margin-top: 14px;">
+                    <h4 class="ai-section-title text-green">
+                        <i class="fas fa-lightbulb"></i> Talent Team Recommendation & Notes
+                    </h4>
+                    <p class="ai-summary-text" style="font-size: 13.5px; color: #444;">
+                        {{ interview_session.overall_feedback }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Questions and Video Answers Breakdown -->
+                <div style="margin-top: 24px;">
+                    <h4 class="ai-section-title" style="margin-bottom: 16px;">
+                        <i class="fas fa-list-check"></i> Recorded Answers & Gemini Analysis (5 Questions)
+                    </h4>
+
+                    <div style="display: flex; flex-direction: column; gap: 18px;">
+                        {% for resp in interview_responses %}
+                        <div style="background: #ffffff; border: 1px solid #e1e8ed; border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                            <!-- Question Header & Score -->
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                                <div>
+                                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; background: rgba(45, 90, 39, 0.1); color: var(--primary); padding: 3px 8px; border-radius: 6px;">
+                                        Question {{ resp.question_number }} of 5 • {{ resp.get_question_type_display }}
+                                    </span>
+                                    <h5 style="font-size: 15px; font-weight: 700; color: #1a1a1a; margin: 8px 0 0;">
+                                        {{ resp.question_text }}
+                                    </h5>
+                                </div>
+                                <div style="text-align: right;">
+                                    {% if resp.score %}
+                                    <span style="display: inline-block; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; 
+                                        {% if resp.score >= 90 %}background: rgba(46, 204, 113, 0.15); color: #27ae60;
+                                        {% elif resp.score >= 75 %}background: rgba(52, 152, 219, 0.15); color: #2980b9;
+                                        {% else %}background: rgba(231, 76, 60, 0.15); color: #c0392b;{% endif %}">
+                                        Score: {{ resp.score }}/100
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Video Player -->
+                            <div style="margin-bottom: 14px;">
+                                {% if resp.video_clip %}
+                                <div style="border-radius: 8px; overflow: hidden; background: #000; max-width: 520px;">
+                                    <video controls preload="metadata" style="width: 100%; max-height: 300px; display: block;" src="{{ resp.video_clip.url }}"></video>
+                                </div>
+                                {% elif resp.skipped %}
+                                <div style="background: rgba(230, 126, 34, 0.1); color: #d35400; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;">
+                                    <i class="fas fa-forward"></i> Candidate skipped this question.
+                                </div>
+                                {% else %}
+                                <div style="background: #f5f5f5; color: #777; padding: 10px 14px; border-radius: 8px; font-size: 13px;">
+                                    <i class="fas fa-video-slash"></i> No recorded video file available for this question.
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Transcribed Answer -->
+                            <div style="background: #f8f9fa; border-left: 3px solid var(--primary); padding: 10px 14px; border-radius: 4px; margin-bottom: 12px;">
+                                <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #666; margin-bottom: 4px;">
+                                    <i class="fas fa-comment-dots"></i> Candidate's Answer (Transcript)
+                                </div>
+                                <p style="font-size: 13px; color: #333; margin: 0; line-height: 1.5; font-style: italic;">
+                                    "{{ resp.transcript|default:'No spoken transcription available.' }}"
+                                </p>
+                            </div>
+
+                            <!-- Gemini Feedback -->
+                            {% if resp.feedback %}
+                            <div style="font-size: 13px; color: #444; line-height: 1.5; margin-bottom: 8px;">
+                                <strong>AI Feedback:</strong> {{ resp.feedback }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% elif interview_session and interview_session.status == "ABANDONED" %}
+                <div style="padding: 20px; background: rgba(231, 76, 60, 0.08); border-radius: 10px; border-left: 4px solid #e74c3c; margin-top: 10px;">
+                    <h5 style="font-size: 14px; font-weight: 700; color: #c0392b; margin: 0 0 6px;">
+                        <i class="fas fa-triangle-exclamation"></i> Interview Incomplete
+                    </h5>
+                    <p style="font-size: 13px; color: #555; margin: 0;">
+                        The applicant exited or refreshed the browser while taking the interview. If the applicant reported a technical issue, use the <strong>Reset / Allow Retake</strong> button above to unlock a fresh attempt.
+                    </p>
+                </div>
+            {% else %}
+                <div style="padding: 24px; text-align: center; color: #777; background: #fafafa; border-radius: 10px; margin-top: 10px;">
+                    <i class="fas fa-video" style="font-size: 32px; color: #ccc; margin-bottom: 10px; display: block;"></i>
+                    <p style="font-size: 14px; margin: 0;">Candidate has not completed the video interview yet.</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Right Column: Candidate Info & Actions -->

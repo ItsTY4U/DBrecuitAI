@@ -34,6 +34,8 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     
     path("accounts/", include("allauth.urls")),
+    
+    path("interview/", include("video_interview.urls")),
 ]
 
 if settings.DEBUG:

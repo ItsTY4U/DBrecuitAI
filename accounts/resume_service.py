@@ -11,7 +11,11 @@ if settings.GEMINI_API_KEY:
 
 def extract_resume_text(pdf_path):
     text = ""
-    
+    if hasattr(pdf_path, "seek"):
+        try:
+            pdf_path.seek(0)
+        except Exception:
+            pass
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
