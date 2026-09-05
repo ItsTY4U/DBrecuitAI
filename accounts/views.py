@@ -137,12 +137,7 @@ def process_profile_resume(profile):
         return False
     
     try:
-        try:
-            resume_input = profile.default_resume.path
-        except (NotImplementedError, AttributeError):
-            resume_input = profile.default_resume.open("rb")
-        
-        resume_text = extract_resume_text(resume_input)
+        resume_text = extract_resume_text(profile.default_resume)
         
         parsed_data = parse_resume(resume_text)
         
@@ -288,9 +283,16 @@ def process_signup_resume(request):
         )
         
     try:
-        resume.seek(0)
-        # Extract resume text directly from the uploaded file
+        # Extract resume text directly from uploaded file
         resume_text = extract_resume_text(resume)
+        
+        if not resume_text or not resume_text.strip():
+            return JsonResponse(
+                {
+                    "error": "Unable to extract text from the resume. Please ensure the PDF contains readable text (not a scanned image)."
+                },
+                status=400
+            )
         
         # Parse resume with Gemini
         parsed_data = parse_resume(resume_text)
@@ -302,7 +304,7 @@ def process_signup_resume(request):
                 },
                 status=400
             )
-        # Save proceed resume data temp
+        # Save processed resume data to session
         request.session["signup_resume_text"] = resume_text
         request.session["signup_resume_data"] = parsed_data
         
@@ -318,7 +320,7 @@ def process_signup_resume(request):
         
         return JsonResponse(
             {
-                "error": "An error occured while processing the resume."
+                "error": "An error occurred while processing the resume."
             },
             status=500
         )

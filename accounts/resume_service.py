@@ -1,8 +1,9 @@
-from google import genai
-from django.conf import settings
-import pdfplumber
+import io
 import json
 import re
+import pdfplumber
+from google import genai
+from django.conf import settings
 
 client = None
 
@@ -11,12 +12,25 @@ if settings.GEMINI_API_KEY:
 
 def extract_resume_text(pdf_path):
     text = ""
-    if hasattr(pdf_path, "seek"):
+    
+    # Handle Django FieldFile, File, or other file-like objects
+    if hasattr(pdf_path, "open") and not hasattr(pdf_path, "read"):
         try:
-            pdf_path.seek(0)
+            pdf_path.open("rb")
         except Exception:
             pass
-    with pdfplumber.open(pdf_path) as pdf:
+
+    source = pdf_path
+    if hasattr(pdf_path, "read"):
+        try:
+            content = pdf_path.read()
+            if hasattr(pdf_path, "seek"):
+                pdf_path.seek(0)
+            source = io.BytesIO(content)
+        except Exception:
+            source = pdf_path
+
+    with pdfplumber.open(source) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
             
