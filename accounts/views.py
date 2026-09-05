@@ -246,7 +246,7 @@ def profile(request):
     
     applications = Application.objects.filter(
         applicant=request.user
-    ).select_related("job").order_by("-created_at")
+    ).select_related("job", "video_interview").order_by("-created_at")
 
     return render(
         request,

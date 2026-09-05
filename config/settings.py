@@ -57,10 +57,11 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "main",
+    "accounts",
     "jobs",
     "track_application",
     "hr",
-    "accounts",
+    "video_interview",
 ]
 
 SITE_ID = 1
@@ -134,6 +135,15 @@ DATABASES = {
         "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "600")),
     }
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "dbrecruitai-cache",
+        "TIMEOUT": 300,
+    }
+}
+
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',

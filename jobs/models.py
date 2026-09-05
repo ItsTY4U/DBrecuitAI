@@ -32,6 +32,7 @@ class Job(models.Model):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["department", "status"]),  # matches candidates/candidate_department filters
+            models.Index(fields=["status", "-posted_date"]),  # applicant job listings ordering
         ]
     
 class Requirement(models.Model):
@@ -117,6 +118,8 @@ class Application(models.Model):
             models.Index(fields=["status"]),                          # dashboard counts, filters
             models.Index(fields=["job", "status"]),                   # candidate_department per-role filtering
             models.Index(fields=["-ai_score", "-created_at"]),        # matches .order_by("-ai_score", "-created_at")
+            models.Index(fields=["applicant", "-created_at"]),        # applicant profile applications list
+            models.Index(fields=["applicant", "job"]),                # applicant duplicate application checks
         ]
     
     

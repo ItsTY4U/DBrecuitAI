@@ -26,6 +26,16 @@ urlpatterns = [
         name="candidate_detail",
         ),
 
+    path("candidates/applicant/<int:pk>/reset-interview/", 
+        views.reset_candidate_interview, 
+        name="reset_candidate_interview",
+        ),
+
+    path("candidates/applicant/<int:pk>/reanalyze-interview/", 
+        views.reanalyze_candidate_interview, 
+        name="reanalyze_candidate_interview",
+        ),
+
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),
