@@ -1,7 +1,6 @@
 {% if application %}
 <div id="track-result-container">
-    <div hx-get="{% url 'track_application' %}" hx-trigger="every 10s" 
-        hx-vals='{"application_id":"{{ application.application_id }}"}' hx-swap="outerHTML">
+    <div {% if application.status != "Hired" and application.status != "Rejected" %}hx-get="{% url 'track_application' %}" hx-trigger="every 10s" hx-vals='{"application_id":"{{ application.application_id }}"}' hx-swap="outerHTML"{% endif %}>
             <div class="result-header">
                 <div class="r-title-group">
                     <h2>{{ application.job.title }}</h2>

@@ -1,4 +1,5 @@
 import random
+import threading
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -6,10 +7,26 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.contrib import messages
+from django.db import close_old_connections
+from django.db.models import Q
 
 from jobs.models import Application
 from .models import InterviewSession, InterviewResponse, BehavioralQuestion
 from .ai import analyze_interview_session
+
+def _run_ai_analysis_async(session_id):
+    """
+    Runs Gemini video interview analysis in a background daemon thread
+    to keep applicant response times instantaneous.
+    """
+    close_old_connections()
+    try:
+        session = InterviewSession.objects.get(id=session_id)
+        analyze_interview_session(session)
+    except Exception as e:
+        print(f"Error in async Gemini video interview analysis: {e}")
+    finally:
+        close_old_connections()
 
 STANDARD_INTRO_QUESTIONS = [
     "Please introduce yourself and share a brief overview of your educational background and work experience.",
@@ -105,12 +122,13 @@ def start_interview_view(request, application_id):
         {"number": 2, "type": "INTRO", "text": STANDARD_INTRO_QUESTIONS[1]},
     ]
 
-    # 2. Select 3 behavioral questions
-    job = application.job
-    job_questions = list(BehavioralQuestion.objects.filter(job=job, is_active=True))
-    global_questions = list(BehavioralQuestion.objects.filter(job__isnull=True, is_active=True))
-
-    pool = job_questions + global_questions
+    # 2. Select 3 behavioral questions in a single query
+    pool = list(
+        BehavioralQuestion.objects.filter(
+            Q(job_id=application.job_id) | Q(job__isnull=True),
+            is_active=True
+        )
+    )
     selected_texts = []
 
     if pool:
@@ -129,20 +147,22 @@ def start_interview_view(request, application_id):
     for idx, text in enumerate(selected_texts[:3], start=3):
         questions.append({"number": idx, "type": "BEHAVIORAL", "text": text})
 
-    # Create InterviewResponse records
-    for q in questions:
-        InterviewResponse.objects.create(
+    # Create InterviewResponse records in a single bulk INSERT
+    InterviewResponse.objects.bulk_create([
+        InterviewResponse(
             session=session,
             question_number=q["number"],
             question_type=q["type"],
             question_text=q["text"]
         )
+        for q in questions
+    ])
 
     # Set session to IN_PROGRESS
     session.status = "IN_PROGRESS"
     session.started_at = timezone.now()
     session.can_retake = False
-    session.save()
+    session.save(update_fields=["status", "started_at", "can_retake"])
 
     return redirect("video_interview:room", application_id=application.application_id)
 
@@ -153,7 +173,10 @@ def interview_room_view(request, application_id):
     """
     The active video interview room where applicant answers the 5 questions.
     """
-    application = get_object_or_404(Application, application_id=application_id)
+    application = get_object_or_404(
+        Application.objects.select_related("job"),
+        application_id=application_id
+    )
 
     if not request.user.is_staff and application.applicant != request.user:
         return redirect("profile")
@@ -238,11 +261,14 @@ def submit_answer_api(request, application_id):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+from django.conf import settings
+
 @never_cache
 @login_required(login_url="applicant_login")
 def finish_interview_view(request, application_id):
     """
     Marks the interview session as completed and triggers Gemini AI analysis.
+    In production, this runs asynchronously in the background so applicant response is instant.
     """
     application = get_object_or_404(Application, application_id=application_id)
     if not request.user.is_staff and application.applicant != request.user:
@@ -253,15 +279,23 @@ def finish_interview_view(request, application_id):
     if session.status == "IN_PROGRESS":
         session.status = "COMPLETED"
         session.completed_at = timezone.now()
-        session.save()
+        session.save(update_fields=["status", "completed_at"])
 
-        # Run AI analysis
-        try:
-            analyze_interview_session(session)
-        except Exception as e:
-            print(f"Error in Gemini video interview analysis: {e}")
+        # Run AI analysis in background unless synchronous mode is explicitly configured (e.g. testing)
+        if getattr(settings, "ASYNC_VIDEO_ANALYSIS", True):
+            threading.Thread(
+                target=_run_ai_analysis_async,
+                args=(session.id,),
+                daemon=True
+            ).start()
+        else:
+            try:
+                analyze_interview_session(session)
+            except Exception as e:
+                print(f"Error in Gemini video interview analysis: {e}")
 
     return redirect("video_interview:congratulations", application_id=application.application_id)
+
 
 
 @never_cache
@@ -294,7 +328,10 @@ def congratulations_view(request, application_id):
     """
     End screen after finishing the video interview.
     """
-    application = get_object_or_404(Application, application_id=application_id)
+    application = get_object_or_404(
+        Application.objects.select_related("job"),
+        application_id=application_id
+    )
     session = _get_or_create_session(application)
 
     return render(request, "video_interview/congratulations.html", {
@@ -302,3 +339,4 @@ def congratulations_view(request, application_id):
         "session": session,
         "job": application.job,
     })
+

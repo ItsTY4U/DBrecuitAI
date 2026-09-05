@@ -13,24 +13,36 @@ from accounts.models import ApplicantProfile
 
 def jobs(request):
     try:
-        query = request.GET.get("q", "")
-        department = request.GET.get("department", "")
+        query = request.GET.get("q", "").strip()
+        department = request.GET.get("department", "").strip()
 
-        jobs = Job.objects.filter(status="Active")
+        jobs_qs = Job.objects.filter(status="Active")
 
         if query:
-            jobs = jobs.filter(
+            jobs_qs = jobs_qs.filter(
                 Q(title__icontains=query) |
                 Q(department__icontains=query)
             )
 
         if department:
-            jobs = jobs.filter(department=department)
+            jobs_qs = jobs_qs.filter(department=department)
+
+        jobs_qs = jobs_qs.only(
+            "id", "title", "department", "job_type", "posted_date"
+        ).order_by("-posted_date", "-id")
+
+        # Fast partial response for HTMX search / filter requests
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "jobs/partials/jobs_list.html",
+                {"jobs": jobs_qs},
+            )
 
         return render(
             request,
             "jobs/jobs.html",
-            {"jobs": jobs},
+            {"jobs": jobs_qs},
         )
 
     except Exception as e:
@@ -41,14 +53,21 @@ def jobs(request):
         )
         
 def job_detail(request, id):
-    job = get_object_or_404(Job, id=id)
+    job = get_object_or_404(
+        Job.objects.prefetch_related("requirements_list"),
+        id=id
+    )
     return render(request, "jobs/job_detail.html", {
         "job": job
     }) 
 
 @login_required(login_url="applicant_login")
 def apply_job(request, pk):
-    job = get_object_or_404(Job, pk=pk, status="Active")
+    job = get_object_or_404(
+        Job.objects.prefetch_related("requirements_list"),
+        pk=pk,
+        status="Active"
+    )
 
     profile, created = ApplicantProfile.objects.get_or_create(
         user=request.user
@@ -81,11 +100,11 @@ def apply_job(request, pk):
         })
         
     # POST request
-    # Prevent duplicate applications
+    # Prevent duplicate applications (fast query using index)
     existing_application = Application.objects.filter(
         applicant=request.user,
         job=job
-    ).first()
+    ).only("id").first()
     
     if existing_application:
         return render(request, "jobs/partials/application_error.html", {
@@ -95,7 +114,16 @@ def apply_job(request, pk):
         })
         
     try:
-        # Create application linked to logged-in applicant
+        # Use the already processed resume text 
+        resume_text = profile.resume_text
+        
+        # Run job-specific AI analysis first
+        ai = analyze_resume(
+            resume_text,
+            job
+        )
+        
+        # Create complete application in a single INSERT
         application = Application.objects.create(
             applicant=request.user,
             job=job,
@@ -104,34 +132,14 @@ def apply_job(request, pk):
             last_name=request.user.last_name,
             email=request.user.email,
             phone=profile.phone,
-            
-            # use the applicant default resume
             resume=profile.default_resume,
-            status="Pending"
+            status="Pending",
+            ai_score=ai.get("score", 0),
+            ai_summary=ai.get("summary", ""),
+            ai_strengths="\n".join(ai.get("strengths", [])),
+            ai_weaknesses="\n".join(ai.get("weaknesses", [])),
+            resume_processed=True,
         )
-        # Use the already processed resume text 
-        resume_text = profile.resume_text
-        
-        # Run job-specific AI analysis
-        ai = analyze_resume(
-            resume_text,
-            job
-        )
-        
-        application.ai_score = ai.get("score", 0)
-        
-        application.ai_summary = ai.get("summary", "")
-        
-        application.ai_strengths = "\n".join(ai.get("strengths", []))
-        
-        application.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
-        
-        application.resume_processed = True
-        
-        # After AI screening
-        application.status = "Pending"
-        
-        application.save()
         
         return render(request, "jobs/partials/application_success.html",
                     {
@@ -210,10 +218,11 @@ def upload_resume(request, pk):
 
 def application_success(request, application_id):
     application = get_object_or_404(
-        Application,
+        Application.objects.select_related("job"),
         application_id=application_id
     )
     
     return render(request, "jobs/partials/application_success.html", {
-        "application": application
+        "application": application,
+        "job": application.job,
     })

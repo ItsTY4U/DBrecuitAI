@@ -6,11 +6,11 @@ def track(request):
     return render(request, "applications/track.html")
 
 def track_application(request):
-    application_id = request.GET.get("application_id")
+    application_id = request.GET.get("application_id", "").strip()
     application = Application.objects.filter(
         application_id=application_id
-    ).first()
+    ).select_related("job").first()
     
     return render(request, "applications/partials/tracking_result.html", {
         "application": application
-    })
+    })

@@ -12,7 +12,8 @@ from unittest.mock import patch, MagicMock
     STORAGES={
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    }
+    },
+    ASYNC_VIDEO_ANALYSIS=False,
 )
 class VideoInterviewTests(TestCase):
     def setUp(self):
@@ -168,6 +169,21 @@ class VideoInterviewTests(TestCase):
         session = InterviewSession.objects.get(application=self.application)
         self.assertEqual(session.status, "COMPLETED")
         self.assertTrue(session.final_score >= 50 and session.final_score <= 100)
+
+    @override_settings(ASYNC_VIDEO_ANALYSIS=True)
+    @patch("threading.Thread.start")
+    def test_finish_interview_async_redirects_immediately(self, mock_thread_start):
+        self.client.login(username="applicant@example.com", password="testpassword123")
+        self.client.post(reverse("video_interview:start", kwargs={"application_id": self.application.application_id}))
+
+        finish_url = reverse("video_interview:finish", kwargs={"application_id": self.application.application_id})
+        response = self.client.get(finish_url)
+        self.assertEqual(response.status_code, 302)
+
+        session = InterviewSession.objects.get(application=self.application)
+        self.assertEqual(session.status, "COMPLETED")
+        self.assertTrue(mock_thread_start.called)
+
 
     @patch("video_interview.ai.get_genai_client")
     def test_remote_storage_backend_not_implemented_path_handled(self, mock_get_client):
