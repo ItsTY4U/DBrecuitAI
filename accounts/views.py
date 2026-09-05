@@ -26,7 +26,7 @@ from .forms import (
 def signup(request):
 
     if request.user.is_authenticated:
-        return redirect("jobs")
+        return redirect("home")
 
     form = ApplicantSignupForm()
 
@@ -106,7 +106,7 @@ def signup(request):
     
 def applicant_login(request):
     if request.user.is_authenticated:
-        return redirect("jobs")
+        return redirect("home")
     
     form = AuthenticationForm(
         request, 

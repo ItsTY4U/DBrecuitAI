@@ -32,6 +32,7 @@ ALLOWED_HOSTS = [
     "dbrecruit-ai.vercel.app",
     "localhost",
     "127.0.0.1",
+    "testserver",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -74,6 +75,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+LOGIN_URL = "applicant_login"
 LOGIN_REDIRECT_URL = "profile"
 LOGOUT_REDIRECT_URL = "applicant_login"
 
@@ -115,7 +117,6 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
@@ -127,6 +128,9 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": os.getenv("DB_PORT", "5432"),
+
+        # Keep PostgreSQL connections alive between requests.
+        "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "600")),
     }
 }
 
@@ -154,7 +158,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
@@ -165,7 +168,6 @@ TIME_ZONE = "Asia/Manila"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/

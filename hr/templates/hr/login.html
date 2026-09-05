@@ -31,6 +31,11 @@
             {% endif %}
             <form class="login-form" method="POST">
                 {% csrf_token %}
+                {% if request.GET.next %}
+                    <input type="hidden" name="next" value="{{ request.GET.next }}">
+                {% elif next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
                 <div class="form-group">
                     <label>Email Address or Username</label>
                     <input type="text" name="username" placeholder="Enter your Email or Username" required>

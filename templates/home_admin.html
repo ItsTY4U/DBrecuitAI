@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HR Dashboard | DBRecruitAI</title>
     <link rel="stylesheet" href="{% static "css/style.css" %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -36,7 +38,7 @@
             <div class="sidebar-footer">
                 <ul class="sidebar-footer-menu">
                     <li class="menu-item">
-                        <a href="{% url "hr_login" %}" class="menu-link-logout">
+                        <a href="{% url "hr_logout" %}" class="menu-link-logout">
                             <i class="fas fa-arrow-right-from-bracket"></i>
                             <span>Logout</span>
                         </a>
@@ -50,5 +52,13 @@
     </div>
     <script src="{% static "js/modal.js" %}"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script>
+        // Force full page reload if navigated to via browser Back/Forward cache (bfcache)
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    </script>
 </body>
 </html>

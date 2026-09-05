@@ -1,8 +1,7 @@
-from email.mime import application
-
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
+from .models import Job, Application
 from .ai import extract_resume_text, analyze_resume
 from django.urls import reverse
 import json
@@ -11,8 +10,6 @@ from django.contrib.auth.decorators import login_required
 
 from .models import Job, Application
 from accounts.models import ApplicantProfile
-
-from jobs import ai
 
 def jobs(request):
     try:
@@ -30,13 +27,6 @@ def jobs(request):
         if department:
             jobs = jobs.filter(department=department)
 
-        if request.headers.get("HX-Request"):
-            return render(
-                request,
-                "jobs/partials/jobs_list.html",
-                {"jobs": jobs},
-            )
-
         return render(
             request,
             "jobs/jobs.html",
@@ -49,12 +39,12 @@ def jobs(request):
             f"<pre>{traceback.format_exc()}</pre>",
             status=500
         )
-
+        
 def job_detail(request, id):
     job = get_object_or_404(Job, id=id)
     return render(request, "jobs/job_detail.html", {
         "job": job
-    })  
+    }) 
 
 @login_required(login_url="applicant_login")
 def apply_job(request, pk):
@@ -160,10 +150,6 @@ def apply_job(request, pk):
 @login_required(login_url="applicant_login")
 def upload_resume(request, pk):
 
-    logger.error("===== upload_resume CALLED =====")
-    logger.error(f"Method: {request.method}")
-    logger.error(f"FILES: {request.FILES}")
-
     job = get_object_or_404(Job, pk=pk)
 
     if request.method != "POST":
@@ -173,8 +159,6 @@ def upload_resume(request, pk):
 
     resume = request.FILES.get("resume")
 
-    logger.error(f"Resume object: {resume}")
-
     # Check if a file was uploaded
     if not resume:
         return render(request, "jobs/apply.html", {
@@ -182,7 +166,7 @@ def upload_resume(request, pk):
             "error": "Please upload a resume."
         })
 
-    # Only allow PDF files
+    # Allowed resume file types
     allowed_extensions = [".pdf", ".doc", ".docx"]
 
     if not any(
@@ -201,113 +185,20 @@ def upload_resume(request, pk):
             "error": "Resume must be smaller than 5 MB."
         })
 
-    logger.error("BEFORE Application.objects.create")
+    # Create the application and save the resume.
+    # AI processing is intentionally NOT performed here.
+    application = Application.objects.create(
+        job=job,
+        resume=resume,
+        status="Pending",
+        first_name="",
+        middle_initial="",
+        last_name="",
+        email="",
+        phone="",
+    )
 
-#    application = Application.objects.create(
-#        job=job,
-#        resume=resume,
-#        status="Pending",
-#        first_name="",
-#        middle_initial="",
-#        last_name="",
-#        email="",
-#        phone="",
-#    )
-
-    application = None
-
-    try:
-        logger.error("BEFORE Application.objects.create")
-
-        application = Application.objects.create(
-            job=job,
-            resume=resume,
-            status="Pending",
-            first_name="",
-            middle_initial="",
-            last_name="",
-            email="",
-            phone="",
-        )
-
-        logger.error("AFTER Application.objects.create")
-
-        logger.error("===== STEP 1: Opening resume =====")
- 
-    # Extract text from PDF
-        with application.resume.open("rb") as resume_file:
-            print("===== STEP 2: Resume opened =====")
-
-            resume_text = extract_resume_text(resume_file)
-
-            print("===== STEP 3: Resume text extracted =====")
-            print(f"Resume length: {len(resume_text)}")
-
-        print("===== STEP 4: Calling Gemini =====")
-
-        # Analyze using Gemini
-        ai = analyze_resume(resume_text, job)
-
-        print("========== AI RESPONSE ==========")
-        print(ai)
-
-        print("PHONE VALUE:")
-        print(repr(ai.get("phone")))
-
-        print("PHONE LENGTH:")
-        print(len(str(ai.get("phone", ""))))
-
-        print("===== STEP 5: Gemini finished =====")
-
-        application.first_name = ai.get("first_name", "")
-        application.middle_initial = ai.get("middle_initial", "")
-        application.last_name = ai.get("last_name", "")
-        application.email = ai.get("email", "")
-        application.phone = ai.get("phone", "")
-
-        application.ai_score = ai.get("score", 0)
-        application.ai_summary = ai.get("summary", "")
-
-        application.ai_strengths = "\n".join(
-            ai.get("strengths", [])
-        )
-
-        application.ai_weaknesses = "\n".join(
-            ai.get("weaknesses", [])
-        )
-
-        application.resume_processed = True
-        application.save()
-
-        print("===== STEP 6: Application saved =====")
-
-#    except Exception as e:
-#        import traceback
-#
-#        logger.error("===== EXCEPTION =====")
-#        logger.error(traceback.format_exc())
-#
-#        # Delete the incomplete application
-#        application.delete()
-#
-#        return render(request, "jobs/apply.html", {
-#            "job": job,
-#            "error": traceback.format_exc(),
-#        })
-
-    except Exception:
-        import traceback
-
-        logger.exception("===== upload_resume FAILED =====")
-
-        if application:
-            application.delete()
-
-        return render(request, "jobs/apply.html", {
-            "job": job,
-            "error": traceback.format_exc(),
-        })
-        
+    # Immediately proceed to the personal information step.
     return render(
         request,
         "jobs/partials/personal_info.html",
@@ -323,6 +214,6 @@ def application_success(request, application_id):
         application_id=application_id
     )
     
-    return render(request,"jobs/partials/application_success.html",{
-        "application":application
+    return render(request, "jobs/partials/application_success.html", {
+        "application": application
     })
