@@ -19,14 +19,15 @@ from .forms import (
     ApplicantSignupForm,
     ApplicantLoginForm,
     ApplicantProfileForm,
-    ApplicantUserForm
+    ApplicantUserForm,
+    ApplicantAuthenticationForm,
 )
 
 # Create your views here.
 def signup(request):
 
     if request.user.is_authenticated:
-        return redirect("jobs")
+        return redirect("home")
 
     form = ApplicantSignupForm()
 
@@ -106,9 +107,13 @@ def signup(request):
     
 def applicant_login(request):
     if request.user.is_authenticated:
-        return redirect("jobs")
+        if request.user.is_superuser:
+            return redirect("/superuser/")
+        if request.user.groups.filter(name="HR").exists():
+            return redirect(dashboard)
+        return redirect("home")
     
-    form = AuthenticationForm(
+    form = ApplicantAuthenticationForm(
         request, 
         data=request.POST or None
     )
@@ -119,7 +124,7 @@ def applicant_login(request):
             
             next_url = request.POST.get("next") or request.GET.get("next")
             
-            if next_url:
+            if next_url and not next_url.startswitch("/superadmin"):
                 return redirect(next_url)
             return redirect("home")
         

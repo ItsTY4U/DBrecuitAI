@@ -289,6 +289,25 @@ def upload_resume(request, pk):
 
         application.ai_score = ai.get("score", 0)
         application.ai_summary = ai.get("summary", "")
+        
+        # Match Info
+        application.ai_match_level = ai.get("match_level", "")
+        application.ai_recommendation = ai.get("recommendation", "")
+        
+        # AI Score Breakdown
+        application.ai_skills_match = ai.get("skills_match", 0)
+        application.ai_experience_match = ai.get("experience_match", 0)
+        application.ai_education_match = ai.get("education_match", 0)
+        application.ai_qualification_match = ai.get("qualification_match", 0)
+        
+        # Qualifications
+        application.ai_matched_qualifications = "\n".join(
+            ai.get("matched_qualifications", [])
+        )
+        
+        application.ai_missing_qualifications = "\n".join(
+            ai.get("missing_qualification", [])
+        )
 
         application.ai_strengths = "\n".join(
             ai.get("strengths", [])

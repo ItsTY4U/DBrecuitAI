@@ -408,9 +408,9 @@
                                     {{ recommendation.job.department }}
                                 </span>
                             </div>
-                            {% comment %} <span class="match-badge">
-                                {{ recommendation.score }}% Match
-                            </span> {% endcomment %}
+                            <span class="match-badge">
+                                {{ recommendation.match_level }}
+                            </span>
                         </div>
 
                         {% comment %} <div class="match-bar">

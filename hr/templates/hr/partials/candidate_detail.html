@@ -1,4 +1,4 @@
-<a href="{% url "candidate_department" application.job.department %}" class="back-link-alt" style="margin-bottom:20px;display:inline-block;background:white;">
+<a href="{% url 'candidate_department' %}?department={{ application.job.department|urlencode }}" class="back-link-alt" style="margin-bottom:20px;display:inline-block;background:white;">
     <i class="fas fa-arrow-left"></i>
     Back to Department
 </a>
@@ -45,20 +45,145 @@
 <div class="details-grid">
     <div class="eval-column">
         <div class="eval-card">
-            <h3>AI Insight</h3>
+            <h3>AI Candidate Insight</h3>
             <div class="eval-content">
-                <p>
-                    {{ application.ai_summary }}
-                </p>
                 <div class="ai-insight">
                     <strong>
                         <i class="fas fa-robot"></i>
-                        AI Score: {{ application.ai_score }}
+                        AI Score: {{ application.ai_score }}%
                     </strong>
-                    <br>
-                    <small>
-                        {{ application.ai_summary }}
-                    </small>
+                    <p>
+                        <strong>Match Level:</strong>
+                        {{ application.ai_match_level|default:"Not Available" }}
+                    </p>
+                </div>
+
+                <div class="ai-analysis-card">
+                    <h2>AI Summary</h2>
+                    <p>
+                        {{ application.ai_summary|default:"No AI summary available." }}
+                    </p>
+                </div>
+
+                <div class="ai-analysis-card">
+                    <h4>Score Breakdown</h4>
+                    <div class="ai-score-breakdown">
+
+                        <div class="ai-score-item">
+                            <span>Skills</span>
+                            <strong>
+                                {{ application.ai_skills_match }}%
+                            </strong>
+                            <div class="ai-progress">
+                                <div class="ai-progress-fill" style="width: {{ application.ai_skills_match }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="ai-score-item">
+                            <span>Experience</span>
+                            <strong>
+                                {{ application.ai_experience_match }}%
+                            </strong>
+                            <div class="ai-progress">
+                                <div class="ai-progress-fill" style="width: {{ application.ai_experience_match }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="ai-score-item">
+                            <span>Education</span>
+                            <strong>
+                                {{ application.ai_experience_match }}%
+                            </strong>
+                            <div class="ai-progress">
+                                <div class="ai-progress-fill" style="width: {{ application.ai_education_match }}%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="ai-score-item">
+                            <span>Key Qualifications </span>
+                            <strong>
+                                {{ application.ai_qualification_match }}%
+                            </strong>
+                            <div class="ai-progress">
+                                <div class="ai-progress-fill" style="width: {{ application.ai_qualification_match }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ai-analysis-two-column">
+                    <div class="ai-analysis-card">
+                        <h4>
+                            <i class="fas fa-check-circle"></i>
+                            Matched Qualifications
+                        </h4>
+                        {% if matched_qualifications %}
+                            <ul class="ai-list">
+                                {% for qualification in matched_qualifications %}
+                                    <li>
+                                        {{ qualifications }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No matched qualifications identified.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="ai-analysis-card">
+                        <h4>
+                            <i class="fas fa-exclamation-circle"></i>
+                            Missing Qualifications
+                        </h4>
+                        {% if missing_qualifications %}
+                            <ul class="ai-list">
+                                {% for qualification in missing_qualifications %}
+                                    <li>
+                                        {{ qualification }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No missing qualifications identified.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="ai-analysis-two-column">
+                    <div class="ai-analysis-card">
+                        <h4>
+                            <i class="fas fa-thumbs-up"></i>
+                            Strengths
+                        </h4>
+                        {% if strengths %}
+                            <ul class="ai-list">
+                                {% for strength in strengths %}
+                                    <li>
+                                        {{ strength }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No strengths available.</p>
+                        {% endif %}
+                    </div>
+                    <div class="ai-analysis-card">
+                        <h4>
+                            <i class="fas fa-thumbs-down"></i>
+                            Weaknesses
+                        </h4>
+                        {% if weakness %}
+                            <ul class="ai-list">
+                                {% for weakness in weaknesses %}
+                                    <li>
+                                        {{ weakness }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>No weaknesses available.</p>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>

@@ -2,32 +2,72 @@ from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement
 from .models import Interview
 from django.db.models import Q, Count, Prefetch
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from datetime import date, timedelta
 from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+from functools import wraps
 
 # Create your views here.
+def hr_required(view_func):
+    
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        
+        user = request.user
+        
+        if ( user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists()
+        ):
+            return view_func(request, *args, **kwargs)
+        
+        raise PermissionDenied
+    
+    return wrapper
+
+
 def hr_login(request):
-    if request.method == "POST":
-        username = request.POST.get("username")
-        email = request.POST.get("email")
-        password = request.POST.get("password")
-        
-        
-        user = authenticate(request, username=username, email=email, password=password)
-                
-        if user is not None and user.is_staff:
-            login(request, user)
+    
+    if request.user.is_authenticated:
+        if request.user.groups.filter(name="HR").exists():
             return redirect("dashboard")
+        
+        if request.user.is_superuser:
+            return redirect("/superadmin/")
+        
+        return redirect("home")
+    
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        
+        
+        user = authenticate(request, username=username, password=password)
+                
+        if user is not None:
+            is_hr = (
+                user.is_staff 
+                and not user.is_superuser
+                and user.groups.filter(name="HR").exists()
+            )
+            
+            if is_hr:
+                login(request, user)
+                return redirect("dashboard")
         
         messages.error(request, "Invalid username or password.")
         
-    return render(request, "hr/login.html")
+    return render(request, "hr/login.html") 
+
+@hr_required
+def hr_logout(request):
+    logout(request)
+    return redirect("hr_login")
 
 
-@staff_member_required
+@hr_required
 def dashboard(request):
     total_applications = Application.objects.count()
     screening = Application.objects.filter(status="Screening").count()
@@ -66,7 +106,7 @@ def dashboard(request):
     }
     return render(request, "hr/dashboard.html", content)
 
-@staff_member_required
+@hr_required
 def create_job(request):
     if request.method == "POST":
         job = Job.objects.create(
@@ -87,7 +127,7 @@ def create_job(request):
                 )
     return redirect("job_management")
 
-@staff_member_required
+@hr_required
 def job_management(request):
     
     active_jobs = Job.objects.filter(
@@ -103,7 +143,7 @@ def job_management(request):
         "inactive_jobs": inactive_jobs,
     })
     
-@staff_member_required
+@hr_required
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
@@ -131,7 +171,7 @@ def manage_job(request, pk):
         "job":job,
     })
     
-@staff_member_required
+@hr_required
 def candidates(request):
     departments = (
         Job.objects.filter(status="Active")
@@ -162,29 +202,50 @@ def candidates(request):
         "department_cards": department_cards,
     })
 
-@staff_member_required
-def candidate_department(request, department):
-    department = request.GET.get("department")
+# @staff_member_required
+# def candidate_department(request, department):
+#     department = request.GET.get("department")
     
-    candidates = Application.objects.filter(
-        job__deparment=department
+#     candidates = Application.objects.filter(
+#         job__department=department
+#     ).select_related("job").order_by("-ai_score")
+    
+#     return render(
+#         request,
+#         "hr/candidate_department.html",
+#         {
+#             "department": department,
+#             "candidates": candidates,
+#         }
+#     )
+
+@hr_required
+def candidate_department(request):
+    department = request.GET.get("department", "").strip()
+    
+    jobs = Job.objects.filter(
+        department__iexact=department,
+        status="Active"
     )
-    
-    # jobs = Job.objects.filter(
-    #     department=department,
-    #     status="Active"
-    # ).prefetch_related("application")
+
+    candidates = (
+        Application.objects
+        .filter(job__department=department)
+        .select_related("job")
+        .order_by("-ai_score")
+    )
 
     return render(
         request,
         "hr/candidate_department.html",
         {
             "department": department,
+            "jobs": jobs,
             "candidates": candidates,
         }
     )
 
-@staff_member_required
+@hr_required
 def candidate_detail(request, pk):
     application = get_object_or_404(
         Application.objects.select_related("job"),
@@ -200,7 +261,7 @@ def candidate_detail(request, pk):
                     "weaknesses": application.ai_weaknesses.splitlines(),
                     })
 
-@staff_member_required
+@hr_required
 def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
     
@@ -210,7 +271,7 @@ def update_application_status(request, pk):
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
-@staff_member_required
+@hr_required
 def interviews(request):
     
     total = Interview.objects.count()
@@ -299,7 +360,7 @@ def interviews(request):
     
     return render(request, "hr/interview.html", context,)
 
-@staff_member_required
+@hr_required
 def schedule_interview(request, job_id):
     
     job = get_object_or_404(Job, pk=job_id)
@@ -335,7 +396,7 @@ def schedule_interview(request, job_id):
             }
     )
     
-@staff_member_required
+@hr_required
 def interview_detail(request, pk):
     interview = get_object_or_404(
         Interview.objects.prefetch_related(
@@ -347,7 +408,7 @@ def interview_detail(request, pk):
         request, "hr/interview_detail.html",{"interview": interview,}
     )
     
-@staff_member_required
+@hr_required
 def update_interview_status(request, pk):
 
     interview = get_object_or_404(

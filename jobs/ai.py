@@ -21,24 +21,68 @@ def extract_resume_text(pdf_path):
                 
     return text
 
-
 def analyze_resume(resume_text, job):
     if client is None:
         raise Exception("Gemini API key is missing.")
-    
+
     general_requirements = job.requirements.strip()
-    
-    key_qualifications ="\n".join(
+
+    key_qualifications = "\n".join(
         f"- {r.text}"
         for r in job.requirements_list.all()
     )
-    
+
     prompt = f"""
     You are an Expert HR recruiter assistant for a recruitment
-    decision-support system.
+    decision-support system operating in the Philippine job market.
 
-    Evaluate the applicant for the following job.
-    
+    Evaluate the applicant for the following job using the
+    4-criteria rubric below.
+
+    RUBRIC (score each criterion 50-100)
+
+    1. Qualifications (Licenses & Certifications)
+       90-100 Exceptional: exceeds requirements, holds premium/advanced
+       localized certs beyond the JD baseline.
+       75-89 Proficient: meets all mandatory local credentials in the JD
+       (e.g., LTO, TESDA NC II, PRC, or specific software certs).
+       60-74 Developing: credentials missing/incomplete/expired, but a
+       partial or pending application exists.
+       50-59 Unsatisfactory: completely lacks the mandatory,
+       non-negotiable legal or technical licenses required for the role.
+
+    2. Experience (Tenure & Environment)
+       90-100 Exceptional: years exceed the JD requirement, strong
+       employment stability, minimal job-hopping.
+       75-89 Proficient: meets the required years; past environments
+       directly match the target workflow.
+       60-74 Developing: shorter tenure than requested, or experience in
+       an unrelated industry with low transferable context.
+       50-59 Unsatisfactory: no relevant experience, unexplained gaps,
+       or high job-hopping frequency.
+
+    3. Skills (Hard, Soft, & Tools)
+       90-100 Exceptional: high density (>80%) of core technical tools,
+       localized terminology, and operational keywords from the JD.
+       75-89 Proficient: solid baseline (60-79%) of primary hard skills
+       and essential soft skills.
+       60-74 Developing: weak keyword alignment (<60%); relies on
+       generic text without naming specific tools/methods.
+       50-59 Unsatisfactory: zero relevant skills or tool proficiencies
+       matched.
+
+    4. Education (Academic Baseline)
+       90-100 Exceptional: exceeds minimum requirement.
+       75-89 Proficient: exactly matches the minimum required education
+       for the Philippine context (e.g., K-12, Vocational, Degree).
+       60-74 Developing: below the requested level, but has significant
+       equivalent practical field experience.
+       50-59 Unsatisfactory: does not meet the baseline educational
+       requirement.
+
+    Do not assume the applicant has a qualification unless there is
+    evidence of it in the resume.
+
     JOB INFORMATION
 
     Job Title:
@@ -56,31 +100,25 @@ def analyze_resume(resume_text, job):
     HR Key Qualifications:
     {key_qualifications}
 
-
     APPLICANT RESUME:
     {resume_text}
 
-
     TASK
 
-    Analyze how well the applicant matches this specific job.
+    1. Score the applicant 50-100 on each of the four rubric criteria.
 
-    Consider:
+    2. Decide how much each criterion should count toward this specific
+       job's final score, as a weight from 10 to 40 (inclusive), with
+       all four weights summing to exactly 100. Base the weights on
+       what actually matters most for this job — e.g., a role that
+       legally requires a license should weight Qualifications higher;
+       a hands-on technical role should weight Skills higher; a role
+       with flexible entry requirements should weight Education lower.
 
-    1. Skills
-    2. Work experience
-    3. Education
-    4. Certifications
-    5. Projects
-    6. Job requirements
-    7. HR key qualifications
+    3. For each of the four weights, give a short one-sentence reason
+       tied to this specific job.
 
-    Do not assume that the applicant has a qualification unless there
-    is evidence of it in the resume.
-
-    Return ONLY valid JSON.
-
-    Use EXACTLY this structure:
+    Return ONLY valid JSON. Use EXACTLY this structure:
 
     {{
         "first_name": "",
@@ -114,77 +152,81 @@ def analyze_resume(resume_text, job):
         ],
 
         "skills_match": 0,
-
         "experience_match": 0,
-
         "education_match": 0,
+        "qualification_match": 0,
 
-        "qualification_match": 0
+        "criteria_weights": {{
+            "qualification_weight": 0,
+            "experience_weight": 0,
+            "skills_weight": 0,
+            "education_weight": 0
+        }},
+
+        "weight_reasoning": {{
+            "qualification": "",
+            "experience": "",
+            "skills": "",
+            "education": ""
+        }}
     }}
-
 
     RULES
 
-    1. "score" must be an integer from 0 to 100.
+    1. "score" must be an integer from 50 to 100 (you may leave this at 0;
+       the backend recalculates it).
 
-    2. "skills_match" must be an integer from 0 to 100.
+    2. "skills_match", "experience_match", "education_match", and
+       "qualification_match" must each be an integer from 50 to 100,
+       following the rubric bands above.
 
-    3. "experience_match" must be an integer from 0 to 100.
+    3. "criteria_weights" values must each be an integer between 10 and
+       40 inclusive, and the four values must sum to exactly 100.
 
-    4. "education_match" must be an integer from 0 to 100.
+    4. "match_level" must be one of:
+    - "Exceptional"
+    - "Proficient"
+    - "Developing"
+    - "Unsatisfactory"
 
-    5. "qualification_match" must be an integer from 0 to 100.
-
-    6. "match_level" must be one of:
-    - "Strong Match"
-    - "Good Match"
-    - "Partial Match"
-    - "Weak Match"
-
-    7. "recommendation" must be one of:
-    - "Highly Qualified"
+    5. "recommendation" must be one of:
     - "Qualified"
-    - "Partially Qualified"
+    - "Potentially Qualified"
     - "Not Qualified"
 
-    8. "matched_qualifications" must contain qualifications that
-    are supported by evidence in the applicant's resume.
+    6. "matched_qualifications" must contain qualifications that are
+       supported by evidence in the applicant's resume.
 
-    9. "missing_qualifications" must contain important job
-    qualifications that are required or preferred but are not
-    supported by the resume.
+    7. "missing_qualifications" must contain important job
+       qualifications that are required or preferred but are not
+       supported by the resume.
 
-    10. Do not invent skills, experience, education, certifications,
-        or qualifications.
+    8. Do not invent skills, experience, education, certifications, or
+       qualifications. If there is no evidence for a qualification, do
+       not assume the applicant has it.
 
-    11. Keep the summary concise but explain the main reason for
-        the applicant's score.
+    9. Keep the summary concise but explain the main reason for the
+       applicant's score.
 
-    12. Keep strengths and weaknesses concise.
+    10. Keep strengths, weaknesses, and weight_reasoning entries concise
+        (one sentence each).
 
-    13. If there is no evidence for a qualification, do not assume
-        that the applicant has it.
+    11. Return valid JSON parseable by Python's json.loads(). Do not
+        include Markdown, ```json fences, or any text before/after the
+        JSON.
 
-    14. Return valid JSON that can be parsed using Python's
-        json.loads().
-
-    15. Do not include Markdown.
-
-    16. Do not include ```json.
-
-    17. Do not include explanations before or after the JSON.
-    
-    18. Do not determine the final overall score.
+    12. Do not determine the final overall score, match_level, or
+        recommendation yourself — the backend recalculates these.
     """
-    
+
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
     text = response.text.strip()
-    
+
     text = re.sub(r"^```json\s*```$", "", text, flags=re.IGNORECASE).strip()
-    
+
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -192,54 +234,117 @@ def analyze_resume(resume_text, job):
         print(text)
         raise Exception("Gemini returned invalid JSON")
 
-    # Calculate final AI score
-    skills_match = int(data.get("skills_match", 0))
-    experience_match = int(data.get("experience_match", 0))
-    education_match = int(data.get("education_match", 0))
-    qualification_match = int(data.get("qualification_match", 0))
-    
-    # Keep value within 0 - 100
-    skills_match = max(0, min(skills_match, 100))
-    experience_match = max(0, min(experience_match, 100))
-    education_match = max(0, min(education_match, 100))
-    qualification_match = max(0, min(qualification_match, 100))
-    
-    # Final score
-    final_score = (
-        (skills_match * 0.35) + (experience_match * 0.30) + (education_match * 0.15) + (qualification_match * 0.20)
-    )
-    
-    final_score = round(final_score)
-    
-    # Store value
+    # ---- Step 0: pull and clamp the four raw criterion scores ----
+    skills_match = _clamp(data.get("skills_match", 0), 0, 100)
+    experience_match = _clamp(data.get("experience_match", 0), 0, 100)
+    education_match = _clamp(data.get("education_match", 0), 0, 100)
+    qualification_match = _clamp(data.get("qualification_match", 0), 0, 100)
+
     data["skills_match"] = skills_match
     data["experience_match"] = experience_match
     data["education_match"] = education_match
     data["qualification_match"] = qualification_match
-    
+
+    # ---- Pull and normalize the AI-generated weights ----
+    raw_weights = data.get("criteria_weights", {}) or {}
+    weights = _normalize_weights(
+        qualification=raw_weights.get("qualification_weight", 25),
+        experience=raw_weights.get("experience_weight", 25),
+        skills=raw_weights.get("skills_weight", 25),
+        education=raw_weights.get("education_weight", 25),
+    )
+    data["criteria_weights"] = weights
+
+    # ---- Step 1: Knockout Layer (Safety Check) ----
+    # If qualifications_score < 60, hard-fail regardless of the weighted
+    # average — the candidate lacks a mandatory, non-negotiable license
+    # or credential.
+    if qualification_match < 60:
+        data["hard_fail"] = True
+        data["hard_fail_reason"] = (
+            "Qualifications score is below 60 — candidate lacks a "
+            "mandatory, non-negotiable license or credential required "
+            "for this role."
+        )
+        data["score"] = qualification_match
+        data["recommendation"] = "Not Qualified"
+        data["match_level"] = _match_level(qualification_match)
+        return data
+
+    data["hard_fail"] = False
+    data["hard_fail_reason"] = None
+
+    # ---- Step 2: Average Scoring Layer, using the job-specific weights ----
+    final_score = (
+        qualification_match * (weights["qualification_weight"] / 100)
+        + experience_match * (weights["experience_weight"] / 100)
+        + skills_match * (weights["skills_weight"] / 100)
+        + education_match * (weights["education_weight"] / 100)
+    )
+    final_score = round(final_score, 1)
     data["score"] = final_score
-    
-    # Determine match level
-    if final_score >= 85:
-        data["match_level"] = "Strong Match"
-    elif final_score >= 70:
-        data["match_level"] = "Good Match"
-    elif final_score >= 50:
-        data["match_level"] = "Partial Match"
-    else:
-        data["match_level"] = "Weak Match"
-        
-    # Determine recommendation
-    if final_score >= 85:
-        data["recommendation"] = "Highly Qualified"
-    elif final_score >= 70:
+
+    # ---- Recommendation per the rubric's decision matrix ----
+    if final_score >= 85.0:
         data["recommendation"] = "Qualified"
-    elif final_score >= 50:
-        data["recommendation"] = "Partially Qualified"
+    elif final_score >= 70.0:
+        data["recommendation"] = "Potentially Qualified"
     else:
         data["recommendation"] = "Not Qualified"
-        
+
+    # ---- match_level mirrors the rubric's per-criterion bands ----
+    data["match_level"] = _match_level(final_score)
+
     return data
+
+
+def _clamp(value, low, high):
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        value = low
+    return max(low, min(value, high))
+
+
+def _match_level(score):
+    if score >= 90:
+        return "Exceptional"
+    if score >= 75:
+        return "Proficient"
+    if score >= 60:
+        return "Developing"
+    return "Unsatisfactory"
+
+
+def _normalize_weights(qualification, experience, skills, education):
+    """
+    Clamp each AI-supplied weight to [10, 40], then proportionally scale
+    so the four weights sum to exactly 100 while staying as close to the
+    clamped values (and the 10-40 bounds) as possible.
+    """
+    raw = {
+        "qualification_weight": _clamp(qualification, 10, 40),
+        "experience_weight": _clamp(experience, 10, 40),
+        "skills_weight": _clamp(skills, 10, 40),
+        "education_weight": _clamp(education, 10, 40),
+    }
+
+    total = sum(raw.values())
+    if total == 100:
+        return raw
+
+    # Scale proportionally, then re-clamp so no weight drifts outside
+    # [10, 40] after scaling.
+    scaled = {k: v * 100 / total for k, v in raw.items()}
+    scaled = {k: _clamp(round(v), 10, 40) for k, v in scaled.items()}
+
+    # Fix any rounding drift by nudging the largest weight.
+    drift = 100 - sum(scaled.values())
+    if drift != 0:
+        biggest_key = max(scaled, key=scaled.get)
+        scaled[biggest_key] = _clamp(scaled[biggest_key] + drift, 10, 40)
+
+    return scaled
     
     
 def parse_resume(resume_text):
