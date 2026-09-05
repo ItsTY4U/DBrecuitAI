@@ -15,6 +15,8 @@ from django.views.decorators.cache import never_cache
 
 from collections import defaultdict
 
+import ast
+
 # Create your views here.
 @never_cache
 def hr_login(request):
@@ -198,8 +200,6 @@ def manage_job(request, pk):
         "requirements": requirements,
         "applicant_count": applicant_count,
     })
-    
-import ast
 
 @never_cache
 @staff_member_required(login_url="hr_login")
