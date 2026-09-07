@@ -16,6 +16,12 @@ urlpatterns = [
         name="candidates"),
 
     path(
+        "candidates/job/<int:job_id>/table/",
+        views.candidate_job_table,
+        name="candidate_job_table",
+    ),
+
+    path(
         "candidates/department/<str:department>/",
         views.candidate_department,
         name="candidate_department",

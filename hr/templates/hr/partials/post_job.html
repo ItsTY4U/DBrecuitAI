@@ -15,7 +15,7 @@
             </div>
         </div>
 
-        <form id="post-job-form" method="POST" action="{% url "create_job" %}">
+        <form id="post-job-form" method="POST" action="{% url "create_job" %}" hx-boost="false">
             {% csrf_token %}
             
             <div class="form-group">

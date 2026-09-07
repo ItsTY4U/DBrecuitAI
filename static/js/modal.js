@@ -1,7 +1,7 @@
 // Modal handling with event delegation (supports standard loads and HTMX swaps)
 document.addEventListener("click", function (e) {
     // Open post job modal
-    const openBtn = e.target.closest('#open-post-modal');
+    const openBtn = e.target.closest('#open-post-modal, .open-post-modal-btn, .btn-open-post-modal');
     if (openBtn) {
         const modal = document.getElementById('post-job-modal');
         if (modal) modal.classList.add('active');
@@ -9,7 +9,7 @@ document.addEventListener("click", function (e) {
     }
 
     // Close post job modal
-    const closeBtn = e.target.closest('#close-post-modal') || e.target.closest('#cancel-modal');
+    const closeBtn = e.target.closest('#close-post-modal') || e.target.closest('#cancel-modal') || e.target.closest('.close-post-modal-btn');
     if (closeBtn) {
         const modal = document.getElementById('post-job-modal');
         if (modal) modal.classList.remove('active');
@@ -20,6 +20,16 @@ document.addEventListener("click", function (e) {
     const modal = document.getElementById('post-job-modal');
     if (modal && e.target === modal) {
         modal.classList.remove('active');
+    }
+});
+
+// Escape key closes modal
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+        const modal = document.getElementById('post-job-modal');
+        if (modal && modal.classList.contains('active')) {
+            modal.classList.remove('active');
+        }
     }
 });
 

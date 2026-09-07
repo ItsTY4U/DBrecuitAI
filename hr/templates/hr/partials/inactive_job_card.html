@@ -31,7 +31,7 @@
         <a href="{% url 'manage_job' job.pk %}" class="btn-job-edit">
             <i class="fas fa-pen-to-square"></i> Re-activate / Edit
         </a>
-        <a href="{% url 'candidate_department' job.department %}" class="btn-job-view">
+        <a href="{% url 'candidates' %}?department={{ job.department|urlencode }}&job={{ job.id }}" class="btn-job-view">
             <i class="fas fa-users-viewfinder"></i> Candidates
         </a>
     </div>

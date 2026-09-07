@@ -284,3 +284,4 @@ if not DEBUG:
 
 # Static files cache headers for production CDN / browser caching
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
+WHITENOISE_MANIFEST_STRICT = False
