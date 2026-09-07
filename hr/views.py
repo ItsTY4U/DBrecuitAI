@@ -14,8 +14,10 @@ from django.core.cache import cache
 from django.views.decorators.cache import never_cache
 
 from collections import defaultdict
-
 import ast
+import math
+from urllib.parse import quote
+from django.urls import reverse
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
@@ -219,137 +221,207 @@ def manage_job(request, pk):
         "applicant_count": applicant_count,
     })
 
+TABLE_PAGE_SIZE = 5
+
+def get_job_candidates_table_context(job, search_query="", page_number=1):
+    """
+    Returns pagination and candidate slice for the table below top 3 cards.
+    In default mode: candidates rank 4 to 8 on page 1, 9 to 13 on page 2, etc.
+    In search mode: candidates matching search query for this job, paginated 5 per page.
+    """
+    try:
+        page_number = int(page_number)
+        if page_number < 1:
+            page_number = 1
+    except (ValueError, TypeError):
+        page_number = 1
+
+    base_fields = (
+        "id", "application_id", "first_name", "middle_initial", "last_name",
+        "email", "phone", "ai_score", "status", "created_at", "job_id"
+    )
+
+    if search_query:
+        search_qs = (
+            Application.objects.filter(job=job)
+            .filter(
+                Q(application_id__icontains=search_query) |
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(email__icontains=search_query)
+            )
+            .only(*base_fields)
+            .order_by("-ai_score", "-created_at")
+        )
+        total_matching = search_qs.count()
+        total_pages = max(1, math.ceil(total_matching / TABLE_PAGE_SIZE)) if total_matching > 0 else 1
+        page_number = min(page_number, total_pages)
+
+        offset = (page_number - 1) * TABLE_PAGE_SIZE
+        candidates_page = list(search_qs[offset : offset + TABLE_PAGE_SIZE])
+
+        for idx, cand in enumerate(candidates_page):
+            cand.table_rank = offset + idx + 1
+
+        start_idx = offset + 1 if total_matching > 0 else 0
+        end_idx = min(offset + TABLE_PAGE_SIZE, total_matching)
+
+        return {
+            "job": job,
+            "candidates": candidates_page,
+            "is_search": True,
+            "search_query": search_query,
+            "total_count": total_matching,
+            "start_index": start_idx,
+            "end_index": end_idx,
+            "current_page": page_number,
+            "total_pages": total_pages,
+            "has_previous": page_number > 1,
+            "has_next": page_number < total_pages,
+            "previous_page": page_number - 1,
+            "next_page": page_number + 1,
+            "page_range": range(1, total_pages + 1),
+        }
+    else:
+        total_apps = job.applicant_count if hasattr(job, "applicant_count") else Application.objects.filter(job=job).count()
+        total_table_candidates = max(0, total_apps - 3)
+        total_pages = max(1, math.ceil(total_table_candidates / TABLE_PAGE_SIZE)) if total_table_candidates > 0 else 1
+        page_number = min(page_number, total_pages)
+
+        offset = 3 + (page_number - 1) * TABLE_PAGE_SIZE
+        candidates_page = list(
+            Application.objects.filter(job=job)
+            .only(*base_fields)
+            .order_by("-ai_score", "-created_at")[offset : offset + TABLE_PAGE_SIZE]
+        )
+
+        for idx, cand in enumerate(candidates_page):
+            cand.table_rank = offset + idx + 1
+
+        start_idx = offset + 1 if total_table_candidates > 0 else 0
+        end_idx = min(offset + TABLE_PAGE_SIZE, total_apps)
+
+        return {
+            "job": job,
+            "candidates": candidates_page,
+            "is_search": False,
+            "search_query": "",
+            "total_count": total_apps,
+            "total_table_candidates": total_table_candidates,
+            "start_index": start_idx,
+            "end_index": end_idx,
+            "current_page": page_number,
+            "total_pages": total_pages,
+            "has_previous": page_number > 1,
+            "has_next": page_number < total_pages,
+            "previous_page": page_number - 1,
+            "next_page": page_number + 1,
+            "page_range": range(1, total_pages + 1),
+        }
+
+@never_cache
 @staff_member_required(login_url="hr_login")
 def candidates(request):
-    cache_key = "hr_candidates_data"
-    data = cache.get(cache_key)
-    if data is None:
-        # Single aggregate query for all candidate status counts
-        counts = Application.objects.aggregate(
-            total=Count("id"),
-            screening=Count("id", filter=Q(status="Screening")),
-            interview=Count("id", filter=Q(status="Interview")),
-            hired=Count("id", filter=Q(status="Hired")),
+    selected_department = request.GET.get("department", "").strip()
+    selected_job = request.GET.get("job", "").strip()
+
+    # Single aggregate query for all candidate status counts
+    counts = Application.objects.aggregate(
+        total=Count("id"),
+        screening=Count("id", filter=Q(status="Screening")),
+        interview=Count("id", filter=Q(status="Interview")),
+        hired=Count("id", filter=Q(status="Hired")),
+    )
+
+    # Distinct departments for top dropdown filter
+    available_departments = list(
+        Job.objects.filter(status="Active")
+        .values_list("department", flat=True)
+        .distinct()
+        .order_by("department")
+    )
+
+    # Active jobs annotated with applicant count
+    jobs_qs = (
+        Job.objects.filter(status="Active")
+        .annotate(applicant_count=Count("application"))
+        .order_by("department", "title")
+    )
+
+    if selected_department:
+        jobs_qs = jobs_qs.filter(department=selected_department)
+    if selected_job and selected_job.isdigit():
+        jobs_qs = jobs_qs.filter(id=int(selected_job))
+
+    base_candidate_fields = (
+        "id", "application_id", "first_name", "middle_initial", "last_name",
+        "email", "phone", "ai_score", "status", "created_at", "job_id"
+    )
+
+    # Group jobs by department and prepare top 3 cards + initial table context for each job
+    departments_dict = defaultdict(list)
+    for job in jobs_qs:
+        top_candidates = list(
+            Application.objects.filter(job=job)
+            .only(*base_candidate_fields)
+            .order_by("-ai_score", "-created_at")[:3]
         )
+        for idx, cand in enumerate(top_candidates):
+            cand.top_rank = idx + 1
+        job.top_candidates = top_candidates
 
-        departments = list(
-            Job.objects.filter(status="Active")
-            .values("department")
-            .annotate(job_count=Count("id"))
-            .order_by("department")
+        # Default initial table context (Page 1: ranks 4 to 8)
+        job.table_data = get_job_candidates_table_context(job, search_query="", page_number=1)
+        departments_dict[job.department].append(job)
+
+    department_sections = []
+    for dept_name, jobs_list in departments_dict.items():
+        total_dept_applicants = sum(j.applicant_count for j in jobs_list)
+        all_dept_jobs = list(
+            Job.objects.filter(status="Active", department=dept_name)
+            .values("id", "title")
+            .order_by("title")
         )
-        dept_applicant_counts = {
-            item["job__department"]: item["total"]
-            for item in (
-                Application.objects.filter(job__status="Active")
-                .values("job__department")
-                .annotate(total=Count("id"))
-            )
-        }
+        department_sections.append({
+            "name": dept_name,
+            "jobs": jobs_list,
+            "all_jobs": all_dept_jobs,
+            "job_count": len(jobs_list),
+            "total_applicants": total_dept_applicants,
+        })
 
-        # Fetch top candidates across all active jobs in a single query and group in memory
-        dept_top_applicants = defaultdict(list)
-        for app in (
-            Application.objects.filter(job__status="Active")
-            .select_related("job")
-            .only("id", "first_name", "last_name", "ai_score", "status", "job__id", "job__department")
-            .order_by("-ai_score", "-created_at")
-        ):
-            dept = app.job.department
-            if len(dept_top_applicants[dept]) < 3:
-                dept_top_applicants[dept].append(app)
+    return render(request, "hr/candidates.html", {
+        "department_sections": department_sections,
+        "available_departments": available_departments,
+        "selected_department": selected_department,
+        "selected_job": selected_job,
+        "total_candidates": counts["total"],
+        "screening_count": counts["screening"],
+        "interview_count": counts["interview"],
+        "hired_count": counts["hired"],
+    })
 
-        department_cards = []
-        for dept in departments:
-            dept_name = dept["department"]
-            total_dept_applicants = dept_applicant_counts.get(dept_name, 0)
-            top_applicants = dept_top_applicants.get(dept_name, [])
+@never_cache
+@staff_member_required(login_url="hr_login")
+def candidate_job_table(request, job_id):
+    job = get_object_or_404(
+        Job.objects.annotate(applicant_count=Count("application")),
+        id=job_id
+    )
+    search_query = request.GET.get("search", "").strip()
+    page_number = request.GET.get("page", 1)
 
-            department_cards.append({
-                "department": dept_name,
-                "job_count": dept["job_count"],
-                "total_applicants": total_dept_applicants,
-                "top_applicants": top_applicants,
-            })
-
-        data = {
-            "department_cards": department_cards,
-            "total_candidates": counts["total"],
-            "screening_count": counts["screening"],
-            "interview_count": counts["interview"],
-            "hired_count": counts["hired"],
-        }
-        cache.set(cache_key, data, 15)
-
-    return render(request, "hr/candidates.html", data)
+    table_data = get_job_candidates_table_context(job, search_query=search_query, page_number=page_number)
+    return render(
+        request,
+        "hr/partials/candidate_job_table.html",
+        {"table_data": table_data, "job": job}
+    )
 
 @never_cache
 @staff_member_required(login_url="hr_login")
 def candidate_department(request, department):
-    # Shared filters from query params
-    search_query = request.GET.get("search", "").strip()
-    status_filter = request.GET.get("status", "")
-    ITEMS_PER_PAGE = 15
-
-    active_jobs = Job.objects.filter(department=department, status="Active").order_by("title")
-
-    total_candidates = Application.objects.filter(
-        job__department=department,
-        job__status="Active"
-    ).count()
-
-    role_data = []
-    for job in active_jobs:
-        qs = Application.objects.filter(job=job)
-
-        # Apply search filter
-        if search_query:
-            qs = qs.filter(
-                Q(first_name__icontains=search_query) |
-                Q(last_name__icontains=search_query) |
-                Q(email__icontains=search_query) |
-                Q(application_id__icontains=search_query)
-            )
-
-        # Apply status filter
-        if status_filter:
-            qs = qs.filter(status=status_filter)
-
-        qs = qs.order_by("-ai_score", "-created_at")
-
-        # Per-role pagination key: page_<job_id>
-        page_key = f"page_{job.pk}"
-        page_number = request.GET.get(page_key, 1)
-        paginator = Paginator(qs, ITEMS_PER_PAGE)
-        page_obj = paginator.get_page(page_number)
-
-        role_data.append({
-            "job": job,
-            "page_obj": page_obj,
-            "page_key": page_key,
-            "total_count": page_obj.paginator.count, #qs.count(),
-        })
-
-    # Build a query string that preserves search/status but drops page_* keys
-    filter_params = {}
-    if search_query:
-        filter_params["search"] = search_query
-    if status_filter:
-        filter_params["status"] = status_filter
-
-    return render(
-        request,
-        "hr/candidate_department.html",
-        {
-            "department": department,
-            "role_data": role_data,
-            "total_candidates": total_candidates,
-            "search_query": search_query,
-            "status_filter": status_filter,
-            "filter_params": filter_params,
-            "status_choices": ["Pending", "Screening", "Interview", "Hired", "Rejected"],
-        },
-    )
+    return redirect(f"{reverse('candidates')}?department={quote(department)}")
 
 @never_cache
 @staff_member_required(login_url="hr_login")

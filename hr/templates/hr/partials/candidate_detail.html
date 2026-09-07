@@ -1,5 +1,5 @@
 <div class="page-nav-header">
-    <a href="{% url 'candidate_department' application.job.department %}" class="back-link-pill">
+    <a href="{% url 'candidates' %}?department={{ application.job.department|urlencode }}" class="back-link-pill">
         <i class="fas fa-arrow-left"></i>
         <span>Back to {{ application.job.department }} Candidates</span>
     </a>

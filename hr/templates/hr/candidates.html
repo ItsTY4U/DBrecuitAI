@@ -1,5 +1,6 @@
 {% extends "home_admin.html" %}
 {% load static %}
+
 {% block admin_body %}
 <main class="main-dashboard">
     <header class="dashboard-header">
@@ -63,9 +64,245 @@
             </div>
         </div>
     </section>
-    
-    <div id="candidate-table">
-        {% include "hr/partials/candidate_departments.html" %}
+
+    <!-- Global Top Toolbar: Department Filter -->
+    <div class="candidates-top-toolbar">
+        <form method="GET" action="{% url 'candidates' %}" class="toolbar-filter-form" id="deptFilterForm">
+            <div class="toolbar-filter-group">
+                <label for="deptSelect" class="toolbar-filter-label">
+                    <i class="fas fa-building"></i> Filter by Department:
+                </label>
+                <select name="department" id="deptSelect" class="toolbar-select" onchange="this.form.submit()">
+                    <option value="">All Available Departments</option>
+                    {% for dept in available_departments %}
+                    <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>
+                        {{ dept }} Department
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_department or selected_job %}
+            <a href="{% url 'candidates' %}" class="btn-reset-filters" title="Reset all filters">
+                <i class="fas fa-rotate-left"></i> Reset Filter
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Department Sections Container -->
+    <div class="department-sections-container">
+        {% for dept in department_sections %}
+        <section class="dept-section-block" id="dept-block-{{ forloop.counter }}">
+            <!-- Department Section Header -->
+            <div class="dept-section-header">
+                <div class="dept-title-left">
+                    <div class="dept-icon-badge">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <h2 class="dept-title-text">{{ dept.name }} Department</h2>
+                        <span class="dept-sub-info">
+                            <strong>{{ dept.job_count }}</strong> Position{{ dept.job_count|pluralize }} &bull;
+                            <strong>{{ dept.total_applicants }}</strong> Candidate{{ dept.total_applicants|pluralize }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Dropdown Filter by Job positioned on top right of Department section -->
+                <div class="dept-job-filter-box">
+                    <label for="dept-job-filter-{{ forloop.counter }}" class="dept-job-filter-label">
+                        <i class="fas fa-briefcase"></i> Filter by Job:
+                    </label>
+                    <select id="dept-job-filter-{{ forloop.counter }}" 
+                            class="dept-job-select" 
+                            onchange="filterDeptJobs(this, 'dept-block-{{ forloop.counter }}')">
+                        <option value="all">All {{ dept.name }} Jobs ({{ dept.all_jobs|length }})</option>
+                        {% for j in dept.all_jobs %}
+                        <option value="{{ j.id }}" {% if selected_job == j.id|stringformat:"s" %}selected{% endif %}>
+                            {{ j.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Jobs List Inside Department -->
+            <div class="dept-jobs-wrapper">
+                {% for job in dept.jobs %}
+                <div class="job-section-card" id="job-card-{{ job.id }}" data-job-id="{{ job.id }}">
+                    <!-- Job Header Row -->
+                    <div class="job-card-header-bar">
+                        <div class="job-header-left">
+                            <div class="job-title-row">
+                                <h3 class="job-title-name">{{ job.title }}</h3>
+                                <span class="job-badge-type">{{ job.job_type }}</span>
+                            </div>
+                            <div class="job-details-meta">
+                                <span><i class="far fa-calendar-alt"></i> Posted {{ job.posted_date|date:"M d, Y" }}</span>
+                                <span><i class="fas fa-users"></i> {{ job.applicant_count }} Candidate{{ job.applicant_count|pluralize }}</span>
+                            </div>
+                        </div>
+
+                        <!-- HTMX Search Field for this Job -->
+                        <div class="job-search-container">
+                            <form class="job-search-form" 
+                                  hx-get="{% url 'candidate_job_table' job.id %}" 
+                                  hx-target="#job-table-{{ job.id }}" 
+                                  hx-select=".job-candidate-table-inner"
+                                  hx-swap="innerHTML"
+                                  onsubmit="return false;">
+                                <div class="job-search-group">
+                                    <i class="fas fa-search job-search-icon"></i>
+                                    <input type="text"
+                                           id="search-input-{{ job.id }}"
+                                           name="search"
+                                           class="job-search-input"
+                                           placeholder="Search by ID, Name, Email…"
+                                           autocomplete="off"
+                                           hx-get="{% url 'candidate_job_table' job.id %}"
+                                           hx-trigger="input changed delay:300ms, search"
+                                           hx-target="#job-table-{{ job.id }}"
+                                           hx-select=".job-candidate-table-inner"
+                                           hx-swap="innerHTML"
+                                           hx-indicator="#search-spinner-{{ job.id }}">
+                                    <button type="button" 
+                                            class="btn-job-search"
+                                            onclick="htmx.trigger('#search-input-{{ job.id }}', 'search')">
+                                        Search
+                                    </button>
+                                    <span class="htmx-indicator search-spinner" id="search-spinner-{{ job.id }}">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </span>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Top 3 Candidate Cards -->
+                    <div class="top-candidates-section">
+                        <div class="top-candidates-title-bar">
+                            <span class="tc-section-label">
+                                <i class="fas fa-crown text-amber"></i> Top 3 Candidates
+                            </span>
+                            <span class="tc-section-sub">Ranked by AI Evaluation Match</span>
+                        </div>
+
+                        <div class="top-three-cards-grid">
+                            {% for cand in job.top_candidates %}
+                            <div class="top-card top-card-rank-{{ cand.top_rank }}">
+                                <div class="tc-card-top-row">
+                                    <div class="tc-badge tc-badge-{{ cand.top_rank }}">
+                                        {% if cand.top_rank == 1 %}
+                                            <i class="fas fa-medal"></i> Top 1 Candidate
+                                        {% elif cand.top_rank == 2 %}
+                                            <i class="fas fa-medal"></i> Top 2 Candidate
+                                        {% else %}
+                                            <i class="fas fa-medal"></i> Top 3 Candidate
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="tc-card-body">
+                                    <div class="tc-left-col">
+                                        <div class="tc-avatar tc-avatar-rank-{{ cand.top_rank }}">
+                                            {{ cand.first_name|first|upper }}{{ cand.last_name|first|upper }}
+                                        </div>
+                                        <div class="tc-text-info">
+                                            <h4 class="tc-name" title="{{ cand.first_name }} {% if cand.middle_initial %}{{ cand.middle_initial }}. {% endif %}{{ cand.last_name }}">
+                                                {{ cand.first_name }}
+                                                {% if cand.middle_initial %}{{ cand.middle_initial }}.{% endif %}
+                                                {{ cand.last_name }}
+                                            </h4>
+                                            <div class="tc-meta-row">
+                                                <span class="tc-ref-id"><i class="fas fa-hashtag"></i> {{ cand.application_id }}</span>
+                                                <span class="tc-date"><i class="far fa-clock"></i> Applied {{ cand.created_at|date:"M d, Y" }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="tc-right-col">
+                                        <div class="ai-score-pill
+                                            {% if cand.ai_score >= 90 %}
+                                                score-high
+                                            {% elif cand.ai_score >= 75 %}
+                                                score-mid
+                                            {% else %}
+                                                score-low
+                                            {% endif %}">
+                                            <i class="fas fa-bolt"></i>
+                                            <span><strong>{{ cand.ai_score }}%</strong> Match</span>
+                                        </div>
+
+                                        <span class="status-pill status-{{ cand.status|lower }}">
+                                            {{ cand.status }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="tc-card-action">
+                                    <a href="{% url 'candidate_detail' cand.id %}" class="btn-tc-review">
+                                        <span>Review Profile</span>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="empty-top-cards-box">
+                                <i class="fas fa-user-clock"></i>
+                                <p>No candidates applied to this position yet.</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Table Section: Top 4 to 8 candidates (and HTMX Search Target) -->
+                    <div class="job-table-outer">
+                        <div class="job-table-header-bar">
+                            <span class="table-section-title">
+                                <i class="fas fa-list-ol"></i> Candidate Rankings &amp; Applications
+                            </span>
+                        </div>
+                        <div id="job-table-{{ job.id }}" class="job-table-container">
+                            {% with table_data=job.table_data %}
+                                {% include "hr/partials/candidate_job_table.html" %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="empty-dept-jobs">
+                    <i class="fas fa-folder-open"></i>
+                    <h4>No active job postings in this department</h4>
+                    <p>Create a job post to start receiving candidate applications.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% empty %}
+        <div class="empty-state-box full-grid-empty">
+            <div class="empty-state-icon">
+                <i class="fas fa-users-slash"></i>
+            </div>
+            <h4>No active departments or jobs found</h4>
+            <p>Adjust your department filter or post a new job opening to start managing candidates.</p>
+        </div>
+        {% endfor %}
     </div>
 </main>
+
+<script>
+function filterDeptJobs(selectEl, deptBlockId) {
+    const selectedJobId = selectEl.value;
+    const deptBlock = document.getElementById(deptBlockId);
+    if (!deptBlock) return;
+    const jobCards = deptBlock.querySelectorAll('.job-section-card');
+    jobCards.forEach(card => {
+        if (selectedJobId === 'all' || card.getAttribute('data-job-id') === selectedJobId) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
 {% endblock %}
