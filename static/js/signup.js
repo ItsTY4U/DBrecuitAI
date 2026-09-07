@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
         profileView.style.display = "none";
         profileEdit.style.display = "block";
 
-        //        editButton.textContent = "Cancel";
+        editButton.textContent = "none";
 
     });
 
