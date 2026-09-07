@@ -5,7 +5,7 @@ from jobs.models import Application
 # Create your views here.
 def track(request):
     return render(request, "applications/track.html", {
-        "supabase_url": getattr(settings, "SUPABASE_URL", "https://djoocaqpxkngsnnmkefu.supabase.co"),
+        "supabase_url": getattr(settings, "SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co"),
         "supabase_anon_key": getattr(settings, "SUPABASE_ANON_KEY", ""),
     })
 

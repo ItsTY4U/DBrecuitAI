@@ -52,4 +52,17 @@ class Interview(models.Model):
     
     def __str__(self):
         return f"{self.interview_type} - {self.date}"
+
+    @property
+    def primary_applicant(self):
+        """Returns first applicant using prefetched in-memory cache if available."""
+        apps = self.applicants.all()
+        return apps[0] if apps else None
+
+    @property
+    def primary_job(self):
+        """Returns the job associated with the primary applicant without extra queries."""
+        applicant = self.primary_applicant
+        return applicant.job if applicant else None
+
     
