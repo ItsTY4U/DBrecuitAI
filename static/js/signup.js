@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (value === "") {
             strengthBar.style.width = "0%";
             return;
-        } 
+        }
         if (passedCount === 1) {
             strengthBar.classList.add("weak");
         } else if (passedCount === 2) {
@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", function () {
 
     const editButton = document.getElementById("edit-profile-btn");
-    const cancelButton = document.getElementById("cancel-profile-btn");
+    //    const cancelButton = document.getElementById("cancel-profile-btn");
 
     const profileView = document.getElementById("profile-view");
     const profileEdit = document.getElementById("profile-edit");
@@ -316,7 +316,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     );
 
-    
+
 
 });
 
@@ -327,7 +327,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const overlay = document.getElementById("resume-processing-overlay");
     const processingTitle = document.getElementById("processing-title");
     const processingMessage = document.getElementById("processing-message");
-    const saveButton =document.getElementById("save-profile-btn");
+    const saveButton = document.getElementById("save-profile-btn");
     const messages = document.querySelectorAll(".profile-message");
     const completeProfileBtn = document.getElementById("complete-profile-btn");
 
@@ -444,7 +444,7 @@ document.addEventListener("DOMContentLoaded", function () {
             message.style.opacity = "0";
             message.style.transform = "translateY(-10px)";
 
-            setTimeout(function (){
+            setTimeout(function () {
                 message.remove();
             }, 300);
         }, 5000);
