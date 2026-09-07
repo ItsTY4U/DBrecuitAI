@@ -1,16 +1,18 @@
 {% load static %}
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile|DBRecruitAI</title>
-    <link rel="stylesheet" href="{% static "css/account.css" %}">
+    <link rel="stylesheet" href="{% static " css/account.css" %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
+
 <body>
     <div class="landing-page">
         <header class="navbar glass">
@@ -18,14 +20,14 @@
                 <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
             </div>
             <nav class="nav-menu">
-                <a href="{% url "home" %}" class="nav-link">Home</a>
+                <a href="{% url " home" %}" class="nav-link">Home</a>
                 <a href="{% url 'jobs' %}" class="nav-link">Jobs</a>
                 {% if user.is_authenticated and not user.is_staff %}
-                <a href="{% url "profile" %}" class="nav-link">Profile</a>
-                <a href="{% url "applicant_logout" %}" class="nav-link">Logout</a>
+                <a href="{% url " profile" %}" class="nav-link">Profile</a>
+                <a href="{% url " applicant_logout" %}" class="nav-link">Logout</a>
                 {% else %}
-                <a href="{% url "applicant_login" %}" class="nav-link">Login</a>
-                <a href="{% url "signup" %}" class="nav-link">Sign Up</a>
+                <a href="{% url " applicant_login" %}" class="nav-link">Login</a>
+                <a href="{% url " signup" %}" class="nav-link">Sign Up</a>
                 {% endif %}
             </nav>
         </header>
@@ -34,13 +36,51 @@
         {% endblock %}
 
         <footer class="landing-footer glass">
-            
+            <div class="footer-container">
+                <div class="footer-logo">
+                    <img src="{% static 'images/logo.png' %}" alt="DBRecruitAI Logo">
+                    <p class="footer-subtitle">Your Gateway to a Better Future</p>
+                </div>
+
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4 class="footer-heading">Company</h4>
+                        <a href="#" class="footer-link">About Us</a>
+                        <a href="#" class="footer-link">Contact</a>
+                        <a href="#" class="footer-link">Blog</a>
+                    </div>
+
+                    <div class="footer-column">
+                        <h4 class="footer-heading">Resources</h4>
+                        <a href="#" class="footer-link">How It Works</a>
+                        <a href="#" class="footer-link">FAQs</a>
+                        <a href="#" class="footer-link">Help Center</a>
+                    </div>
+
+                    <div class="footer-column">
+                        <h4 class="footer-heading">Legal</h4>
+                        <a href="#" class="footer-link">Terms of Service</a>
+                        <a href="#" class="footer-link">Privacy Policy</a>
+                        <a href="#" class="footer-link">Cookie Policy</a>
+                    </div>
+                </div>
+
+                <div class="footer-bottom">
+                    <p class="footer-copyright">&copy; 2026 DBRecruitAI. All rights reserved.</p>
+                    <div class="footer-social">
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+            </div>
         </footer>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-        integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V"
-        crossorigin="anonymous">
-    </script>
-    <script src="{% static "js/signup.js" %}"></script>
+        integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" crossorigin="Resume">
+        </script>
+    <script src="{% static " js/signup.js" %}"></script>
 </body>
+
 </html>
