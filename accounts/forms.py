@@ -245,3 +245,12 @@ class ApplicantProfileForm(forms.ModelForm):
                 }
             ),
         }
+
+    def clean_default_resume(self):
+        resume = self.cleaned_data.get("default_resume")
+        if resume and hasattr(resume, "name") and not isinstance(resume, str):
+            if not resume.name.lower().endswith(".pdf"):
+                raise forms.ValidationError("Only PDF files are allowed.")
+            if hasattr(resume, "size") and resume.size > 5 * 1024 * 1024:
+                raise forms.ValidationError("Resume file must not exceed 5MB.")
+        return resume

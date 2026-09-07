@@ -1,0 +1,289 @@
+{% extends "home.html" %}
+{% load static %}
+
+{% block body %}
+<div class="bg-container dim"></div>
+
+<main class="main-content-wide" style="max-width: 960px; margin: 30px auto; padding: 15px;">
+
+    <!-- Welcome Header -->
+    <div class="welcome-header glass-white" style="padding: 30px; border-radius: 16px; margin-bottom: 24px; text-align: center; border-left: 6px solid var(--primary);">
+        <span style="display: inline-block; background: rgba(45, 90, 39, 0.12); color: var(--primary); padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">
+            <i class="fas fa-video"></i> AI-Powered Screening
+        </span>
+        <h1 style="font-size: 30px; font-weight: 800; color: #1a1a1a; margin-bottom: 10px;">
+            Welcome to Your AI Video Interview
+        </h1>
+        <p style="font-size: 16px; color: #555; max-width: 680px; margin: 0 auto;">
+            You are taking the video interview for the <strong>{{ job.title }}</strong> role in the <strong>{{ job.department }}</strong> department.
+            This is an opportunity to highlight your personality, problem-solving skills, and communication.
+        </p>
+    </div>
+
+    <!-- Before Getting Started Grid -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px;">
+
+        <!-- Equipment & Device Check Card -->
+        <div class="glass-white" style="padding: 26px; border-radius: 16px;">
+            <h2 style="font-size: 19px; font-weight: 700; margin-bottom: 14px; color: #1a1a1a; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-camera text-green" style="color: var(--primary);"></i> Device & Camera Check
+            </h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 16px;">
+                Please verify that your webcam and microphone are working properly before beginning.
+            </p>
+
+            <div id="camera-preview-box" style="position: relative; width: 100%; height: 210px; background: #111; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 2px solid #ddd;">
+                <video id="test-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
+                <div id="camera-placeholder" style="text-align: center; color: #aaa; padding: 20px;">
+                    <i class="fas fa-video-slash" style="font-size: 36px; margin-bottom: 8px; display: block;"></i>
+                    <span style="font-size: 13px;">Camera preview is inactive</span>
+                </div>
+                <div id="rec-dot" style="display: none; position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 20px; color: #fff; font-size: 11px; font-weight: 600;">
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; margin-right: 5px;"></span> Preview Active
+                </div>
+            </div>
+
+            <!-- Audio Meter Bar -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 4px;">
+                    <span>Microphone Volume</span>
+                    <span id="mic-status-text">Not Tested</span>
+                </div>
+                <div style="width: 100%; height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden;">
+                    <div id="audio-meter-bar" style="width: 0%; height: 100%; background: #2ecc71; transition: width 0.1s ease;"></div>
+                </div>
+            </div>
+
+            <button type="button" id="btn-test-devices" class="btn" style="width: 100%; padding: 11px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fas fa-sliders"></i> Test Camera & Microphone
+            </button>
+            <div id="device-alert" style="display: none; margin-top: 10px; font-size: 13px; padding: 8px 12px; border-radius: 6px;"></div>
+        </div>
+
+        <!-- Reminders & Tips Card -->
+        <div class="glass-white" style="padding: 26px; border-radius: 16px;">
+            <h2 style="font-size: 19px; font-weight: 700; margin-bottom: 14px; color: #1a1a1a; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-lightbulb" style="color: #f39c12;"></i> Helpful Reminders
+            </h2>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; font-size: 14px; color: #444;">
+                <li style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fas fa-sun" style="color: #f39c12; margin-top: 3px; font-size: 16px;"></i>
+                    <div>
+                        <strong>Quiet & Well-Lit Environment:</strong>
+                        <p style="margin: 2px 0 0; color: #666;">Sit facing a light source in a quiet room with minimal background distractions.</p>
+                    </div>
+                </li>
+                <li style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fas fa-eye" style="color: var(--primary); margin-top: 3px; font-size: 16px;"></i>
+                    <div>
+                        <strong>Maintain Eye Contact:</strong>
+                        <p style="margin: 2px 0 0; color: #666;">Look directly into your webcam while answering to project confidence and connection.</p>
+                    </div>
+                </li>
+                <li style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fas fa-stopwatch" style="color: #e74c3c; margin-top: 3px; font-size: 16px;"></i>
+                    <div>
+                        <strong>1:30 Time Limit Per Question:</strong>
+                        <p style="margin: 2px 0 0; color: #666;">You have up to 90 seconds for each of the 5 questions. Take a brief pause before speaking.</p>
+                    </div>
+                </li>
+                <li style="display: flex; align-items: flex-start; gap: 12px;">
+                    <i class="fas fa-comments" style="color: #2980b9; margin-top: 3px; font-size: 16px;"></i>
+                    <div>
+                        <strong>5 Questions Total:</strong>
+                        <p style="margin: 2px 0 0; color: #666;">2 introductory questions followed by 3 behavioral questions tailored to this role.</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Interview Rules & No Retake Policy -->
+    <div class="glass-white" style="padding: 26px; border-radius: 16px; margin-bottom: 24px; border: 1px solid rgba(230, 126, 34, 0.4);">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+            <i class="fas fa-triangle-exclamation" style="color: #e67e22; font-size: 22px;"></i>
+            <h2 style="font-size: 19px; font-weight: 800; color: #1a1a1a; margin: 0;">
+                Interview Rules & Guidelines
+            </h2>
+        </div>
+
+        <!-- No Retake Policy Alert -->
+        <div style="background: rgba(230, 126, 34, 0.1); border-left: 4px solid #e67e22; padding: 14px 18px; border-radius: 8px; margin-bottom: 18px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: #d35400; margin-bottom: 4px;">
+                <i class="fas fa-shield-halved"></i> Strict No-Retake Policy
+            </h3>
+            <p style="font-size: 13.5px; color: #444; margin: 0; line-height: 1.5;">
+                You are granted <strong>1 take per job only</strong>. Once you click "Begin Interview", leaving, refreshing the browser, or closing the tab will count as an attempt and will lock the interview. Retakes are strictly disallowed unless a verified technical glitch occurs.
+            </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+            <div style="background: rgba(46, 204, 113, 0.08); border-radius: 10px; padding: 16px;">
+                <h4 style="font-size: 14px; font-weight: 700; color: #27ae60; margin-bottom: 10px;">
+                    <i class="fas fa-check-circle"></i> Allowed
+                </h4>
+                <ul style="font-size: 13px; color: #444; padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                    <li>Pausing briefly (5–10 seconds) to gather your thoughts.</li>
+                    <li>Having a glass of water or bullet notes nearby.</li>
+                    <li>Clicking "Skip" if you prefer not to answer a question.</li>
+                    <li>Clicking "Next" early once you have finished your response.</li>
+                </ul>
+            </div>
+
+            <div style="background: rgba(231, 76, 60, 0.08); border-radius: 10px; padding: 16px;">
+                <h4 style="font-size: 14px; font-weight: 700; color: #c0392b; margin-bottom: 10px;">
+                    <i class="fas fa-times-circle"></i> Not Allowed
+                </h4>
+                <ul style="font-size: 13px; color: #444; padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                    <li>Navigating away, closing the window, or reloading the page.</li>
+                    <li>Having another person present or answering on your behalf.</li>
+                    <li>Reading verbatim from a pre-written script or AI generator.</li>
+                    <li>Loud ambient audio or background conversations.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agreement & Begin Action Box -->
+    <div class="glass-white" style="padding: 26px; border-radius: 16px; text-align: center;">
+        <form method="POST" action="{% url 'video_interview:start' application.application_id %}" id="start-interview-form">
+            {% csrf_token %}
+
+            <label style="display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 20px; user-select: none;">
+                <input type="checkbox" id="agreement-checkbox" style="width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;">
+                <span>I have read and agree to the Video Interview rules, camera/mic requirements, and No-Retake Policy.</span>
+            </label>
+
+            <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <button type="submit" id="btn-begin-interview" class="btn btn-primary" disabled style="padding: 13px 36px; font-size: 16px; font-weight: 700; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; opacity: 0.5; cursor: not-allowed; transition: all 0.2s ease;">
+                    <i class="fas fa-play"></i> Begin Interview Now
+                </button>
+
+                <a href="{% url 'profile' %}" class="btn" style="padding: 13px 26px; font-size: 15px; font-weight: 600; color: #555; text-decoration: none; border-radius: 10px; background: rgba(0,0,0,0.06);">
+                    <i class="fas fa-arrow-left"></i> Exit to Profile (Take Later)
+                </a>
+            </div>
+            <p style="font-size: 12px; color: #888; margin-top: 14px;">
+                <i class="fas fa-info-circle"></i> You can safely exit to your profile now without penalty. Once you click "Begin Interview Now", your session starts immediately.
+            </p>
+        </form>
+    </div>
+
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const btnTest = document.getElementById("btn-test-devices");
+    const testVideo = document.getElementById("test-video");
+    const cameraPlaceholder = document.getElementById("camera-placeholder");
+    const recDot = document.getElementById("rec-dot");
+    const deviceAlert = document.getElementById("device-alert");
+    const audioMeterBar = document.getElementById("audio-meter-bar");
+    const micStatusText = document.getElementById("mic-status-text");
+    const agreementCheckbox = document.getElementById("agreement-checkbox");
+    const btnBegin = document.getElementById("btn-begin-interview");
+
+    let mediaStream = null;
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let javascriptNode = null;
+    let devicesVerified = false;
+
+    btnTest.addEventListener("click", async function() {
+        try {
+            btnTest.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Requesting Permissions...';
+            btnTest.disabled = true;
+
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                audio: true
+            });
+
+            // Display video
+            testVideo.srcObject = mediaStream;
+            testVideo.style.display = "block";
+            cameraPlaceholder.style.display = "none";
+            recDot.style.display = "block";
+
+            // Setup audio meter
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            microphone = audioContext.createMediaStreamSource(mediaStream);
+            javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+            analyser.smoothingTimeConstant = 0.8;
+            analyser.fftSize = 1024;
+
+            microphone.connect(analyser);
+            analyser.connect(javascriptNode);
+            javascriptNode.connect(audioContext.destination);
+
+            javascriptNode.onaudioprocess = function() {
+                const array = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(array);
+                let values = 0;
+                const length = array.length;
+                for (let i = 0; i < length; i++) {
+                    values += array[i];
+                }
+                const average = values / length;
+                const percent = Math.min(100, Math.round(average * 2.2));
+                audioMeterBar.style.width = percent + "%";
+                if (percent > 10) {
+                    micStatusText.textContent = "Audio Detected ✓";
+                    micStatusText.style.color = "#27ae60";
+                }
+            };
+
+            devicesVerified = true;
+            btnTest.innerHTML = '<i class="fas fa-check"></i> Camera & Microphone Verified';
+            btnTest.style.background = "#27ae60";
+            btnTest.disabled = true;
+
+            deviceAlert.style.display = "block";
+            deviceAlert.style.background = "rgba(46, 204, 113, 0.15)";
+            deviceAlert.style.color = "#27ae60";
+            deviceAlert.innerHTML = '<i class="fas fa-circle-check"></i> Camera and microphone are working properly!';
+
+            updateBeginButtonState();
+
+        } catch (err) {
+            console.error("Camera/Mic error:", err);
+            btnTest.innerHTML = '<i class="fas fa-rotate-right"></i> Try Again';
+            btnTest.disabled = false;
+
+            deviceAlert.style.display = "block";
+            deviceAlert.style.background = "rgba(231, 76, 60, 0.15)";
+            deviceAlert.style.color = "#c0392b";
+            deviceAlert.innerHTML = '<i class="fas fa-circle-xmark"></i> Permission denied or device not found: ' + err.message + '. Please allow browser access.';
+        }
+    });
+
+    agreementCheckbox.addEventListener("change", updateBeginButtonState);
+
+    function updateBeginButtonState() {
+        if (agreementCheckbox.checked) {
+            btnBegin.disabled = false;
+            btnBegin.style.opacity = "1";
+            btnBegin.style.cursor = "pointer";
+        } else {
+            btnBegin.disabled = true;
+            btnBegin.style.opacity = "0.5";
+            btnBegin.style.cursor = "not-allowed";
+        }
+    }
+
+    // Stop streams when leaving page
+    window.addEventListener("beforeunload", function() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+        }
+        if (audioContext && audioContext.state !== "closed") {
+            audioContext.close();
+        }
+    });
+});
+</script>
+{% endblock %}
