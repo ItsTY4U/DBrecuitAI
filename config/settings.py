@@ -144,8 +144,11 @@ DATABASES = {
 
         # In serverless environments, close connections at request end (0); in persistent servers, keep alive (600)
         "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "0" if IS_VERCEL else "600")),
+        "CONN_HEALTH_CHECKS": True,
     }
 }
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 
 CACHES = {
     "default": {

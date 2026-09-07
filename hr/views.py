@@ -10,12 +10,20 @@ from django.contrib.admin.views.decorators import staff_member_required
 from datetime import date, timedelta
 from django.utils import timezone
 from django.core.paginator import Paginator
-
+from django.core.cache import cache
 from django.views.decorators.cache import never_cache
 
 from collections import defaultdict
 
 import ast
+
+def invalidate_hr_cache():
+    """Clear short-lived cache keys when mutations occur."""
+    cache.delete_many([
+        "hr_dashboard_data",
+        "hr_job_management_data",
+        "hr_candidates_data",
+    ])
 
 # Create your views here.
 @never_cache
@@ -71,56 +79,60 @@ def parse_ai_bullets(text):
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
     return lines
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def dashboard(request):
-    # 1. Single conditional aggregation query for all application counts
-    app_counts = Application.objects.aggregate(
-        total=Count("id"),
-        screening=Count("id", filter=Q(status="Screening")),
-        hired=Count("id", filter=Q(status="Hired")),
-        interview=Count("id", filter=Q(status="Interview")),
-        pending=Count("id", filter=Q(status="Pending")),
-    )
+    cache_key = "hr_dashboard_data"
+    content = cache.get(cache_key)
+    if content is None:
+        # 1. Single conditional aggregation query for all application counts
+        app_counts = Application.objects.aggregate(
+            total=Count("id"),
+            screening=Count("id", filter=Q(status="Screening")),
+            hired=Count("id", filter=Q(status="Hired")),
+            interview=Count("id", filter=Q(status="Interview")),
+            pending=Count("id", filter=Q(status="Pending")),
+        )
 
-    total_applications = app_counts["total"]
-    screening = app_counts["screening"]
-    hired = app_counts["hired"]
-    interview = app_counts["interview"]
-    pending_count = app_counts["pending"]
-    interview_count = app_counts["interview"]
+        total_applications = app_counts["total"]
+        screening = app_counts["screening"]
+        hired = app_counts["hired"]
+        interview = app_counts["interview"]
+        pending_count = app_counts["pending"]
+        interview_count = app_counts["interview"]
 
-    active_jobs = Job.objects.filter(status="Active").count()
-    
-    if total_applications > 0:
-        screening_percent = screening / total_applications * 100
-        interview_percent = interview / total_applications * 100
-        hired_percent = hired / total_applications * 100
-    else:
-        screening_percent = 0
-        interview_percent = 0
-        hired_percent = 0
-    
-    recent_applications = (
-        Application.objects.select_related("job").order_by("-created_at")[:5]
-    )
-    
-    content = {
-        "total_applications": total_applications,
-        "screening": screening,
-        "hired": hired,
-        "interview": interview,
-        "active_jobs":active_jobs,
-        "recent_applications":recent_applications,
-        "pending_count": pending_count,
-        "interview_count": interview_count,
-        "screening_percent": screening_percent,
-        "interview_percent": interview_percent,
-        "hired_percent": hired_percent,
-    }
+        active_jobs = Job.objects.filter(status="Active").count()
+        
+        if total_applications > 0:
+            screening_percent = screening / total_applications * 100
+            interview_percent = interview / total_applications * 100
+            hired_percent = hired / total_applications * 100
+        else:
+            screening_percent = 0
+            interview_percent = 0
+            hired_percent = 0
+        
+        recent_applications = list(
+            Application.objects.select_related("job")
+            .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
+            .order_by("-created_at")[:5]
+        )
+        
+        content = {
+            "total_applications": total_applications,
+            "screening": screening,
+            "hired": hired,
+            "interview": interview,
+            "active_jobs": active_jobs,
+            "recent_applications": recent_applications,
+            "pending_count": pending_count,
+            "interview_count": interview_count,
+            "screening_percent": screening_percent,
+            "interview_percent": interview_percent,
+            "hired_percent": hired_percent,
+        }
+        cache.set(cache_key, content, 15)
     return render(request, "hr/dashboard.html", content)
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def create_job(request):
     if request.method == "POST":
@@ -139,38 +151,43 @@ def create_job(request):
                     job=job,
                     text=req.strip()
                 )
+        invalidate_hr_cache()
     return redirect("job_management")
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def job_management(request):
-    active_jobs = (
-        Job.objects.filter(status="Active")
-        .annotate(applicant_count=Count("application", distinct=True))
-        .prefetch_related("requirements_list")
-        .order_by("-posted_date")
-    )
+    cache_key = "hr_job_management_data"
+    data = cache.get(cache_key)
+    if data is None:
+        active_jobs = list(
+            Job.objects.filter(status="Active")
+            .annotate(applicant_count=Count("application", distinct=True))
+            .prefetch_related("requirements_list")
+            .order_by("-posted_date")
+        )
+        
+        inactive_jobs = list(
+            Job.objects.filter(status="Inactive")
+            .annotate(applicant_count=Count("application", distinct=True))
+            .prefetch_related("requirements_list")
+            .order_by("-posted_date")
+        )
+        
+        total_active = len(active_jobs)
+        total_inactive = len(inactive_jobs)
+        total_jobs = total_active + total_inactive
+        
+        data = {
+            "active_jobs": active_jobs,
+            "inactive_jobs": inactive_jobs,
+            "total_active": total_active,
+            "total_inactive": total_inactive,
+            "total_jobs": total_jobs,
+        }
+        cache.set(cache_key, data, 15)
     
-    inactive_jobs = (
-        Job.objects.filter(status="Inactive")
-        .annotate(applicant_count=Count("application", distinct=True))
-        .prefetch_related("requirements_list")
-        .order_by("-posted_date")
-    )
-    
-    total_active = active_jobs.count()
-    total_inactive = inactive_jobs.count()
-    total_jobs = total_active + total_inactive
-    
-    return render(request, "hr/job_management.html", {
-        "active_jobs": active_jobs,
-        "inactive_jobs": inactive_jobs,
-        "total_active": total_active,
-        "total_inactive": total_inactive,
-        "total_jobs": total_jobs,
-    })
+    return render(request, "hr/job_management.html", data)
 
-@never_cache    
 @staff_member_required(login_url="hr_login")
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
@@ -190,6 +207,7 @@ def manage_job(request, pk):
                 if req.strip():
                     Requirement.objects.create(job=job, text=req.strip())
                     
+        invalidate_hr_cache()
         return redirect("job_management")
         
     requirements = job.requirements_list.all()
@@ -201,65 +219,69 @@ def manage_job(request, pk):
         "applicant_count": applicant_count,
     })
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def candidates(request):
-    # Single aggregate query for all candidate status counts
-    counts = Application.objects.aggregate(
-        total=Count("id"),
-        screening=Count("id", filter=Q(status="Screening")),
-        interview=Count("id", filter=Q(status="Interview")),
-        hired=Count("id", filter=Q(status="Hired")),
-    )
-
-    departments = (
-        Job.objects.filter(status="Active")
-        .values("department")
-        .annotate(job_count=Count("id"))
-        .order_by("department")
-    )
-    dept_applicant_counts = {
-        item["job__department"]: item["total"]
-        for item in (
-            Application.objects.filter(job__status="Active")
-            .values("job__department")
-            .annotate(total=Count("id"))
+    cache_key = "hr_candidates_data"
+    data = cache.get(cache_key)
+    if data is None:
+        # Single aggregate query for all candidate status counts
+        counts = Application.objects.aggregate(
+            total=Count("id"),
+            screening=Count("id", filter=Q(status="Screening")),
+            interview=Count("id", filter=Q(status="Interview")),
+            hired=Count("id", filter=Q(status="Hired")),
         )
-    }
 
-    # Fetch top candidates across all active jobs in a single query and group in memory
-    dept_top_applicants = defaultdict(list)
-    for app in (
-        Application.objects.filter(job__status="Active")
-        .select_related("job")
-        .order_by("-ai_score", "-created_at")
-    ):
-        dept = app.job.department
-        if len(dept_top_applicants[dept]) < 3:
-            dept_top_applicants[dept].append(app)
+        departments = list(
+            Job.objects.filter(status="Active")
+            .values("department")
+            .annotate(job_count=Count("id"))
+            .order_by("department")
+        )
+        dept_applicant_counts = {
+            item["job__department"]: item["total"]
+            for item in (
+                Application.objects.filter(job__status="Active")
+                .values("job__department")
+                .annotate(total=Count("id"))
+            )
+        }
 
-    department_cards = []
-    for dept in departments:
-        dept_name = dept["department"]
-        total_dept_applicants = dept_applicant_counts.get(dept_name, 0)
-        top_applicants = dept_top_applicants.get(dept_name, [])
+        # Fetch top candidates across all active jobs in a single query and group in memory
+        dept_top_applicants = defaultdict(list)
+        for app in (
+            Application.objects.filter(job__status="Active")
+            .select_related("job")
+            .only("id", "first_name", "last_name", "ai_score", "status", "job__id", "job__department")
+            .order_by("-ai_score", "-created_at")
+        ):
+            dept = app.job.department
+            if len(dept_top_applicants[dept]) < 3:
+                dept_top_applicants[dept].append(app)
 
-        department_cards.append({
-            "department": dept_name,
-            "job_count": dept["job_count"],
-            "total_applicants": total_dept_applicants,
-            "top_applicants": top_applicants,
-        })
+        department_cards = []
+        for dept in departments:
+            dept_name = dept["department"]
+            total_dept_applicants = dept_applicant_counts.get(dept_name, 0)
+            top_applicants = dept_top_applicants.get(dept_name, [])
 
-    return render(request, "hr/candidates.html", 
-        {
+            department_cards.append({
+                "department": dept_name,
+                "job_count": dept["job_count"],
+                "total_applicants": total_dept_applicants,
+                "top_applicants": top_applicants,
+            })
+
+        data = {
             "department_cards": department_cards,
             "total_candidates": counts["total"],
             "screening_count": counts["screening"],
             "interview_count": counts["interview"],
             "hired_count": counts["hired"],
-        },
-    )
+        }
+        cache.set(cache_key, data, 15)
+
+    return render(request, "hr/candidates.html", data)
 
 @never_cache
 @staff_member_required(login_url="hr_login")
@@ -395,7 +417,6 @@ def reanalyze_candidate_interview(request, pk):
     return redirect("candidate_detail", pk=pk)
 
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
@@ -403,10 +424,10 @@ def update_application_status(request, pk):
     if request.method == "POST":
         application.status = request.POST.get("status")
         application.save()
+        invalidate_hr_cache()
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def interviews(request):
     # 1. Combine 5 separate COUNT queries into 1 single aggregate query
@@ -421,31 +442,25 @@ def interviews(request):
     today = timezone.localdate()
     three_days = today + timedelta(days=3)
 
-    # 2. Schedule queries
-    todays_schedule = (
-        Interview.objects.filter(date=today)
-        .prefetch_related("applicants__job")
-        .order_by("time")
-    )
-
-    upcoming_interviews = (
+    # 2. Consolidated query for today's, upcoming, and overdue interviews (1 query + 1 prefetch)
+    all_interviews = list(
         Interview.objects.filter(
-            date__gt=today,
-            date__lte=three_days
+            Q(date=today) |
+            Q(date__gt=today, date__lte=three_days) |
+            Q(date__lt=today, status__in=["Scheduled", "Ongoing"])
         )
         .prefetch_related("applicants__job")
         .order_by("date", "time")
     )
 
-    overdue_interviews = (
-        Interview.objects.filter(date__lt=today)
-        .exclude(status__in=["Completed", "Cancelled"])
-        .prefetch_related("applicants__job")
-        .order_by("date", "time")
-    )
+    todays_schedule = [i for i in all_interviews if i.date == today]
+    todays_schedule.sort(key=lambda x: x.time)
+
+    upcoming_interviews = [i for i in all_interviews if today < i.date <= three_days]
+    overdue_interviews = [i for i in all_interviews if i.date < today and i.status in ("Scheduled", "Ongoing")]
 
     # 3. Prefetch waiting applicants into `waiting_applicants` attribute on each job
-    jobs = Job.objects.filter(status="Active").prefetch_related(
+    jobs = list(Job.objects.filter(status="Active").prefetch_related(
         Prefetch(
             "application",
             queryset=Application.objects.filter(
@@ -454,7 +469,7 @@ def interviews(request):
             ).order_by("-ai_score"),
             to_attr="waiting_applicants"
         )
-    )
+    ))
 
     # 4. Fetch all active job interviews in one single query
     active_interviews = (
@@ -509,7 +524,6 @@ def interviews(request):
     return render(request, "hr/interview.html", context)
 
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def schedule_interview(request, job_id):
     job = get_object_or_404(Job, pk=job_id)
@@ -532,6 +546,7 @@ def schedule_interview(request, job_id):
 
         ids = request.POST.getlist("applicants")
         interview.applicants.set(ids)
+        invalidate_hr_cache()
 
         return redirect("interviews")
 
@@ -546,7 +561,6 @@ def schedule_interview(request, job_id):
     )
 
 
-@never_cache
 @staff_member_required(login_url="hr_login")
 def interview_detail(request, pk):
     interview = get_object_or_404(
@@ -560,7 +574,6 @@ def interview_detail(request, pk):
         {"interview": interview}
     )
 
-@never_cache    
 @staff_member_required(login_url="hr_login")
 def update_interview_status(request, pk):
 
@@ -588,6 +601,7 @@ def update_interview_status(request, pk):
                 interview.time = new_time
 
         interview.save()
+        invalidate_hr_cache()
 
     return redirect(
         "interview_detail",

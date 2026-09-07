@@ -13,7 +13,7 @@
         </p>
         <div class="overdue-interview-list">
             {% for interview in overdue_interviews %}
-                {% with job=interview.applicants.first.job %}
+                {% with job=interview.primary_job %}
                 <div class="overdue-interview-item">
                     <div class="overdue-item-info">
                         <strong>{{ job.title|default:"Job Interview" }}</strong>
