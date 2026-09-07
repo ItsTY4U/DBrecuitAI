@@ -137,7 +137,7 @@ document.addEventListener("DOMContentLoaded", function () {
     editButton.addEventListener("click", function () {
 
         profileView.style.display = "none";
-        profileEdit.style.display = "block";
+        profileEdit.style.display = "none";
 
         //        editButton.textContent = "none";
 
@@ -147,7 +147,7 @@ document.addEventListener("DOMContentLoaded", function () {
     cancelButton.addEventListener("click", function () {
 
         profileEdit.style.display = "none";
-        profileView.style.display = "block";
+        profileView.style.display = "none";
 
         //        editButton.textContent = "Edit Profile";
 
