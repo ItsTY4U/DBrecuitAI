@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", function () {
 
     const editButton = document.getElementById("edit-profile-btn");
-    //    const cancelButton = document.getElementById("cancel-profile-btn");
+    const cancelButton = document.getElementById("cancel-profile-btn");
 
     const profileView = document.getElementById("profile-view");
     const profileEdit = document.getElementById("profile-edit");
@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
         profileView.style.display = "none";
         profileEdit.style.display = "block";
 
-        editButton.textContent = "Cancel";
+        //        editButton.textContent = "Cancel";
 
     });
 
