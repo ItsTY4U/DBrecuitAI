@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
         profileView.style.display = "none";
         profileEdit.style.display = "block";
 
-        editButton.textContent = "none";
+        //        editButton.textContent = "none";
 
     });
 
@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
         profileEdit.style.display = "none";
         profileView.style.display = "block";
 
-        editButton.textContent = "Edit Profile";
+        //        editButton.textContent = "Edit Profile";
 
     });
 
