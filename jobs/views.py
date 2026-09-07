@@ -8,6 +8,7 @@ import json
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 
+from django.core.cache import cache
 from .models import Job, Application
 from accounts.models import ApplicantProfile
 
@@ -16,33 +17,46 @@ def jobs(request):
         query = request.GET.get("q", "").strip()
         department = request.GET.get("department", "").strip()
 
-        jobs_qs = Job.objects.filter(status="Active")
+        is_default_view = not query and not department
+        jobs_list = None
 
-        if query:
-            jobs_qs = jobs_qs.filter(
-                Q(title__icontains=query) |
-                Q(department__icontains=query)
-            )
+        if is_default_view:
+            jobs_list = cache.get("default_active_jobs_list")
 
-        if department:
-            jobs_qs = jobs_qs.filter(department=department)
+        if jobs_list is None:
+            jobs_qs = Job.objects.filter(status="Active")
 
-        jobs_qs = jobs_qs.only(
-            "id", "title", "department", "job_type", "posted_date"
-        ).order_by("-posted_date", "-id")
+            if query:
+                jobs_qs = jobs_qs.filter(
+                    Q(title__icontains=query) |
+                    Q(department__icontains=query)
+                )
+
+            if department:
+                jobs_qs = jobs_qs.filter(department=department)
+
+            jobs_qs = jobs_qs.only(
+                "id", "title", "department", "job_type", "posted_date"
+            ).order_by("-posted_date", "-id")
+
+            if is_default_view:
+                jobs_list = list(jobs_qs)
+                cache.set("default_active_jobs_list", jobs_list, 60)
+            else:
+                jobs_list = jobs_qs
 
         # Fast partial response for HTMX search / filter requests
         if request.headers.get("HX-Request"):
             return render(
                 request,
                 "jobs/partials/jobs_list.html",
-                {"jobs": jobs_qs},
+                {"jobs": jobs_list},
             )
 
         return render(
             request,
             "jobs/jobs.html",
-            {"jobs": jobs_qs},
+            {"jobs": jobs_list},
         )
 
     except Exception as e:
@@ -53,10 +67,14 @@ def jobs(request):
         )
         
 def job_detail(request, id):
-    job = get_object_or_404(
-        Job.objects.prefetch_related("requirements_list"),
-        id=id
-    )
+    cache_key = f"job_detail_{id}"
+    job = cache.get(cache_key)
+    if job is None:
+        job = get_object_or_404(
+            Job.objects.prefetch_related("requirements_list"),
+            id=id
+        )
+        cache.set(cache_key, job, 300)
     return render(request, "jobs/job_detail.html", {
         "job": job
     }) 

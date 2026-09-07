@@ -383,7 +383,7 @@
                     </span> {% endcomment %}
                 </div>
 
-                {% comment %} <div class="match-bar">
+                <div class="match-bar">
                     <div class="match-progress" style="width: {{ recommendation.score }}%;"></div>
                 </div>
 
@@ -405,7 +405,7 @@
                 {% endif %} {% endcomment %}
 
                 <!-- View Job -->
-                <a href="{% url " job_detail" recommendation.job.id %}" class="view-job-btn">
+                <a href="{% url 'job_detail' recommendation.job.id %}" class="view-job-btn">
                     View Job
                 </a>
 

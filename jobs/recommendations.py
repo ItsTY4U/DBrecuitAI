@@ -97,11 +97,13 @@ def get_recommended_jobs(profile):
     if cached_recommendations is not None:
         return cached_recommendations
 
-    jobs = Job.objects.filter(
-        status="Active"
-    ).prefetch_related(
-        "requirements_list"
-    )
+    # Retrieve active jobs with requirements from cache to avoid repeated DB round-trips
+    jobs = cache.get("active_jobs_with_requirements")
+    if jobs is None:
+        jobs = list(
+            Job.objects.filter(status="Active").prefetch_related("requirements_list")
+        )
+        cache.set("active_jobs_with_requirements", jobs, 300)
 
     recommendations = []
     for job in jobs:
@@ -125,7 +127,7 @@ def get_recommended_jobs(profile):
         reverse=True
     )
 
-    # Cache for 10 minutes (600 seconds)
-    cache.set(cache_key, recommendations, 600)
+    # Cache for 15 minutes (900 seconds)
+    cache.set(cache_key, recommendations, 900)
 
     return recommendations

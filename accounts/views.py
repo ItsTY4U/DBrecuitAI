@@ -248,9 +248,12 @@ def profile(request):
     # Calculate recommendations AFTER profile is loaded/saved
     recommended_jobs = get_recommended_jobs(profile)
     
-    applications = Application.objects.filter(
-        applicant=request.user
-    ).select_related("job", "video_interview").order_by("-created_at")
+    applications = (
+        Application.objects.filter(applicant=request.user)
+        .select_related("job", "video_interview")
+        .defer("ai_summary", "ai_strengths", "ai_weaknesses")
+        .order_by("-created_at")
+    )
 
     return render(
         request,

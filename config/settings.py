@@ -91,9 +91,8 @@ LOGOUT_REDIRECT_URL = "applicant_login"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
+    "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
 
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -124,6 +123,17 @@ TEMPLATES = [
 ]
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "dbrecruitai-locmem-cache",
+        "TIMEOUT": 300,
+        "OPTIONS": {
+            "MAX_ENTRIES": 2000,
+        },
+    }
+}
 
 WSGI_APPLICATION = "config.wsgi.application"
 
