@@ -137,9 +137,10 @@ document.addEventListener("DOMContentLoaded", function () {
     editButton.addEventListener("click", function () {
 
         profileView.style.display = "none";
-        profileEdit.style.display = "none";
+        profileEdit.style.display = "block";
 
-        //        editButton.textContent = "none";
+        editButton.style.display = "none";
+        cancelButton.style.display = "block";
 
     });
 
@@ -147,8 +148,10 @@ document.addEventListener("DOMContentLoaded", function () {
     cancelButton.addEventListener("click", function () {
 
         profileEdit.style.display = "none";
-        profileView.style.display = "none";
+        profileView.style.display = "block";
 
+        editButton.style.display = "block";
+        cancelButton.style.display = "none";
         //        editButton.textContent = "Edit Profile";
 
     });
