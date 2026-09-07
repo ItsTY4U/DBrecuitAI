@@ -6,13 +6,13 @@
 <div class="profile-page">
 
     {% if messages %}
-        <div class="profile-messages">
-            {% for message in messages %}
-                <div class="profile-message {% if message.tags%} {{ message.tags }} {% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
+    <div class="profile-messages">
+        {% for message in messages %}
+        <div class="profile-message {% if message.tags%} {{ message.tags }} {% endif %}">
+            {{ message }}
         </div>
+        {% endfor %}
+    </div>
     {% endif %}
 
     <!-- Page Header -->
@@ -58,11 +58,7 @@
                 </p>
             </div>
 
-            <button
-                type="button"
-                class="profile-edit-btn"
-                id="edit-profile-btn"
-            >
+            <button type="button" class="profile-edit-btn" id="edit-profile-btn">
                 Edit Profile
             </button>
 
@@ -73,10 +69,7 @@
             VIEW MODE
         =============================== -->
 
-        <div
-            class="profile-info-card"
-            id="profile-view"
-        >
+        <div class="profile-info-card" id="profile-view">
 
             <div class="profile-info-grid">
 
@@ -142,42 +135,38 @@
 
                 {% if profile.default_resume %}
 
-                    <div class="resume-card">
+                <div class="resume-card">
 
-                        <div class="resume-details">
+                    <div class="resume-details">
 
-                            <span class="resume-icon">
-                                📄
-                            </span>
-                            <div>
+                        <span class="resume-icon">
+                            📄
+                        </span>
+                        <div>
 
-                                <strong>
-                                    {{ profile.default_resume.name|cut:"resumes/" }}
-                                </strong>
+                            <strong>
+                                {{ profile.default_resume.name|cut:"resumes/" }}
+                            </strong>
 
-                                <small>
-                                    Your current default resume
-                                </small>
-
-                            </div>
+                            <small>
+                                Your current default resume
+                            </small>
 
                         </div>
 
-                        <a
-                            href="{{ profile.default_resume.url }}"
-                            target="_blank"
-                            class="resume-btn"
-                        >
-                            View Resume
-                        </a>
-
                     </div>
+
+                    <a href="{{ profile.default_resume.url }}" target="_blank" class="resume-btn">
+                        View Resume
+                    </a>
+
+                </div>
 
                 {% else %}
 
-                    <div class="no-resume">
-                        No resume uploaded yet.
-                    </div>
+                <div class="no-resume">
+                    No resume uploaded yet.
+                </div>
 
                 {% endif %}
 
@@ -191,32 +180,24 @@
             EDIT MODE
         =============================== -->
 
-        <div
-            class="profile-info-card profile-edit-card"
-            id="profile-edit"
-            style="display: none;"
-        >
+        <div class="profile-info-card profile-edit-card" id="profile-edit" style="display: none;">
 
-            <form
-                method="POST"
-                enctype="multipart/form-data"
-                id="profile-form"
-            >
+            <form method="POST" enctype="multipart/form-data" id="profile-form">
 
                 {% csrf_token %}
 
 
                 {% if user_form.non_field_errors %}
-                    <div class="form-error">
-                        {{ user_form.non_field_errors }}
-                    </div>
+                <div class="form-error">
+                    {{ user_form.non_field_errors }}
+                </div>
                 {% endif %}
 
 
                 {% if profile_form.non_field_errors %}
-                    <div class="form-error">
-                        {{ profile_form.non_field_errors }}
-                    </div>
+                <div class="form-error">
+                    {{ profile_form.non_field_errors }}
+                </div>
                 {% endif %}
 
 
@@ -233,9 +214,9 @@
                         {{ user_form.first_name }}
 
                         {% if user_form.first_name.errors %}
-                            <div class="form-error">
-                                {{ user_form.first_name.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.first_name.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -252,9 +233,9 @@
                         {{ user_form.last_name }}
 
                         {% if user_form.last_name.errors %}
-                            <div class="form-error">
-                                {{ user_form.last_name.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.last_name.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -271,9 +252,9 @@
                         {{ user_form.email }}
 
                         {% if user_form.email.errors %}
-                            <div class="form-error">
-                                {{ user_form.email.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.email.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -290,9 +271,9 @@
                         {{ profile_form.phone }}
 
                         {% if profile_form.phone.errors %}
-                            <div class="form-error">
-                                {{ profile_form.phone.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.phone.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -309,9 +290,9 @@
                         {{ profile_form.address }}
 
                         {% if profile_form.address.errors %}
-                            <div class="form-error">
-                                {{ profile_form.address.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.address.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -328,9 +309,9 @@
                         {{ profile_form.default_resume }}
 
                         {% if profile_form.default_resume.errors %}
-                            <div class="form-error">
-                                {{ profile_form.default_resume.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.default_resume.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -340,19 +321,11 @@
 
                 <div class="profile-edit-actions">
 
-                    <button
-                        type="button"
-                        class="profile-cancel-btn"
-                        id="cancel-profile-btn"
-                    >
+                    <button type="button" class="profile-cancel-btn" id="cancel-profile-btn">
                         Cancel
                     </button>
 
-                    <button
-                        type="submit"
-                        class="profile-save-btn"
-                        id="save-profile-btn"
-                    >
+                    <button type="submit" class="profile-save-btn" id="save-profile-btn">
                         Save Changes
                     </button>
 
@@ -381,10 +354,7 @@
                 </p>
             </div>
 
-            <a
-                href="{% url 'jobs' %}"
-                class="view-all-btn"
-            >
+            <a href="{% url 'jobs' %}" class="view-all-btn">
                 View All Jobs
             </a>
 
@@ -394,63 +364,63 @@
         <div class="job-recommendations">
 
             {% if recommended_jobs %}
-            
-                {% for recommendation in recommended_jobs %}
-                    <div class="recommendation-card">
 
-                        <div class="recommendation-top">
-                            <div>
-                                <h3>
-                                    {{ recommendation.job.title }}
-                                </h3>
+            {% for recommendation in recommended_jobs %}
+            <div class="recommendation-card">
 
-                                <span class="job-department">
-                                    {{ recommendation.job.department }}
-                                </span>
-                            </div>
-                            {% comment %} <span class="match-badge">
-                                {{ recommendation.score }}% Match
-                            </span> {% endcomment %}
-                        </div>
+                <div class="recommendation-top">
+                    <div>
+                        <h3>
+                            {{ recommendation.job.title }}
+                        </h3>
 
-                        {% comment %} <div class="match-bar">
-                            <div class="match-progress" style="width: {{ recommendation.score }}%;"></div>
-                        </div>
-
-                        {% if recommendation.matched_skills %}
-                        
-                            <div class="job-tags">
-                                {% for skill in recommendation.matched_skills %}
-                                
-                                    <span>{{ skill|title }}</span>
-                                {% endfor %}
-                            </div>
-
-                        {% else %}
-
-                            <div class="no-matched-skills">
-                                No matching skills found yet.
-                            </div>
-
-                        {% endif %} {% endcomment %}
-
-                        <!-- View Job -->
-                        <a href="{% url "job_detail" recommendation.job.id %}" class="view-job-btn">
-                            View Job
-                        </a>
-
+                        <span class="job-department">
+                            {{ recommendation.job.department }}
+                        </span>
                     </div>
-                {% endfor %}
+                    {% comment %} <span class="match-badge">
+                        {{ recommendation.score }}% Match
+                    </span> {% endcomment %}
+                </div>
+
+                {% comment %} <div class="match-bar">
+                    <div class="match-progress" style="width: {{ recommendation.score }}%;"></div>
+                </div>
+
+                {% if recommendation.matched_skills %}
+
+                <div class="job-tags">
+                    {% for skill in recommendation.matched_skills %}
+
+                    <span>{{ skill|title }}</span>
+                    {% endfor %}
+                </div>
+
+                {% else %}
+
+                <div class="no-matched-skills">
+                    No matching skills found yet.
+                </div>
+
+                {% endif %} {% endcomment %}
+
+                <!-- View Job -->
+                <a href="{% url " job_detail" recommendation.job.id %}" class="view-job-btn">
+                    View Job
+                </a>
+
+            </div>
+            {% endfor %}
             {% else %}
 
-                <div class="no-recommendations">
-                    <h3>No Recommendations Available yet.</h3>
+            <div class="no-recommendations">
+                <h3>No Recommendations Available yet.</h3>
 
-                    <p>
-                        Upload and process your resume to receive 
-                        personalized job recommendations.
-                    </p>
-                </div>
+                <p>
+                    Upload and process your resume to receive
+                    personalized job recommendations.
+                </p>
+            </div>
             {% endif %}
         </div>
     </section>
@@ -494,60 +464,67 @@
 
                     <tbody>
                         {% if applications %}
-                        
-                            {% for application in applications %}
-                            
-                                <tr>
-                                    <td>
-                                        <strong>
-                                            {{ application.application_id }}
-                                        </strong>
-                                    </td>
 
-                                    <td>
-                                        {{ application.job.title }}
-                                    </td>
+                        {% for application in applications %}
 
-                                    <td>
-                                        {{ application.created_at|date:"F d, Y" }}
-                                    </td>
+                        <tr>
+                            <td>
+                                <strong>
+                                    {{ application.application_id }}
+                                </strong>
+                            </td>
 
-                                    <td>
-                                        <span class="status-badge">
-                                            {{ application.status }}
-                                        </span>
-                                    </td>
+                            <td>
+                                {{ application.job.title }}
+                            </td>
 
-                                    <td>
-                                        {% if application.video_interview.status == "COMPLETED" %}
-                                            <button type="button" class="track-btn" disabled style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i class="fas fa-circle-check"></i> Completed
-                                            </button>
-                                        {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
-                                            <button type="button" class="track-btn" disabled style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i class="fas fa-lock"></i> Attempted
-                                            </button>
-                                        {% elif application.video_interview.can_retake %}
-                                            <a href="{% url 'video_interview:welcome' application.application_id %}" class="track-btn" style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i class="fas fa-rotate-right"></i> Retake Interview
-                                            </a>
-                                        {% else %}
-                                            <a href="{% url 'video_interview:welcome' application.application_id %}" class="track-btn" style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
-                                                <i class="fas fa-video"></i> Take Video Interview
-                                            </a>
-                                        {% endif %}
-                                    </td>
+                            <td>
+                                {{ application.created_at|date:"F d, Y" }}
+                            </td>
 
-                                </tr>
+                            <td>
+                                <span class="status-badge">
+                                    {{ application.status }}
+                                </span>
+                            </td>
 
-                            {% endfor %}
+                            <td>
+                                {% if application.video_interview.status == "COMPLETED" %}
+                                <button type="button" class="track-btn" disabled
+                                    style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-circle-check"></i> Completed
+                                </button>
+                                {% elif application.video_interview.status == "ABANDONED" and not
+                                application.video_interview.can_retake %}
+                                <button type="button" class="track-btn" disabled
+                                    style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-lock"></i> Attempted
+                                </button>
+                                {% elif application.video_interview.can_retake %}
+                                <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                    class="track-btn"
+                                    style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-rotate-right"></i> Retake Interview
+                                </a>
+                                {% else %}
+                                <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                    class="track-btn"
+                                    style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
+                                    <i class="fas fa-video"></i> Take Video Interview
+                                </a>
+                                {% endif %}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
 
                         {% else %}
-                            <tr>
-                                <td colspan="5" class="no-applications">
-                                    You have not submitted any applications yet.
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="5" class="no-applications">
+                                You have not submitted any applications yet.
+                            </td>
+                        </tr>
 
                         {% endif %}
 

@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (value === "") {
             strengthBar.style.width = "0%";
             return;
-        } 
+        }
         if (passedCount === 1) {
             strengthBar.classList.add("weak");
         } else if (passedCount === 2) {
@@ -139,7 +139,8 @@ document.addEventListener("DOMContentLoaded", function () {
         profileView.style.display = "none";
         profileEdit.style.display = "block";
 
-        editButton.textContent = "Cancel";
+        editButton.style.display = "none";
+        cancelButton.style.display = "block";
 
     });
 
@@ -149,7 +150,9 @@ document.addEventListener("DOMContentLoaded", function () {
         profileEdit.style.display = "none";
         profileView.style.display = "block";
 
-        editButton.textContent = "Edit Profile";
+        editButton.style.display = "block";
+        cancelButton.style.display = "none";
+        //        editButton.textContent = "Edit Profile";
 
     });
 
@@ -316,7 +319,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     );
 
-    
+
 
 });
 
@@ -327,7 +330,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const overlay = document.getElementById("resume-processing-overlay");
     const processingTitle = document.getElementById("processing-title");
     const processingMessage = document.getElementById("processing-message");
-    const saveButton =document.getElementById("save-profile-btn");
+    const saveButton = document.getElementById("save-profile-btn");
     const messages = document.querySelectorAll(".profile-message");
     const completeProfileBtn = document.getElementById("complete-profile-btn");
 
@@ -444,7 +447,7 @@ document.addEventListener("DOMContentLoaded", function () {
             message.style.opacity = "0";
             message.style.transform = "translateY(-10px)";
 
-            setTimeout(function (){
+            setTimeout(function () {
                 message.remove();
             }, 300);
         }, 5000);

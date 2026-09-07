@@ -10,26 +10,23 @@
         </p>
     </div>
     <div class="track-container glass-white">
-            <form class="search-box" hx-get="{% url 'track_application' %}"
-                hx-target="#track-result-container" hx-swap="innerHTML" >
-                <input
-                    type="text"
-                    name="application_id"
-                    placeholder="Enter Application ID">
-                <div class="back-button-container">
-                    <a href="{% url 'home' %}" class="btn btn-outline-alt">
-                        <i class="fas fa-arrow-left"></i> Back
-                    </a>
-                </div>
-                <button type="submit"  class="btn btn-primary btn-track" >
-                    Track Status
-                </button>
+        <form class="search-box" hx-get="{% url 'track_application' %}" hx-target="#track-result-container"
+            hx-swap="innerHTML">
+            <input type="text" name="application_id" placeholder="Enter Application ID">
+            <div class="back-button-container">
+                <a href="{% url 'home' %}" class="btn btn-outline-alt">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+            <button type="submit" class="btn btn-primary btn-track">
+                Track Status
+            </button>
 
-            </form>
+        </form>
     </div>
     <div id="track-result-container"></div>
 </main>
 
-<!-- Supabase JS Client for Realtime Updates -->
+<!-- Load Supabase JS Client via CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 {% endblock %}
