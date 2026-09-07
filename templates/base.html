@@ -20,14 +20,14 @@
                 <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
             </div>
             <nav class="nav-menu">
-                <a href="{% url " home" %}" class="nav-link">Home</a>
+                <a href="{% url 'home' %}" class="nav-link">Home</a>
                 <a href="{% url 'jobs' %}" class="nav-link">Jobs</a>
                 {% if user.is_authenticated and not user.is_staff %}
-                <a href="{% url " profile" %}" class="nav-link">Profile</a>
-                <a href="{% url " applicant_logout" %}" class="nav-link">Logout</a>
+                <a href="{% url 'profile' %}" class="nav-link">Profile</a>
+                <a href="{% url 'applicant_logout' %}" class="nav-link">Logout</a>
                 {% else %}
-                <a href="{% url " applicant_login" %}" class="nav-link">Login</a>
-                <a href="{% url " signup" %}" class="nav-link">Sign Up</a>
+                <a href="{% url 'applicant_login' %}" class="nav-link">Login</a>
+                <a href="{% url 'signup' %}" class="nav-link">Sign Up</a>
                 {% endif %}
             </nav>
         </header> {% endcomment %}
