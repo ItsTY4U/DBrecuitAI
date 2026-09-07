@@ -132,10 +132,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 IS_VERCEL = bool(os.getenv("VERCEL"))
 
+db_engine = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+if db_engine in ("sqlite", "sqlite3"):
+    db_engine = "django.db.backends.sqlite3"
+
+db_name = os.getenv("DB_NAME")
+if db_engine == "django.db.backends.sqlite3" and not db_name:
+    db_name = str(BASE_DIR / "db.sqlite3")
+
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME"),
+        "ENGINE": db_engine,
+        "NAME": db_name,
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
