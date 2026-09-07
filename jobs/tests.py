@@ -90,3 +90,62 @@ class ApplicantJobPerformanceTests(TestCase):
             recs2 = get_recommended_jobs(self.profile)
             self.assertEqual(len(recs2), 1)
             self.assertEqual(recs2[0]["score"], recs1[0]["score"])
+
+    def test_single_word_boundary_no_substring_false_positives(self):
+        """Single-word skills must not match inside unrelated words (go in good, r in director, art in party)."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["go", "r", "art"]
+        job_text = "Seeking a good director for our upcoming company party."
+        matched = find_matched_skills(applicant_skills, job_text)
+        self.assertEqual(matched, [])
+
+    def test_multi_word_skills_whitespace_variation(self):
+        """Multi-word skills match across natural whitespace variation (spaces, tabs, newlines)."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["public speaking", "customer service", "forklift operation"]
+        job_text = "Looking for someone with public   speaking abilities, customer\nservice experience, and forklift  \t operation certification."
+        matched = find_matched_skills(applicant_skills, job_text)
+        self.assertEqual(matched, ["public speaking", "customer service", "forklift operation"])
+
+    def test_special_characters_literal_matching(self):
+        """Skills with regex characters (C++, C#, .NET, Node.js, R&D, e-commerce, 24/7) match literally."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["C++", "C#", ".NET", "Node.js", "R&D", "e-commerce", "24/7", "CPR certified"]
+        job_text = "We build an e-commerce platform using C#, .NET Core, and Node.js. Also seeking C++ and R&D engineers for 24/7 operations. CPR certified a plus."
+        matched = find_matched_skills(applicant_skills, job_text)
+        self.assertEqual(
+            matched,
+            ["C++", "C#", ".NET", "Node.js", "R&D", "e-commerce", "24/7", "CPR certified"]
+        )
+
+    def test_case_insensitivity_and_original_casing_preservation(self):
+        """Matching is case-insensitive, but returns skills preserving the applicant's original casing and order."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["Python", "Public Speaking", "C#", "Conflict Resolution", "Node.js"]
+        job_text = "Requires python, node.js, and CONFLICT RESOLUTION skills."
+        matched = find_matched_skills(applicant_skills, job_text)
+        # Only Python, Conflict Resolution, Node.js matched; order and casing preserved from applicant_skills
+        self.assertEqual(matched, ["Python", "Conflict Resolution", "Node.js"])
+
+    def test_no_false_positives_for_prefix_symbols(self):
+        """Skill 'C' must not match 'C++' or 'C#', and 'R' must not match 'R&D'."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["C", "R"]
+        job_text = "We are seeking C++ and C# developers, as well as an R&D technician."
+        matched = find_matched_skills(applicant_skills, job_text)
+        self.assertEqual(matched, [])
+
+    def test_skips_empty_and_whitespace_skills(self):
+        """Empty, whitespace-only, or non-string skills are skipped."""
+        from jobs.recommendations import find_matched_skills
+
+        applicant_skills = ["", "   ", None, "Python", "  "]
+        job_text = "Looking for a Python developer."
+        matched = find_matched_skills(applicant_skills, job_text)
+        self.assertEqual(matched, ["Python"])
+
