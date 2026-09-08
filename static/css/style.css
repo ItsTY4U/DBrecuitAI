@@ -4022,6 +4022,61 @@ body {
 
 
 /* =========================================================
+   TWO-COLUMN JOB FORM LAYOUT (Post Job modal + Edit Job page)
+   Add this block to your main stylesheet, e.g. right after
+   the "Edit Job Page Elements" section.
+   ========================================================= */
+
+.two-col-form-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 32px;
+    align-items: start;
+}
+
+.form-col-left,
+.form-col-right {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.form-col-right .form-group {
+    margin-bottom: 22px;
+}
+
+.form-col-right .form-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Widen the Post Job modal so two columns have room to breathe */
+.post-job-card-wide {
+    max-width: 860px !important;
+}
+
+/* Referenced by the "not visible to applicants" hint under
+   Key Qualifications but wasn't defined anywhere yet */
+.form-help {
+    display: block;
+    margin-top: 8px;
+    font-size: 11.5px;
+    color: #94a3b8;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .two-col-form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .form-col-right {
+        margin-top: 8px;
+    }
+}
+
+/* =========================================================
    RESPONSIVE - TABLET
    ========================================================= */
 

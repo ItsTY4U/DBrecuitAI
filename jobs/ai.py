@@ -5,14 +5,24 @@ import pdfplumber
 from google import genai
 from django.conf import settings
 
+from .rubric import (
+    clamp as _clamp,
+    match_level as _match_level,
+    normalize_weights as _normalize_weights,
+    apply_knockout,
+    recommendation_from_score,
+    weighted_final_score,
+)
+
 client = None
 
 if settings.GEMINI_API_KEY:
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+
 def extract_resume_text(pdf_file):
     text = ""
-    
+
     # Handle Django FieldFile, File, or other file-like objects
     if hasattr(pdf_file, "open") and not hasattr(pdf_file, "read"):
         try:
@@ -33,11 +43,12 @@ def extract_resume_text(pdf_file):
     with pdfplumber.open(source) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
-            
+
             if page_text:
                 text += page_text + "\n"
-                
+
     return text
+
 
 def analyze_resume(resume_text, job):
     if client is None:
@@ -273,11 +284,8 @@ def analyze_resume(resume_text, job):
     )
     data["criteria_weights"] = weights
 
-    # ---- Step 1: Knockout Layer (Safety Check) ----
-    # If qualifications_score < 60, hard-fail regardless of the weighted
-    # average — the candidate lacks a mandatory, non-negotiable license
-    # or credential.
-    if qualification_match < 60:
+    # ---- Step 1: Knockout Layer (Safety Check) — shared with recommendation.py ----
+    if apply_knockout(qualification_match):
         data["hard_fail"] = True
         data["hard_fail_reason"] = (
             "Qualifications score is below 60 — candidate lacks a "
@@ -293,83 +301,24 @@ def analyze_resume(resume_text, job):
     data["hard_fail_reason"] = None
 
     # ---- Step 2: Average Scoring Layer, using the job-specific weights ----
-    final_score = (
-        qualification_match * (weights["qualification_weight"] / 100)
-        + experience_match * (weights["experience_weight"] / 100)
-        + skills_match * (weights["skills_weight"] / 100)
-        + education_match * (weights["education_weight"] / 100)
+    final_score = round(
+        weighted_final_score(
+            qualification_match, experience_match, skills_match, education_match, weights
+        ),
+        1,
     )
-    final_score = round(final_score, 1)
     data["score"] = final_score
-
-    # ---- Recommendation per the rubric's decision matrix ----
-    if final_score >= 85.0:
-        data["recommendation"] = "Qualified"
-    elif final_score >= 70.0:
-        data["recommendation"] = "Potentially Qualified"
-    else:
-        data["recommendation"] = "Not Qualified"
-
-    # ---- match_level mirrors the rubric's per-criterion bands ----
+    data["recommendation"] = recommendation_from_score(final_score)
     data["match_level"] = _match_level(final_score)
 
     return data
 
 
-def _clamp(value, low, high):
-    try:
-        value = int(value)
-    except (TypeError, ValueError):
-        value = low
-    return max(low, min(value, high))
-
-
-def _match_level(score):
-    if score >= 90:
-        return "Exceptional"
-    if score >= 75:
-        return "Proficient"
-    if score >= 60:
-        return "Developing"
-    return "Unsatisfactory"
-
-
-def _normalize_weights(qualification, experience, skills, education):
-    """
-    Clamp each AI-supplied weight to [10, 40], then proportionally scale
-    so the four weights sum to exactly 100 while staying as close to the
-    clamped values (and the 10-40 bounds) as possible.
-    """
-    raw = {
-        "qualification_weight": _clamp(qualification, 10, 40),
-        "experience_weight": _clamp(experience, 10, 40),
-        "skills_weight": _clamp(skills, 10, 40),
-        "education_weight": _clamp(education, 10, 40),
-    }
-
-    total = sum(raw.values())
-    if total == 100:
-        return raw
-
-    # Scale proportionally, then re-clamp so no weight drifts outside
-    # [10, 40] after scaling.
-    scaled = {k: v * 100 / total for k, v in raw.items()}
-    scaled = {k: _clamp(round(v), 10, 40) for k, v in scaled.items()}
-
-    # Fix any rounding drift by nudging the largest weight.
-    drift = 100 - sum(scaled.values())
-    if drift != 0:
-        biggest_key = max(scaled, key=scaled.get)
-        scaled[biggest_key] = _clamp(scaled[biggest_key] + drift, 10, 40)
-
-    return scaled
-    
-    
 def parse_resume(resume_text):
-    
+
     if client is None:
         raise Exception("Gemini API key is missing.")
-    
+
     """
     Parse a resume into structured JSON data.
 

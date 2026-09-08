@@ -87,7 +87,7 @@ def signup(request):
                 None
             )
 
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
             next_url = request.POST.get("next")
 
@@ -111,7 +111,7 @@ def applicant_login(request):
         if request.user.is_superuser:
             return redirect("/superuser/")
         if request.user.groups.filter(name="HR").exists():
-            return redirect(dashboard)
+            return redirect("dashboard")
         return redirect("home")
     
     form = ApplicantAuthenticationForm(
@@ -174,6 +174,7 @@ def process_profile_resume(profile):
         profile.save(update_fields=["resume_processed"])
         
         return False
+
 
 @login_required
 def profile(request):

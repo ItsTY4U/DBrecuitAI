@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from datetime import date, timedelta
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
@@ -18,20 +19,38 @@ from django.views.decorators.cache import never_cache
 from collections import defaultdict
 
 # Create your views here.
-def hr_required(view_func):
-    
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        
-        user = request.user
-        
-        if ( user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists()
-        ):
-            return view_func(request, *args, **kwargs)
-        
-        raise PermissionDenied
-    
-    return wrapper
+def hr_required(view_func=None, login_url="hr_login"):
+    """
+    Decorator for views that checks that the user is logged in, is staff,
+    is not superuser, and belongs to the 'HR' group.
+    - If user is not authenticated: redirects to `login_url` with ?next=...
+    - If user is authenticated and HR: grants access.
+    - Otherwise: raises PermissionDenied (403).
+    Supports both @hr_required and @hr_required(login_url="...").
+    """
+    if isinstance(view_func, str):
+        actual_login_url = view_func
+        actual_view_func = None
+    else:
+        actual_login_url = login_url
+        actual_view_func = view_func
+
+    def decorator(view):
+        @wraps(view)
+        def wrapper(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return redirect_to_login(request.get_full_path(), actual_login_url)
+
+            if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                return view(request, *args, **kwargs)
+
+            raise PermissionDenied
+        return wrapper
+
+    if callable(actual_view_func):
+        return decorator(actual_view_func)
+    return decorator
 
 
 @never_cache
@@ -233,7 +252,16 @@ def candidates(request):
     )
 
     departments = (
-        Job.objects.filter(status="Active")
+        Job.objects
+        .filter(
+            status="Active"
+        )
+        .exclude(
+            department__isnull=True
+        )
+        .exclude(
+            department=""
+        )
         .values("department")
         .annotate(job_count=Count("id"))
         .order_by("department")
@@ -282,24 +310,39 @@ def candidates(request):
 
 @never_cache
 @hr_required(login_url="hr_login")
+@hr_required
 def candidate_department(request, department):
     # Shared filters from query params
     search_query = request.GET.get("search", "").strip()
     status_filter = request.GET.get("status", "")
     ITEMS_PER_PAGE = 15
 
-    active_jobs = Job.objects.filter(department=department, status="Active").order_by("title")
+    # Get active jobs under this department
+    active_jobs = (
+        Job.objects
+        .filter(
+            department__iexact=department,
+            status="Active"
+        )
+        .order_by("title")
+    )
 
+    # Total candidates across the department
     total_candidates = Application.objects.filter(
-        job__department=department,
+        job__department__iexact=department,
         job__status="Active"
     ).count()
 
     role_data = []
-    for job in active_jobs:
-        qs = Application.objects.filter(job=job)
 
-        # Apply search filter
+    for job in active_jobs:
+
+        # Candidates for this specific job
+        qs = Application.objects.filter(
+            job=job
+        ).select_related("job")
+
+        # Search filter
         if search_query:
             qs = qs.filter(
                 Q(first_name__icontains=search_query) |
@@ -308,29 +351,40 @@ def candidate_department(request, department):
                 Q(application_id__icontains=search_query)
             )
 
-        # Apply status filter
+        # Status filter
         if status_filter:
             qs = qs.filter(status=status_filter)
 
-        qs = qs.order_by("-ai_score", "-created_at")
+        # Highest AI score first
+        qs = qs.order_by(
+            "-ai_score",
+            "-created_at"
+        )
 
-        # Per-role pagination key: page_<job_id>
+        # Each job gets its own pagination
         page_key = f"page_{job.pk}"
         page_number = request.GET.get(page_key, 1)
-        paginator = Paginator(qs, ITEMS_PER_PAGE)
+
+        paginator = Paginator(
+            qs,
+            ITEMS_PER_PAGE
+        )
+
         page_obj = paginator.get_page(page_number)
 
         role_data.append({
             "job": job,
             "page_obj": page_obj,
             "page_key": page_key,
-            "total_count": page_obj.paginator.count, #qs.count(),
+            "total_count": paginator.count,
         })
 
-    # Build a query string that preserves search/status but drops page_* keys
+    # Preserve filters when changing pages
     filter_params = {}
+
     if search_query:
         filter_params["search"] = search_query
+
     if status_filter:
         filter_params["status"] = status_filter
 
@@ -344,11 +398,14 @@ def candidate_department(request, department):
             "search_query": search_query,
             "status_filter": status_filter,
             "filter_params": filter_params,
-            "status_choices": ["Pending", "Screening", "Interview", "Hired", "Rejected"],
+            "status_choices": [
+                "Pending",
+                "Screening",
+                "Interview",
+                "Hired",
+                "Rejected",
+            ],
         },
-            "jobs": jobs,
-            "candidates": candidates,
-        }
     )
 
 @never_cache
@@ -543,7 +600,8 @@ def interview_detail(request, pk):
         {"interview": interview}
     )
     
-@staff_member_required
+@never_cache
+@hr_required(login_url="hr_login")
 def update_interview_status(request, pk):
 
     interview = get_object_or_404(

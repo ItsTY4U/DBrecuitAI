@@ -1,189 +1,414 @@
-
 document.addEventListener("DOMContentLoaded", function () {
 
-    const password = document.getElementById("id_password1");
-    const confirmPassword = document.getElementById("id_password2");
-    const status = document.getElementById("password-status");
-    const submitButton = document.getElementById("signup-button");
+```
+/*
+=========================================
+PASSWORD
+=========================================
+*/
 
-    function checkPasswords() {
+const password =
+    document.getElementById("id_password1");
 
-        const passwordValue = password.value;
-        const confirmValue = confirmPassword.value;
+const confirmPassword =
+    document.getElementById("id_password2");
 
-        password.classList.remove(
-            "password-match",
-            "password-no-match"
-        );
+const passwordStatus =
+    document.getElementById("password-status");
 
-        confirmPassword.classList.remove(
-            "password-match",
-            "password-no-match"
-        );
+const submitButton =
+    document.getElementById("signup-button");
 
-        if (confirmValue === "") {
-            status.className = "password-status neutral";
-            status.innerHTML = "Enter your password again";
-            submitButton.disabled = false;
-            return;
+
+/*
+=========================================
+PASSWORD MATCHING
+=========================================
+*/
+
+function checkPasswords() {
+
+    // Make sure the signup page elements exist
+    if (!password || !confirmPassword) {
+        return;
+    }
+
+    const passwordValue = password.value;
+    const confirmValue = confirmPassword.value;
+
+
+    password.classList.remove(
+        "password-match",
+        "password-no-match"
+    );
+
+    confirmPassword.classList.remove(
+        "password-match",
+        "password-no-match"
+    );
+
+
+    /*
+    Nothing entered in confirmation field
+    */
+
+    if (confirmValue === "") {
+
+        if (passwordStatus) {
+
+            passwordStatus.className =
+                "password-status neutral";
+
+            passwordStatus.innerHTML =
+                "Enter your password again";
+
         }
 
-        if (passwordValue === confirmValue) {
-
-            status.className = "password-status match";
-            status.innerHTML = "✓ Passwords match";
-
-            password.classList.add("password-match");
-            confirmPassword.classList.add("password-match");
-
+        if (submitButton) {
             submitButton.disabled = false;
+        }
 
-        } else {
+        return;
+    }
 
-            status.className = "password-status no-match";
-            status.innerHTML = "✕ Passwords do not match";
 
-            confirmPassword.classList.add("password-no-match");
+    /*
+    Passwords match
+    */
 
+    if (passwordValue === confirmValue) {
+
+        if (passwordStatus) {
+
+            passwordStatus.className =
+                "password-status match";
+
+            passwordStatus.innerHTML =
+                "✓ Passwords match";
+
+        }
+
+        password.classList.add(
+            "password-match"
+        );
+
+        confirmPassword.classList.add(
+            "password-match"
+        );
+
+
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+
+    }
+
+
+    /*
+    Passwords do not match
+    */
+
+    else {
+
+        if (passwordStatus) {
+
+            passwordStatus.className =
+                "password-status no-match";
+
+            passwordStatus.innerHTML =
+                "✕ Passwords do not match";
+
+        }
+
+        confirmPassword.classList.add(
+            "password-no-match"
+        );
+
+
+        if (submitButton) {
             submitButton.disabled = true;
         }
+
     }
 
-    password.addEventListener("input", checkPasswords);
-    confirmPassword.addEventListener("input", checkPasswords);
-
-    checkStrength();
-    checkPasswords();
-});
-
-function togglePassword(id, button) {
-    const input = document.getElementById(id);
-
-    if (input.type === "password") {
-        input.type = "text";
-        button.textContent = "🙈";
-    } else {
-        input.type = "password";
-        button.textContent = "👁";
-    }
 }
 
 
+if (password && confirmPassword) {
 
-document.addEventListener("DOMContentLoaded", function () {
+    password.addEventListener(
+        "input",
+        checkPasswords
+    );
 
-    const password = document.getElementById("id_password1");
-    const strengthBar = document.getElementById("strength-bar");
+    confirmPassword.addEventListener(
+        "input",
+        checkPasswords
+    );
 
-    const ruleLength = document.getElementById("rule-length");
-    const ruleUpper = document.getElementById("rule-upper");
-    const ruleNumber = document.getElementById("rule-number");
-    const ruleSpecial = document.getElementById("rule-special");
+    checkPasswords();
 
-    // Limited allowed special characters
-    const specialPattern = /[!@#$%&*_\-]/;
+}
 
-    function checkStrength() {
-        const value = password.value;
 
-        const hasLength = value.length >= 8;
-        const hasUpper = /[A-Z]/.test(value);
-        const hasNumber = /[0-9]/.test(value);
-        const hasSpecial = specialPattern.test(value);
+/*
+=========================================
+PASSWORD STRENGTH
+=========================================
+*/
 
-        ruleLength.classList.toggle("valid", hasLength);
-        ruleUpper.classList.toggle("valid", hasUpper);
-        ruleNumber.classList.toggle("valid", hasNumber);
-        ruleSpecial.classList.toggle("valid", hasSpecial);
+const strengthBar =
+    document.getElementById("strength-bar");
 
-        const passedCount = [hasLength, hasNumber, hasSpecial, hasUpper]
-            .filter(Boolean).length;
+const ruleLength =
+    document.getElementById("rule-length");
 
-        strengthBar.classList.remove(
-            "weak",
-            "fair",
-            "good",
+const ruleUpper =
+    document.getElementById("rule-upper");
+
+const ruleNumber =
+    document.getElementById("rule-number");
+
+const ruleSpecial =
+    document.getElementById("rule-special");
+
+
+/*
+Allowed special characters
+*/
+
+const specialPattern =
+    /[!@#$%&*_\-]/;
+
+
+function checkStrength() {
+
+    if (!password || !strengthBar) {
+        return;
+    }
+
+    const value = password.value;
+
+
+    const hasLength =
+        value.length >= 8;
+
+    const hasUpper =
+        /[A-Z]/.test(value);
+
+    const hasNumber =
+        /[0-9]/.test(value);
+
+    const hasSpecial =
+        specialPattern.test(value);
+
+
+    /*
+    Update checklist
+    */
+
+    if (ruleLength) {
+
+        ruleLength.classList.toggle(
+            "valid",
+            hasLength
+        );
+
+    }
+
+    if (ruleUpper) {
+
+        ruleUpper.classList.toggle(
+            "valid",
+            hasUpper
+        );
+
+    }
+
+    if (ruleNumber) {
+
+        ruleNumber.classList.toggle(
+            "valid",
+            hasNumber
+        );
+
+    }
+
+    if (ruleSpecial) {
+
+        ruleSpecial.classList.toggle(
+            "valid",
+            hasSpecial
+        );
+
+    }
+
+
+    /*
+    Count requirements
+    */
+
+    const passedCount = [
+        hasLength,
+        hasUpper,
+        hasNumber,
+        hasSpecial
+    ].filter(Boolean).length;
+
+
+    /*
+    Remove old strength classes
+    */
+
+    strengthBar.classList.remove(
+        "weak",
+        "fair",
+        "good",
+        "strong"
+    );
+
+
+    /*
+    Empty password
+    */
+
+    if (value === "") {
+
+        strengthBar.style.width = "0%";
+
+        return;
+    }
+
+
+    /*
+    Weak
+    */
+
+    if (passedCount === 1) {
+
+        strengthBar.classList.add(
+            "weak"
+        );
+
+    }
+
+
+    /*
+    Fair
+    */
+
+    else if (passedCount === 2) {
+
+        strengthBar.classList.add(
+            "fair"
+        );
+
+    }
+
+
+    /*
+    Good
+    */
+
+    else if (passedCount === 3) {
+
+        strengthBar.classList.add(
+            "good"
+        );
+
+    }
+
+
+    /*
+    Strong
+    */
+
+    else if (passedCount === 4) {
+
+        strengthBar.classList.add(
             "strong"
         );
 
-        if (value === "") {
-            strengthBar.style.width = "0%";
-            return;
-        } 
-        if (passedCount === 1) {
-            strengthBar.classList.add("weak");
-        } else if (passedCount === 2) {
-            strengthBar.classList.add("fair");
-        } else if (passedCount === 3) {
-            strengthBar.classList.add("good");
-        } else if (passedCount === 4) {
-            strengthBar.classList.add("strong");
-        }
     }
 
-    password.addEventListener("input", checkStrength);
-});
+}
 
 
-document.addEventListener("DOMContentLoaded", function () {
+if (password && strengthBar) {
 
-    const editButton = document.getElementById("edit-profile-btn");
-    const cancelButton = document.getElementById("cancel-profile-btn");
+    password.addEventListener(
+        "input",
+        checkStrength
+    );
 
-    const profileView = document.getElementById("profile-view");
-    const profileEdit = document.getElementById("profile-edit");
+    checkStrength();
 
-
-    editButton.addEventListener("click", function () {
-
-        profileView.style.display = "none";
-        profileEdit.style.display = "block";
-
-        editButton.textContent = "Cancel";
-
-    });
+}
 
 
-    cancelButton.addEventListener("click", function () {
+/*
+=========================================
+RESUME PROCESSING
+=========================================
+*/
 
-        profileEdit.style.display = "none";
-        profileView.style.display = "block";
+const processButton =
+    document.getElementById(
+        "process-resume-btn"
+    );
 
-        editButton.textContent = "Edit Profile";
+const resumeInput =
+    document.getElementById(
+        "id_default_resume"
+    );
 
-    });
+const resumeStatus =
+    document.getElementById(
+        "resume-status"
+    );
 
 
+/*
+Only run resume processing if
+the signup page has the elements.
+*/
 
-});
+if (
+    processButton &&
+    resumeInput
+) {
 
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    const processButton =
-        document.getElementById("process-resume-btn");
-
-    const resumeInput =
-        document.getElementById("id_default_resume");
-
-    const status =
-        document.getElementById("resume-status");
-
-    // Get the Django-generated URL
     const processUrl =
         processButton.dataset.processUrl;
 
 
+    /*
+    Get CSRF cookie
+    */
+
     function getCookie(name) {
+
         let cookieValue = null;
 
-        if (document.cookie && document.cookie !== "") {
 
-            const cookies = document.cookie.split(";");
+        if (
+            document.cookie &&
+            document.cookie !== ""
+        ) {
 
-            for (let i = 0; i < cookies.length; i++) {
+            const cookies =
+                document.cookie.split(";");
 
-                const cookie = cookies[i].trim();
+
+            for (
+                let i = 0;
+                i < cookies.length;
+                i++
+            ) {
+
+                const cookie =
+                    cookies[i].trim();
+
 
                 if (
                     cookie.substring(
@@ -192,50 +417,119 @@ document.addEventListener("DOMContentLoaded", function () {
                     ) === name + "="
                 ) {
 
-                    cookieValue = decodeURIComponent(
-                        cookie.substring(name.length + 1)
-                    );
+                    cookieValue =
+                        decodeURIComponent(
+                            cookie.substring(
+                                name.length + 1
+                            )
+                        );
 
                     break;
+
                 }
+
             }
+
         }
 
         return cookieValue;
+
     }
 
+
+    /*
+    Process resume
+    */
 
     processButton.addEventListener(
         "click",
         async function () {
 
-            const resume = resumeInput.files[0];
+            const resume =
+                resumeInput.files[0];
+
+
+            /*
+            No resume selected
+            */
 
             if (!resume) {
-                status.textContent =
-                    "Please select a resume first.";
+
+                if (resumeStatus) {
+
+                    resumeStatus.textContent =
+                        "Please select a resume first.";
+
+                }
+
                 return;
+
             }
 
-            const formData = new FormData();
+
+            /*
+            Create form data
+            */
+
+            const formData =
+                new FormData();
 
             formData.append(
                 "resume",
                 resume
             );
 
-            const csrfToken =
+
+            /*
+            CSRF token
+            */
+
+            const csrfInput =
                 document.querySelector(
                     "[name=csrfmiddlewaretoken]"
-                ).value;
+                );
 
-            processButton.disabled = true;
+
+            if (!csrfInput) {
+
+                console.error(
+                    "CSRF token not found."
+                );
+
+                if (resumeStatus) {
+
+                    resumeStatus.textContent =
+                        "Security token not found. Please refresh the page.";
+
+                }
+
+                return;
+
+            }
+
+
+            const csrfToken =
+                csrfInput.value;
+
+
+            /*
+            Disable button
+            */
+
+            processButton.disabled =
+                true;
 
             processButton.textContent =
                 "Processing Resume...";
 
-            status.textContent =
-                "Please wait while we analyze your resume.";
+
+            if (resumeStatus) {
+
+                resumeStatus.textContent =
+                    "Please wait while we analyze your resume.";
+
+            }
+
 
             try {
 
@@ -244,228 +538,195 @@ document.addEventListener("DOMContentLoaded", function () {
                     processUrl
                 );
 
-                const response = await fetch(
-                    processUrl,
-                    {
-                        method: "POST",
-                        headers: {
-                            "X-CSRFToken": getCookie("csrftoken")
-                        },
-                        body: formData,
-                        credentials: "same-origin"
-                    }
-                );
 
-                const result = await response.json();
+                const response =
+                    await fetch(
+                        processUrl,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "X-CSRFToken":
+                                    csrfToken
+                            },
+
+                            body: formData,
+
+                            credentials:
+                                "same-origin"
+                        }
+                    );
+
+
+                /*
+                Read response
+                */
+
+                const result =
+                    await response.json();
+
+
+                /*
+                Server error
+                */
+
                 if (!response.ok) {
 
-                    status.textContent =
-                        result.error ||
-                        "Unable to process the resume.";
+                    if (resumeStatus) {
+
+                        resumeStatus.textContent =
+                            result.error ||
+                            "Unable to process the resume.";
+
+                    }
 
                     return;
+
                 }
+
+
+                /*
+                Successful processing
+                */
 
                 if (result.success) {
 
                     const personal =
-                        result.data.personal || {};
+                        result.data?.personal || {};
 
-                    document.getElementById(
-                        "id_first_name"
-                    ).value =
-                        personal.first_name || "";
 
-                    document.getElementById(
-                        "id_middle_name"
-                    ).value =
-                        personal.middle_name || "";
+                    /*
+                    First name
+                    */
 
-                    document.getElementById(
-                        "id_last_name"
-                    ).value =
-                        personal.last_name || "";
+                    const firstName =
+                        document.getElementById(
+                            "id_first_name"
+                        );
 
-                    document.getElementById(
-                        "id_email"
-                    ).value =
-                        personal.email || "";
+                    if (firstName) {
 
-                    status.textContent =
-                        "✓ Resume processed successfully.";
+                        firstName.value =
+                            personal.first_name ||
+                            "";
+
+                    }
+
+
+                    /*
+                    Middle name
+                    */
+
+                    const middleName =
+                        document.getElementById(
+                            "id_middle_name"
+                        );
+
+                    if (middleName) {
+
+                        middleName.value =
+                            personal.middle_name ||
+                            "";
+
+                    }
+
+
+                    /*
+                    Last name
+                    */
+
+                    const lastName =
+                        document.getElementById(
+                            "id_last_name"
+                        );
+
+                    if (lastName) {
+
+                        lastName.value =
+                            personal.last_name ||
+                            "";
+
+                    }
+
+
+                    /*
+                    Email
+                    */
+
+                    const email =
+                        document.getElementById(
+                            "id_email"
+                        );
+
+                    if (email) {
+
+                        email.value =
+                            personal.email ||
+                            "";
+
+                    }
+
+
+                    /*
+                    Success message
+                    */
+
+                    if (resumeStatus) {
+
+                        resumeStatus.textContent =
+                            "✓ Resume processed successfully.";
+
+                    }
+
                 }
 
-            } catch (error) {
+                else {
+
+                    if (resumeStatus) {
+
+                        resumeStatus.textContent =
+                            result.error ||
+                            "Unable to process the resume.";
+
+                    }
+
+                }
+
+            }
+
+
+            catch (error) {
 
                 console.error(
                     "Resume processing error:",
                     error
                 );
 
-                status.textContent =
-                    "An error occurred while processing the resume.";
 
-            } finally {
+                if (resumeStatus) {
 
-                processButton.disabled = false;
+                    resumeStatus.textContent =
+                        "An error occurred while processing the resume.";
+
+                }
+
+            }
+
+
+            finally {
+
+                processButton.disabled =
+                    false;
 
                 processButton.textContent =
                     "Process Resume";
+
             }
 
         }
     );
 
-    
-
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    const profileForm = document.getElementById("profile-form");
-    const resumeInput = document.getElementById("id_default_resume");
-    const overlay = document.getElementById("resume-processing-overlay");
-    const processingTitle = document.getElementById("processing-title");
-    const processingMessage = document.getElementById("processing-message");
-    const saveButton =document.getElementById("save-profile-btn");
-    const messages = document.querySelectorAll(".profile-message");
-    const completeProfileBtn = document.getElementById("complete-profile-btn");
-
-
-    if (!profileForm) {
-        return;
-    }
-
-    profileForm.addEventListener(
-        "submit",
-        function () {
-
-            /*
-             * Check if the applicant selected
-             * a new resume.
-             */
-
-            const resumeChanged =
-                resumeInput &&
-                resumeInput.files.length > 0;
-
-            /*
-             * If no resume was changed,
-             * submit normally.
-             */
-
-            if (!resumeChanged) {
-
-                if (saveButton) {
-
-                    saveButton.disabled = true;
-
-                    saveButton.textContent =
-                        "Saving...";
-                }
-
-                return;
-            }
-
-
-            /*
-             * Resume was changed.
-             * Show processing overlay.
-             */
-
-            if (overlay) {
-
-                overlay.style.display = "flex";
-
-            }
-
-
-            /*
-             * Disable the save button.
-             */
-
-            if (saveButton) {
-
-                saveButton.disabled = true;
-
-                saveButton.textContent =
-                    "Processing...";
-            }
-
-
-            /*
-             * Step 1
-             */
-
-            processingTitle.textContent =
-                "Saving your new resume...";
-
-            processingMessage.textContent =
-                "Please wait while we update your profile.";
-
-
-            /*
-             * Step 2
-             *
-             * This is only visual feedback while
-             * Django processes the resume.
-             */
-
-            setTimeout(function () {
-
-                processingTitle.textContent =
-                    "Analyzing your resume...";
-
-                processingMessage.textContent =
-                    "Extracting your skills, experience, and qualifications.";
-
-            }, 800);
-
-
-            /*
-             * Step 3
-             */
-
-            setTimeout(function () {
-
-                processingTitle.textContent =
-                    "Updating job recommendations...";
-
-                processingMessage.textContent =
-                    "We're finding jobs that match your profile.";
-
-            }, 2500);
-
-        }
-    );
-
-    messages.forEach(function (message) {
-        setTimeout(function () {
-            message.style.opacity = "0";
-            message.style.transform = "translateY(-10px)";
-
-            setTimeout(function (){
-                message.remove();
-            }, 300);
-        }, 5000);
-    });
-
-    if (completeProfileBtn) {
-        completeProfileBtn.addEventListener("click", function () {
-
-            const profileView = document.getElementById("profile-view");
-            const profileEdit = document.getElementById("profile-edit");
-
-            if (profileView && profileEdit) {
-                profileView.style.display = "none";
-                profileEdit.style.display = "block";
-
-                profileEdit.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-            }
-        });
-    }
+}
+```
 
 });
