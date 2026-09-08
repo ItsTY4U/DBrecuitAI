@@ -1,29 +1,35 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const modal = document.getElementById('post-job-modal');
-    const openBtn = document.getElementById('open-post-modal');
-    const closeBtn = document.getElementById('close-post-modal');
-    const cancelBtn = document.getElementById('cancel-modal');
-
-    if (openBtn && modal) {
-        openBtn.addEventListener('click', () => {
-            modal.classList.add('active');
-        });
+// Modal handling with event delegation (supports standard loads and HTMX swaps)
+document.addEventListener("click", function (e) {
+    // Open post job modal
+    const openBtn = e.target.closest('#open-post-modal, .open-post-modal-btn, .btn-open-post-modal');
+    if (openBtn) {
+        const modal = document.getElementById('post-job-modal');
+        if (modal) modal.classList.add('active');
+        return;
     }
 
-    function closeModal() {
+    // Close post job modal
+    const closeBtn = e.target.closest('#close-post-modal') || e.target.closest('#cancel-modal') || e.target.closest('.close-post-modal-btn');
+    if (closeBtn) {
+        const modal = document.getElementById('post-job-modal');
         if (modal) modal.classList.remove('active');
+        return;
     }
 
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    // Backdrop click
+    const modal = document.getElementById('post-job-modal');
+    if (modal && e.target === modal) {
+        modal.classList.remove('active');
+    }
+});
 
-    // Close on backdrop click
-    if (modal) {
-        modal.addEventListener('click', function (e) {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
+// Escape key closes modal
+document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+        const modal = document.getElementById('post-job-modal');
+        if (modal && modal.classList.contains('active')) {
+            modal.classList.remove('active');
+        }
     }
 });
 
@@ -45,7 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         row.className = "requirement-row";
         row.style.marginTop = "8px";
-
         row.innerHTML = `
             <input
                 type="text"
@@ -63,89 +68,69 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i class="fas fa-trash-can"></i>
             </button>
         `;
-
         container.appendChild(row);
-    });
+        return;
+    }
 
 
     // ==============================
     // REMOVE QUALIFICATION
     // ==============================
 
-    container.addEventListener("click", (event) => {
-
-        const removeButton = event.target.closest(".remove-requirement");
-
-        if (!removeButton) return;
-
-        const rows = container.querySelectorAll(".requirement-row");
-
-        // Keep at least one qualification field
-        if (rows.length > 1) {
-            removeButton.closest(".requirement-row").remove();
+    container.addEventListener("click", function (e) {
+        const removeBtn = e.target.closest(".remove-requirement");
+        if (removeBtn) {
+            const row = removeBtn.closest(".requirement-row");
+            if (row) {
+                row.remove();
+            }
         }
-
     });
-
 });
 
-
-const form = document.getElementById("manage-job-form");
-const statusSelect = document.getElementById("status");
-
-form.addEventListener("submit", function(event) {
-
-    if (statusSelect.value === "Inactive") {
-
-        const confirmed = confirm(
-            "Are you sure you want to close this job?\n\n" +
-            "This job will no longer appear in the Active Jobs section " +
-            "and applicants will no longer be able to apply."
-        );
-
-        if (!confirmed) {
-            event.preventDefault();
+// Manage job status confirmation
+document.addEventListener("submit", function (event) {
+    if (event.target && event.target.id === "manage-job-form") {
+        const statusSelect = document.getElementById("status");
+        if (statusSelect && statusSelect.value === "Inactive") {
+            const confirmed = confirm(
+                "Are you sure you want to close this job?\n\n" +
+                "This job will no longer appear in the Active Jobs section " +
+                "and applicants will no longer be able to apply."
+            );
+            if (!confirmed) {
+                event.preventDefault();
+            }
         }
     }
-
 });
 
-
-// interview status
-
-document.addEventListener("DOMContentLoaded", function () {
-
+// Interview reschedule fields toggle
+function initInterviewStatus() {
     const statusSelect = document.querySelector(".status-select");
-    const rescheduleFields =
-        document.getElementById("reschedule-fields");
+    const rescheduleFields = document.getElementById("reschedule-fields");
 
     if (!statusSelect || !rescheduleFields) {
         return;
     }
 
     function toggleRescheduleFields() {
-
         if (statusSelect.value === "Rescheduled") {
-
             rescheduleFields.style.display = "grid";
-
         } else {
-
             rescheduleFields.style.display = "none";
-
         }
-
     }
 
-    statusSelect.addEventListener(
-        "change",
-        toggleRescheduleFields
-    );
-
+    statusSelect.removeEventListener("change", toggleRescheduleFields);
+    statusSelect.addEventListener("change", toggleRescheduleFields);
     toggleRescheduleFields();
+}
+
+document.addEventListener("DOMContentLoaded", initInterviewStatus);
+document.addEventListener("htmx:afterSwap", initInterviewStatus);
 
 
-});
 
 document.addEventListener("DOMContentLoaded", () => {
 

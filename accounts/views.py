@@ -251,9 +251,12 @@ def profile(request):
     # Calculate recommendations AFTER profile is loaded/saved
     recommended_jobs = get_recommended_jobs(profile)
     
-    applications = Application.objects.filter(
-        applicant=request.user
-    ).select_related("job").order_by("-created_at")
+    applications = (
+        Application.objects.filter(applicant=request.user)
+        .select_related("job", "video_interview")
+        .defer("ai_summary", "ai_strengths", "ai_weaknesses")
+        .order_by("-created_at")
+    )
 
     return render(
         request,
@@ -268,13 +271,20 @@ def profile(request):
     )
     
 def process_signup_resume(request):
-    
+    from main.rate_limit import is_rate_limited
+
     if request.method != "POST":
         return JsonResponse(
             {"error": "Invalid request."},
             status=400
         )
-        
+
+    if is_rate_limited(request, "signup_resume", max_requests=5, window_seconds=60):
+        return JsonResponse(
+            {"error": "Too many requests. Please wait a minute before uploading another resume."},
+            status=429
+        )
+
     resume = request.FILES.get("resume")
     
     if not resume:
@@ -286,6 +296,12 @@ def process_signup_resume(request):
     if not resume.name.lower().endswith(".pdf"):
         return JsonResponse(
             {"error": "Only PDF files are allowed."},
+            status=400
+        )
+
+    if resume.size > 5 * 1024 * 1024:
+        return JsonResponse(
+            {"error": "Resume file must not exceed 5MB."},
             status=400
         )
         

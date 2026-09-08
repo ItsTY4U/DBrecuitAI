@@ -1,4 +1,4 @@
-# Create your models here.
+import os
 from django.db import models
 from uuid import uuid4
 from django.contrib.auth.models import User
@@ -32,6 +32,13 @@ class Job(models.Model):
     def __str__(self):
         return self.title
     
+    class Meta:
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["department", "status"]),  # matches candidates/candidate_department filters
+            models.Index(fields=["status", "-posted_date"]),  # applicant job listings ordering
+        ]
+    
 # Key Qualification
 class Requirement(models.Model):
     job = models.ForeignKey(
@@ -40,10 +47,14 @@ class Requirement(models.Model):
         related_name="requirements_list"
     )
     text = models.CharField(max_length=255)
-
     def __str__(self):
         return self.text
     
+def application_resume_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1].lower() or ".pdf"
+    app_id = instance.application_id or uuid4().hex[:8].upper()
+    return f"resumes/app_{app_id}_resume{ext}"
+
 class Application(models.Model):
     STATUS_CHOICES =[
         ("Pending", "Pending"),
@@ -81,7 +92,7 @@ class Application(models.Model):
     phone = models.CharField(max_length=20)
     
     resume = models.FileField(
-        upload_to = "resume/"
+        upload_to = application_resume_upload_path
     )
     
     resume_processed = models.BooleanField(default=False)
@@ -102,6 +113,16 @@ class Application(models.Model):
             
         super().save(*args, **kwargs)
         
+    def delete(self, *args, **kwargs):
+        # Only clean up file if it's application-specific and not a shared profile resume
+        if self.resume and not self.resume.name.startswith("resumes/user_"):
+            try:
+                self.resume.delete(save=False)
+            except Exception:
+                pass
+        super().delete(*args, **kwargs)
+    
+        
     def __str__(self):
         return f"{self.application_id} - {self.first_name} {self.last_name}"
     
@@ -116,7 +137,12 @@ class Application(models.Model):
             models.Index(fields=["status"]),                          # dashboard counts, filters
             models.Index(fields=["job", "status"]),                   # candidate_department per-role filtering
             models.Index(fields=["-ai_score", "-created_at"]),        # matches .order_by("-ai_score", "-created_at")
+            models.Index(fields=["job", "-ai_score", "-created_at"]), # candidate ranking and pagination
+            models.Index(fields=["applicant", "-created_at"]),        # applicant profile applications list
+            models.Index(fields=["applicant", "job"]),                # applicant duplicate application checks
         ]
+    
+        
     ai_match_level = models.CharField(max_length=30, blank=True)
     ai_recommendation = models.CharField(max_length=30, blank=True)
     ai_matched_qualifications = models.TextField(blank=True)

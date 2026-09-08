@@ -1,0 +1,47 @@
+{% extends "home.html" %}
+{% load static %}
+
+{% block body %}
+<div class="bg-container dim"></div>
+
+<main class="main-content-wide" style="max-width: 800px; margin: 40px auto; padding: 20px;">
+    <div class="glass-white" style="text-align: center; padding: 48px 32px; border-radius: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.12);">
+
+        <!-- Success Animation / Icon -->
+        <div style="width: 84px; height: 84px; background: rgba(46, 204, 113, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; color: #27ae60; font-size: 40px;">
+            <i class="fas fa-check"></i>
+        </div>
+
+        <!-- Title -->
+        <h1 style="font-size: 32px; font-weight: 800; color: #1a1a1a; margin-bottom: 12px;">
+            Congratulations! Interview Completed
+        </h1>
+
+        <!-- Sub Message -->
+        <p style="font-size: 18px; color: #444; font-weight: 600; margin-bottom: 16px;">
+            Your AI video interview responses for the <strong>{{ job.title }}</strong> role have been successfully submitted.
+        </p>
+
+        <!-- Thank You Message -->
+        <div style="background: rgba(45, 90, 39, 0.06); border: 1px solid rgba(45, 90, 39, 0.2); border-radius: 12px; padding: 20px; max-width: 600px; margin: 0 auto 32px; text-align: left;">
+            <div style="display: flex; gap: 14px; align-items: flex-start;">
+                <i class="fas fa-shield-heart" style="color: var(--primary); font-size: 24px; margin-top: 2px;"></i>
+                <div style="font-size: 14px; color: #444; line-height: 1.6;">
+                    <strong>Thank you for taking the time to share your story!</strong>
+                    <p style="margin: 6px 0 0; color: #666;">
+                        Our recruitment team and AI screening intelligence system are currently processing your video responses. Your video responses and evaluation have been attached to your application (ID: <code>{{ application.application_id }}</code>).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action / Exit Button -->
+        <div>
+            <a href="{% url 'profile' %}" class="btn btn-primary" style="padding: 14px 38px; font-size: 16px; font-weight: 700; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; box-shadow: 0 4px 16px rgba(45, 90, 39, 0.3);">
+                <span>Finish & Return to Profile</span> <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+    </div>
+</main>
+{% endblock %}

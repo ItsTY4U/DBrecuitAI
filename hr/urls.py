@@ -10,10 +10,40 @@ urlpatterns = [
     path("jobs/create/", views.create_job, name="create_job"),
     path("jobs/<int:pk>/", views.manage_job, name="manage_job"),
     
-    path("candidates/", views.candidates, name="candidates"),
-    path("candidates/department/<str:department>/", views.candidate_department, name="candidate_department"),    
-    path("candidates/applicant/<int:pk>/", views.candidate_detail, name="candidate_detail",),
-    path("applicant/<int:pk>/status/", views.update_application_status, name="update_application_status",),
+    path("candidates/", 
+        views.candidates, 
+        name="candidates"),
+
+    path(
+        "candidates/job/<int:job_id>/table/",
+        views.candidate_job_table,
+        name="candidate_job_table",
+    ),
+
+    path(
+        "candidates/department/<str:department>/",
+        views.candidate_department,
+        name="candidate_department",
+    ),
+
+    path("candidates/applicant/<int:pk>/", 
+        views.candidate_detail, 
+        name="candidate_detail",
+        ),
+
+    path("candidates/applicant/<int:pk>/reset-interview/", 
+        views.reset_candidate_interview, 
+        name="reset_candidate_interview",
+        ),
+
+    path("candidates/applicant/<int:pk>/reanalyze-interview/", 
+        views.reanalyze_candidate_interview, 
+        name="reanalyze_candidate_interview",
+        ),
+
+    path("applicant/<int:pk>/status/", 
+        views.update_application_status, 
+        name="update_application_status",),
     
     path("interviews/", views.interviews, name="interviews",),
     path("interviews/schedule/<int:job_id>/", views.schedule_interview, name="schedule_interview"),

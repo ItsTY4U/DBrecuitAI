@@ -1,0 +1,337 @@
+{% extends "home.html" %}
+{% load static %}
+
+{% block body %}
+<div class="bg-container dim"></div>
+
+<main class="main-content-wide" style="max-width: 960px; margin: 24px auto; padding: 12px;">
+
+    <!-- Top Bar: Progress & Exit Button -->
+    <div class="glass-white" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-radius: 14px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div id="question-badge-counter" style="background: var(--primary); color: #fff; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 14px; letter-spacing: 0.5px;">
+                Question <span id="current-q-num">1</span> of {{ total_questions }}
+            </div>
+            <div style="display: flex; gap: 6px;" id="progress-dots">
+                {% for q in questions_data %}
+                <span class="q-dot" id="dot-{{ q.number }}" style="width: 24px; height: 8px; border-radius: 4px; background: {% if forloop.first %}var(--primary){% else %}#ddd{% endif %}; transition: all 0.3s ease;"></span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="button" id="btn-open-exit-modal" style="background: transparent; border: 1px solid #e74c3c; color: #c0392b; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+            <i class="fas fa-arrow-right-from-bracket"></i> Leave or Exit Interview
+        </button>
+    </div>
+
+    <!-- Question Banner Card -->
+    <div class="glass-white" style="padding: 24px 28px; border-radius: 14px; margin-bottom: 20px; border-left: 6px solid var(--primary);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span id="question-type-badge" style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--primary); background: rgba(45, 90, 39, 0.1); padding: 4px 10px; border-radius: 12px;">
+                {{ questions_data.0.type }}
+            </span>
+            <span style="font-size: 12px; color: #777;">90 seconds maximum</span>
+        </div>
+        <h2 id="current-question-text" style="font-size: 22px; font-weight: 700; color: #1a1a1a; line-height: 1.4; margin: 0;">
+            {{ questions_data.0.text }}
+        </h2>
+    </div>
+
+    <!-- Main Viewport: Video & Recording Area -->
+    <div class="glass-white" style="padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+        <div style="position: relative; width: 100%; aspect-ratio: 16/9; max-height: 520px; background: #000; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            <video id="live-stream" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+
+            <!-- REC Indicator -->
+            <div id="rec-pill" style="position: absolute; top: 16px; left: 16px; background: rgba(0, 0, 0, 0.65); padding: 6px 14px; border-radius: 20px; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; backdrop-filter: blur(4px);">
+                <span class="rec-dot" style="width: 10px; height: 10px; background: #e74c3c; border-radius: 50%; display: inline-block; animation: pulse-rec 1.2s infinite ease-in-out;"></span>
+                <span>REC</span>
+            </div>
+
+            <!-- Timer Overlay -->
+            <div id="timer-badge" style="position: absolute; top: 16px; right: 16px; background: rgba(0, 0, 0, 0.65); padding: 6px 16px; border-radius: 20px; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; backdrop-filter: blur(4px); transition: background 0.3s ease;">
+                <i class="fas fa-clock"></i>
+                <span id="timer-text">01:30</span>
+            </div>
+
+            <!-- Submitting / Next Question Overlay -->
+            <div id="loading-overlay" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center; color: #fff;">
+                <div class="spinner" style="width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.2); border-top: 4px solid #2ecc71; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px;"></div>
+                <h3 id="overlay-msg" style="font-size: 18px; font-weight: 700; margin: 0;">Saving response...</h3>
+                <p style="font-size: 13px; color: #ccc; margin-top: 4px;">Preparing next question</p>
+            </div>
+        </div>
+
+        <!-- Controls: Skip & Next Button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 6px 8px; flex-wrap: wrap; gap: 12px;">
+            <button type="button" id="btn-skip" style="background: rgba(0,0,0,0.06); border: 1px solid #ccc; color: #555; padding: 12px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s ease;">
+                <i class="fas fa-forward"></i> Skip Question
+            </button>
+
+            <button type="button" id="btn-next" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45, 90, 39, 0.3);">
+                <span id="next-btn-text">Next Question</span> <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Leave Modal -->
+    <div id="exit-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
+        <div class="glass-white" style="max-width: 480px; width: 100%; padding: 30px; border-radius: 16px; text-align: center; border: 1px solid #e74c3c;">
+            <div style="font-size: 48px; color: #e74c3c; margin-bottom: 14px;">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <h3 style="font-size: 20px; font-weight: 800; color: #1a1a1a; margin-bottom: 10px;">
+                Leave Video Interview?
+            </h3>
+            <p style="font-size: 14px; color: #555; line-height: 1.5; margin-bottom: 20px;">
+                Per the <strong>No Retake Policy</strong>, leaving the interview now will mark your attempt as incomplete and permanently close retakes for this job application.
+            </p>
+            <form method="POST" action="{% url 'video_interview:leave' application.application_id %}" id="leave-form">
+                {% csrf_token %}
+                <div style="display: flex; justify-content: center; gap: 12px;">
+                    <button type="button" id="btn-cancel-exit" style="padding: 10px 20px; background: #eee; border: none; border-radius: 8px; font-weight: 600; color: #333; cursor: pointer;">
+                        Continue Interview
+                    </button>
+                    <button type="submit" style="padding: 10px 20px; background: #e74c3c; border: none; border-radius: 8px; font-weight: 700; color: #fff; cursor: pointer;">
+                        Yes, Leave Interview
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</main>
+
+<style>
+@keyframes pulse-rec {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+const questionsData = {{ questions_data|safe }};
+const totalQuestions = {{ total_questions }};
+const submitUrl = "{% url 'video_interview:submit_answer' application.application_id %}";
+const finishUrl = "{% url 'video_interview:finish' application.application_id %}";
+const csrfToken = "{{ csrf_token }}";
+
+let currentIdx = 0; // 0-indexed: 0 to 4
+let timeRemaining = 90; // 90 seconds = 1:30
+let timerInterval = null;
+let mediaStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let questionStartTime = Date.now();
+let isSubmitting = false;
+
+const liveStream = document.getElementById("live-stream");
+const timerText = document.getElementById("timer-text");
+const timerBadge = document.getElementById("timer-badge");
+const currentQNum = document.getElementById("current-q-num");
+const currentQText = document.getElementById("current-question-text");
+const questionTypeBadge = document.getElementById("question-type-badge");
+const btnNext = document.getElementById("btn-next");
+const nextBtnText = document.getElementById("next-btn-text");
+const btnSkip = document.getElementById("btn-skip");
+const loadingOverlay = document.getElementById("loading-overlay");
+const overlayMsg = document.getElementById("overlay-msg");
+const exitModal = document.getElementById("exit-modal");
+const btnOpenExitModal = document.getElementById("btn-open-exit-modal");
+const btnCancelExit = document.getElementById("btn-cancel-exit");
+
+document.addEventListener("DOMContentLoaded", async function() {
+    // Setup Exit Modal
+    btnOpenExitModal.addEventListener("click", () => exitModal.style.display = "flex");
+    btnCancelExit.addEventListener("click", () => exitModal.style.display = "none");
+
+    // Warn before closing tab
+    window.addEventListener("beforeunload", function(e) {
+        if (!isSubmitting && currentIdx < totalQuestions) {
+            e.preventDefault();
+            e.returnValue = "Leaving now will forfeit your interview retake!";
+            return e.returnValue;
+        }
+    });
+
+    // Start Camera Stream
+    try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            audio: true
+        });
+        liveStream.srcObject = mediaStream;
+
+        // Start Question 1
+        loadQuestion(0);
+    } catch (err) {
+        alert("Camera and Microphone access is required: " + err.message);
+        window.location.href = "{% url 'video_interview:welcome' application.application_id %}";
+    }
+
+    btnNext.addEventListener("click", function() {
+        finishCurrentQuestion(false);
+    });
+
+    btnSkip.addEventListener("click", function() {
+        if (confirm("Are you sure you want to skip this question? You will receive a default minimum score for this question.")) {
+            finishCurrentQuestion(true);
+        }
+    });
+});
+
+function loadQuestion(idx) {
+    currentIdx = idx;
+    const q = questionsData[idx];
+
+    currentQNum.textContent = q.number;
+    currentQText.textContent = q.text;
+    questionTypeBadge.textContent = q.type;
+
+    // Update Progress dots
+    for (let i = 1; i <= totalQuestions; i++) {
+        const dot = document.getElementById("dot-" + i);
+        if (i < q.number) {
+            dot.style.background = "#2ecc71"; // completed
+        } else if (i === q.number) {
+            dot.style.background = "var(--primary)"; // active
+        } else {
+            dot.style.background = "#ddd"; // upcoming
+        }
+    }
+
+    // Button label
+    if (idx === totalQuestions - 1) {
+        nextBtnText.textContent = "Finish Interview";
+        btnNext.style.background = "#27ae60";
+    } else {
+        nextBtnText.textContent = "Next Question";
+        btnNext.style.background = "var(--primary)";
+    }
+
+    // Start Recorder & Timer
+    startRecordingAndTimer();
+}
+
+function startRecordingAndTimer() {
+    recordedChunks = [];
+    questionStartTime = Date.now();
+    timeRemaining = 90;
+    updateTimerDisplay();
+
+    // Determine supported mime type
+    let mimeType = "video/webm";
+    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+        mimeType = "video/webm;codecs=vp9,opus";
+    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
+        mimeType = "video/webm;codecs=vp8,opus";
+    } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+        mimeType = "video/mp4";
+    }
+
+    try {
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType: mimeType });
+    } catch (e) {
+        mediaRecorder = new MediaRecorder(mediaStream);
+    }
+
+    mediaRecorder.ondataavailable = function(e) {
+        if (e.data && e.data.size > 0) {
+            recordedChunks.push(e.data);
+        }
+    };
+
+    mediaRecorder.start(500); // chunk every 500ms
+
+    // Start Timer
+    if (timerInterval) clearInterval(timerInterval);
+    timerBadge.style.background = "rgba(0, 0, 0, 0.65)";
+
+    timerInterval = setInterval(function() {
+        timeRemaining--;
+        updateTimerDisplay();
+
+        if (timeRemaining <= 30 && timeRemaining > 10) {
+            timerBadge.style.background = "rgba(230, 126, 34, 0.85)"; // orange
+        } else if (timeRemaining <= 10) {
+            timerBadge.style.background = "rgba(231, 76, 60, 0.9)"; // red
+        }
+
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            finishCurrentQuestion(false); // auto advance when time runs out!
+        }
+    }, 1000);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(timeRemaining / 60);
+    const secs = timeRemaining % 60;
+    timerText.textContent = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
+}
+
+function finishCurrentQuestion(isSkipped) {
+    if (timerInterval) clearInterval(timerInterval);
+    btnNext.disabled = true;
+    btnSkip.disabled = true;
+
+    // Show loading overlay
+    overlayMsg.textContent = isSkipped ? "Skipping question..." : "Saving question response...";
+    loadingOverlay.style.display = "flex";
+
+    const durationSeconds = Math.round((Date.now() - questionStartTime) / 1000);
+    const currentQ = questionsData[currentIdx];
+
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.onstop = function() {
+            const blob = isSkipped ? null : new Blob(recordedChunks, { type: mediaRecorder.mimeType || "video/webm" });
+            uploadQuestionAnswer(currentQ.number, blob, isSkipped, durationSeconds);
+        };
+        mediaRecorder.stop();
+    } else {
+        uploadQuestionAnswer(currentQ.number, null, isSkipped, durationSeconds);
+    }
+}
+
+async function uploadQuestionAnswer(qNum, videoBlob, isSkipped, durationSeconds) {
+    const formData = new FormData();
+    formData.append("question_number", qNum);
+    formData.append("skipped", isSkipped ? "true" : "false");
+    formData.append("duration_seconds", durationSeconds);
+    formData.append("csrfmiddlewaretoken", csrfToken);
+
+    if (videoBlob && !isSkipped) {
+        formData.append("video", videoBlob, "q" + qNum + ".webm");
+    }
+
+    try {
+        const resp = await fetch(submitUrl, {
+            method: "POST",
+            body: formData
+        });
+        const data = await resp.json();
+    } catch (err) {
+        console.error("Error saving response:", err);
+    }
+
+    // Advance to next question or finish
+    if (currentIdx + 1 < totalQuestions) {
+        setTimeout(function() {
+            loadingOverlay.style.display = "none";
+            btnNext.disabled = false;
+            btnSkip.disabled = false;
+            loadQuestion(currentIdx + 1);
+        }, 500);
+    } else {
+        // Last question finished!
+        isSubmitting = true;
+        overlayMsg.textContent = "Interview completed! Analyzing responses...";
+        window.location.href = finishUrl;
+    }
+}
+</script>
+{% endblock %}

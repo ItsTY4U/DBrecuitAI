@@ -1,7 +1,11 @@
 import re
+from django.core.cache import cache
 from datetime import datetime
 from django.core.cache import cache
 from .models import Job
+
+
+from functools import lru_cache
 from .ai import extract_resume_text, parse_resume
 from .rubric import (
     clamp as _clamp,

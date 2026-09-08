@@ -6,13 +6,13 @@
 <div class="profile-page">
 
     {% if messages %}
-        <div class="profile-messages">
-            {% for message in messages %}
-                <div class="profile-message {{ message.tags }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
+    <div class="profile-messages">
+        {% for message in messages %}
+        <div class="profile-message {% if message.tags%} {{ message.tags }} {% endif %}">
+            {{ message }}
         </div>
+        {% endfor %}
+    </div>
     {% endif %}
 
 
@@ -173,6 +173,7 @@
                         </div>
 
                     </div>
+                    </div>
 
                     <a
                         href="{{ profile.default_resume.url }}"
@@ -182,6 +183,7 @@
                         View
                     </a>
 
+                </div>
                 </div>
 
             {% else %}
@@ -222,26 +224,22 @@
 
         <div class="profile-info-card profile-edit-card">
 
-            <form
-                method="POST"
-                enctype="multipart/form-data"
-                id="profile-form"
-            >
+            <form method="POST" enctype="multipart/form-data" id="profile-form">
 
                 {% csrf_token %}
 
 
                 {% if user_form.non_field_errors %}
-                    <div class="form-error">
-                        {{ user_form.non_field_errors }}
-                    </div>
+                <div class="form-error">
+                    {{ user_form.non_field_errors }}
+                </div>
                 {% endif %}
 
 
                 {% if profile_form.non_field_errors %}
-                    <div class="form-error">
-                        {{ profile_form.non_field_errors }}
-                    </div>
+                <div class="form-error">
+                    {{ profile_form.non_field_errors }}
+                </div>
                 {% endif %}
 
 
@@ -258,9 +256,9 @@
                         {{ user_form.first_name }}
 
                         {% if user_form.first_name.errors %}
-                            <div class="form-error">
-                                {{ user_form.first_name.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.first_name.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -277,9 +275,9 @@
                         {{ user_form.last_name }}
 
                         {% if user_form.last_name.errors %}
-                            <div class="form-error">
-                                {{ user_form.last_name.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.last_name.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -296,9 +294,9 @@
                         {{ user_form.email }}
 
                         {% if user_form.email.errors %}
-                            <div class="form-error">
-                                {{ user_form.email.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ user_form.email.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -315,9 +313,9 @@
                         {{ profile_form.phone }}
 
                         {% if profile_form.phone.errors %}
-                            <div class="form-error">
-                                {{ profile_form.phone.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.phone.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -334,9 +332,9 @@
                         {{ profile_form.address }}
 
                         {% if profile_form.address.errors %}
-                            <div class="form-error">
-                                {{ profile_form.address.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.address.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -353,9 +351,9 @@
                         {{ profile_form.default_resume }}
 
                         {% if profile_form.default_resume.errors %}
-                            <div class="form-error">
-                                {{ profile_form.default_resume.errors }}
-                            </div>
+                        <div class="form-error">
+                            {{ profile_form.default_resume.errors }}
+                        </div>
                         {% endif %}
 
                     </div>
@@ -365,19 +363,11 @@
 
                 <div class="profile-edit-actions">
 
-                    <button
-                        type="button"
-                        class="profile-cancel-btn"
-                        id="cancel-profile-btn"
-                    >
+                    <button type="button" class="profile-cancel-btn" id="cancel-profile-btn">
                         Cancel
                     </button>
 
-                    <button
-                        type="submit"
-                        class="profile-save-btn"
-                        id="save-profile-btn"
-                    >
+                    <button type="submit" class="profile-save-btn" id="save-profile-btn">
                         Save Changes
                     </button>
 
@@ -406,10 +396,7 @@
                 </p>
             </div>
 
-            <a
-                href="{% url 'jobs' %}"
-                class="view-all-btn"
-            >
+            <a href="{% url 'jobs' %}" class="view-all-btn">
                 View All Jobs
             </a>
 
@@ -534,7 +521,7 @@
                             <th>Position</th>
                             <th>Applied Date</th>
                             <th>Status</th>
-                            <th></th>
+                            <th>Video Interview</th>
                         </tr>
 
                     </thead>
@@ -554,13 +541,13 @@
                                         </strong>
                                     </td>
 
-                                    <td>
-                                        {{ application.job.title }}
-                                    </td>
+                            <td>
+                                {{ application.job.title }}
+                            </td>
 
-                                    <td>
-                                        {{ application.created_at|date:"F d, Y" }}
-                                    </td>
+                            <td>
+                                {{ application.created_at|date:"F d, Y" }}
+                            </td>
 
                                     <td>
 
@@ -570,33 +557,43 @@
 
                                     </td>
 
-                                    <td>
+                            <td>
+                                {% if application.video_interview.status == "COMPLETED" %}
+                                <button type="button" class="track-btn" disabled
+                                    style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-circle-check"></i> Completed
+                                </button>
+                                {% elif application.video_interview.status == "ABANDONED" and not
+                                application.video_interview.can_retake %}
+                                <button type="button" class="track-btn" disabled
+                                    style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-lock"></i> Attempted
+                                </button>
+                                {% elif application.video_interview.can_retake %}
+                                <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                    class="track-btn"
+                                    style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-rotate-right"></i> Retake Interview
+                                </a>
+                                {% else %}
+                                <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                    class="track-btn"
+                                    style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
+                                    <i class="fas fa-video"></i> Take Video Interview
+                                </a>
+                                {% endif %}
+                            </td>
 
-                                        <a
-                                            href="#"
-                                            class="track-btn"
-                                        >
-                                            Track
-                                        </a>
+                        </tr>
 
-                                    </td>
-
-                                </tr>
-
-                            {% endfor %}
+                        {% endfor %}
 
                         {% else %}
-
-                            <tr>
-
-                                <td
-                                    colspan="5"
-                                    class="no-applications"
-                                >
-                                    You have not submitted any applications yet.
-                                </td>
-
-                            </tr>
+                        <tr>
+                            <td colspan="5" class="no-applications">
+                                You have not submitted any applications yet.
+                            </td>
+                        </tr>
 
                         {% endif %}
 

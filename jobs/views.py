@@ -8,29 +8,55 @@ import json
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 
+from django.core.cache import cache
 from .models import Job, Application
 from accounts.models import ApplicantProfile
 
 def jobs(request):
     try:
-        query = request.GET.get("q", "")
-        department = request.GET.get("department", "")
+        query = request.GET.get("q", "").strip()
+        department = request.GET.get("department", "").strip()
 
-        jobs = Job.objects.filter(status="Active")
+        is_default_view = not query and not department
+        jobs_list = None
 
-        if query:
-            jobs = jobs.filter(
-                Q(title__icontains=query) |
-                Q(department__icontains=query)
+        if is_default_view:
+            jobs_list = cache.get("default_active_jobs_list")
+
+        if jobs_list is None:
+            jobs_qs = Job.objects.filter(status="Active")
+
+            if query:
+                jobs_qs = jobs_qs.filter(
+                    Q(title__icontains=query) |
+                    Q(department__icontains=query)
+                )
+
+            if department:
+                jobs_qs = jobs_qs.filter(department=department)
+
+            jobs_qs = jobs_qs.only(
+                "id", "title", "department", "job_type", "posted_date"
+            ).order_by("-posted_date", "-id")
+
+            if is_default_view:
+                jobs_list = list(jobs_qs)
+                cache.set("default_active_jobs_list", jobs_list, 60)
+            else:
+                jobs_list = jobs_qs
+
+        # Fast partial response for HTMX search / filter requests
+        if request.headers.get("HX-Request"):
+            return render(
+                request,
+                "jobs/partials/jobs_list.html",
+                {"jobs": jobs_list},
             )
-
-        if department:
-            jobs = jobs.filter(department=department)
 
         return render(
             request,
             "jobs/jobs.html",
-            {"jobs": jobs},
+            {"jobs": jobs_list},
         )
 
     except Exception as e:
@@ -41,14 +67,25 @@ def jobs(request):
         )
         
 def job_detail(request, id):
-    job = get_object_or_404(Job, id=id)
+    cache_key = f"job_detail_{id}"
+    job = cache.get(cache_key)
+    if job is None:
+        job = get_object_or_404(
+            Job.objects.prefetch_related("requirements_list"),
+            id=id
+        )
+        cache.set(cache_key, job, 300)
     return render(request, "jobs/job_detail.html", {
         "job": job
     }) 
 
 @login_required(login_url="applicant_login")
 def apply_job(request, pk):
-    job = get_object_or_404(Job, pk=pk, status="Active")
+    job = get_object_or_404(
+        Job.objects.prefetch_related("requirements_list"),
+        pk=pk,
+        status="Active"
+    )
 
     profile, created = ApplicantProfile.objects.get_or_create(
         user=request.user
@@ -81,11 +118,11 @@ def apply_job(request, pk):
         })
         
     # POST request
-    # Prevent duplicate applications
+    # Prevent duplicate applications (fast query using index)
     existing_application = Application.objects.filter(
         applicant=request.user,
         job=job
-    ).first()
+    ).only("id").first()
     
     if existing_application:
         return render(request, "jobs/partials/application_error.html", {
@@ -95,7 +132,23 @@ def apply_job(request, pk):
         })
         
     try:
-        # Create application linked to logged-in applicant
+        # Attempt AI analysis with safe fallback if Gemini rate limits or times out
+        ai = {}
+        try:
+            resume_text = profile.resume_text
+            if resume_text:
+                ai = analyze_resume(resume_text, job)
+        except Exception as ai_err:
+            import logging
+            logging.getLogger(__name__).warning("Gemini resume analysis fallback triggered: %s", ai_err)
+            ai = {
+                "score": 0,
+                "summary": "AI evaluation queued.",
+                "strengths": [],
+                "weaknesses": [],
+            }
+        
+        # Create complete application in a single INSERT
         application = Application.objects.create(
             applicant=request.user,
             job=job,
@@ -104,8 +157,6 @@ def apply_job(request, pk):
             last_name=request.user.last_name,
             email=request.user.email,
             phone=profile.phone,
-            
-            # use the applicant default resume
             resume=profile.default_resume,
             status="Pending"
         )
@@ -287,10 +338,11 @@ def upload_resume(request, pk):
 
 def application_success(request, application_id):
     application = get_object_or_404(
-        Application,
+        Application.objects.select_related("job"),
         application_id=application_id
     )
     
     return render(request, "jobs/partials/application_success.html", {
-        "application": application
+        "application": application,
+        "job": application.job,
     })
