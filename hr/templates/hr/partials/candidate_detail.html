@@ -90,48 +90,110 @@
                             {{ application.ai_summary|default:"No AI summary available." }}
                         </p>
                     </div>
-
                     <div class="ai-analysis-card">
                         <h4>Score Breakdown</h4>
                         <div class="ai-score-breakdown">
-
+                            <!-- SKILLS -->
                             <div class="ai-score-item">
-                                <span>Skills</span>
-                                <strong>
-                                    {{ application.ai_skills_match }}%
-                                </strong>
+                                <div class="score-header">
+                                    <span>Skills</span>
+                                    <strong>
+                                        {{ application.ai_skills_match }}%
+                                    </strong>
+                                </div>
                                 <div class="ai-progress">
-                                    <div class="ai-progress-fill" style="width: {{ application.ai_skills_match }}%;"></div>
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_skills_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.skills_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.skills }}
+                                    </p>
                                 </div>
                             </div>
 
+                            <!-- EXPERIENCE -->
                             <div class="ai-score-item">
-                                <span>Experience</span>
-                                <strong>
-                                    {{ application.ai_experience_match }}%
-                                </strong>
+
+                                <div class="score-header">
+                                    <span>Experience</span>
+                                    <strong>
+                                        {{ application.ai_experience_match }}%
+                                    </strong>
+                                </div>
+
                                 <div class="ai-progress">
-                                    <div class="ai-progress-fill" style="width: {{ application.ai_experience_match }}%;"></div>
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_experience_match }}%;">
+                                    </div>
+                                </div>
+
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.experience_weight }}%
+                                    </span>
+
+                                    <p>
+                                        {{ application.ai_weight_reasoning.experience }}
+                                    </p>
                                 </div>
                             </div>
 
+                            <!-- EDUCATION -->
                             <div class="ai-score-item">
-                                <span>Education</span>
-                                <strong>
-                                    {{ application.ai_education_match }}%
-                                </strong>
+                                <div class="score-header">
+                                    <span>Education</span>
+                                    <strong>
+                                        {{ application.ai_education_match }}%
+                                    </strong>
+                                </div>
                                 <div class="ai-progress">
-                                    <div class="ai-progress-fill" style="width: {{ application.ai_education_match }}%;"></div>
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_education_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.education_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.education }}
+                                    </p>
                                 </div>
                             </div>
 
+                            <!-- KEY QUALIFICATIONS -->
                             <div class="ai-score-item">
-                                <span>Key Qualifications </span>
-                                <strong>
-                                    {{ application.ai_qualification_match }}%
-                                </strong>
+                                <div class="score-header">
+                                    <span>Key Qualifications</span>
+                                    <strong>
+                                        {{ application.ai_qualification_match }}%
+                                    </strong>
+                                </div>
                                 <div class="ai-progress">
-                                    <div class="ai-progress-fill" style="width: {{ application.ai_qualification_match }}%;"></div>
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_qualification_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.qualification_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.qualification }}
+                                    </p>
                                 </div>
                             </div>
                         </div>

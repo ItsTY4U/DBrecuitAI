@@ -4211,3 +4211,29 @@ body {
     letter-spacing: 1px;
 }
 
+
+
+.score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.ai-weight-info {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f8faf9;
+    border-radius: 6px;
+}
+
+.ai-weight {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.ai-weight-info p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+}
