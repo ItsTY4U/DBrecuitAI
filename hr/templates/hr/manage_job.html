@@ -32,84 +32,117 @@
     <div class="content-box form-edit-container">
         <form action="" method="POST" id="manage-job-form">
             {% csrf_token %}
-            
-            <div class="form-section-title">
-                <i class="fas fa-info-circle"></i>
-                <span>General Information</span>
-            </div>
 
-            <div class="form-group">
-                <label class="form-label" for="edit-title">Job Title <span class="required-star">*</span></label>
-                <input type="text" id="edit-title" name="title" value="{{ job.title }}" class="form-input" required>
-            </div>
-            
-            <div class="form-row-2col">
-                <div class="form-group">
-                    <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
-                    <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="edit-type">Employment Type</label>
-                    <select id="edit-type" name="job_type" class="form-select">
-                        <option value="Full-time" {% if job.job_type == "Full-time" %}selected{% endif %}>Full-time</option>
-                        <option value="Part-time" {% if job.job_type == "Part-time" %}selected{% endif %}>Part-time</option>
-                    </select>
-                </div>
-            </div>
+            <div class="two-col-form-grid">
 
-            <div class="form-section-title" style="margin-top: 24px;">
-                <i class="fas fa-toggle-on"></i>
-                <span>Visibility & Status</span>
-            </div>
+                <!-- LEFT COLUMN: General details, status, description -->
+                <div class="form-col-left">
 
-            <div class="form-group">
-                <label class="form-label" for="status">Job Status</label>
-                <select name="status" id="status" class="form-select">
-                    <option value="Active" {% if job.status == "Active" %}selected{% endif %}>
-                        🟢 Active (Publicly visible & open for applications)
-                    </option> 
-                    <option value="Inactive" {% if job.status == "Inactive" %}selected{% endif %}>
-                        🔴 Inactive (Archived & closed to applications)
-                    </option>
-                </select>
-            </div>
-
-            <div class="form-section-title" style="margin-top: 24px;">
-                <i class="fas fa-align-left"></i>
-                <span>Role Description</span>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-textarea" rows="5">{{ job.description }}</textarea>
-            </div>
-
-            <div class="form-section-title" style="margin-top: 24px;">
-                <i class="fas fa-list-check"></i>
-                <span>Key Qualifications & Requirements</span>
-            </div>
-
-            <div class="form-group">
-                <div class="req-header-row">
-                    <span class="req-hint">List specific skills, years of experience, or degree requirements:</span>
-                    <button type="button" class="btn-add-req-chip" id="add-requirement">
-                        <i class="fas fa-plus"></i> Add Requirement
-                    </button>
-                </div>
-                <div id="requirements-container" class="requirements-container">
-                    {% for req in requirements %}
-                    <div class="requirement-row" style="margin-top: 10px;">
-                        <input type="text" name="requirements" value="{{ req.text }}" class="form-input" required>
-                        <button type="button" class="remove-requirement" title="Remove requirement">
-                            <i class="fas fa-trash-can"></i>
-                        </button>
+                    <div class="form-section-title">
+                        <i class="fas fa-info-circle"></i>
+                        <span>General Information</span>
                     </div>
-                    {% empty %}
-                    <div class="requirement-row">
-                        <input type="text" name="requirements" class="form-input" placeholder="e.g. 3+ years experience in the field" required>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-title">Job Title <span class="required-star">*</span></label>
+                        <input type="text" id="edit-title" name="title" value="{{ job.title }}" class="form-input" required>
                     </div>
-                    {% endfor %}
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
+                            <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-type">Employment Type</label>
+                            <select id="edit-type" name="job_type" class="form-select">
+                                <option value="FULL-TIME" {% if job.job_type == "FULL-TIME" %}selected{% endif %}>Full-Time</option>
+                                <option value="PART-TIME" {% if job.job_type == "PART-TIME" %}selected{% endif %}>Part-Time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-toggle-on"></i>
+                        <span>Visibility & Status</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="status">Job Status</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="Active" {% if job.status == "Active" %}selected{% endif %}>
+                                🟢 Active (Publicly visible & open for applications)
+                            </option>
+                            <option value="Inactive" {% if job.status == "Inactive" %}selected{% endif %}>
+                                🔴 Inactive (Archived & closed to applications)
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-align-left"></i>
+                        <span>Role Description</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="9">{{ job.description }}</textarea>
+                    </div>
+
                 </div>
+
+                <!-- RIGHT COLUMN: Requirements & Key Qualifications -->
+                <div class="form-col-right">
+
+                    <div class="form-section-title">
+                        <i class="fas fa-list-check"></i>
+                        <span>Requirements</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">General Requirements</label>
+                        <textarea name="requirements" class="form-textarea" rows="6" placeholder="Enter the general requirements for this position...">{{ job.requirements }}</textarea>
+                        <small class="form-help">
+                            Free-form requirements shown to applicants (skills, experience, degree, etc).
+                        </small>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-star"></i>
+                        <span>Key Qualifications</span>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="req-header-row">
+                            <span class="req-hint">Criteria used by the AI during screening (not shown to applicants):</span>
+                            <button type="button" class="btn-add-req-chip" id="edit-add-key-qualification">
+                                <i class="fas fa-plus"></i> Add Qualification
+                            </button>
+                        </div>
+                        <div id="key-qualifications-container" class="requirements-container">
+                            {% for qualification in key_qualifications %}
+                            <div class="requirement-row">
+                                <input type="text" name="key_qualifications" value="{{ qualification.text }}" class="form-input" required>
+                                <button type="button" class="remove-requirement" title="Remove qualification">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </div>
+                            {% empty %}
+                            <div class="requirement-row">
+                                <input type="text" name="key_qualifications" class="form-input" placeholder="Enter a key qualification..." required>
+                                <button type="button" class="remove-requirement" title="Remove qualification">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-help">
+                            These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
+                        </small>
+                    </div>
+
+                </div>
+
             </div>
 
             <div class="form-actions-footer">

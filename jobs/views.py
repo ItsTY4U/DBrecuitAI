@@ -158,13 +158,108 @@ def apply_job(request, pk):
             email=request.user.email,
             phone=profile.phone,
             resume=profile.default_resume,
-            status="Pending",
-            ai_score=ai.get("score", 0),
-            ai_summary=ai.get("summary", ""),
-            ai_strengths="\n".join(ai.get("strengths", [])),
-            ai_weaknesses="\n".join(ai.get("weaknesses", [])),
-            resume_processed=True,
+            status="Pending"
         )
+        # Use the already processed resume text 
+        resume_text = profile.resume_text
+        
+        # Run job-specific AI analysis
+        ai = analyze_resume(
+            resume_text,
+            job
+        )
+
+        # ==============================
+        # AI OVERALL RESULTS
+        # ==============================
+
+        application.ai_score = ai.get("score", 0)
+
+        application.ai_match_level = ai.get(
+            "match_level",
+            ""
+        )
+
+        application.ai_recommendation = ai.get(
+            "recommendation",
+            ""
+        )
+
+
+        # ==============================
+        # AI SUMMARY
+        # ==============================
+
+        application.ai_summary = ai.get(
+            "summary",
+            ""
+        )
+
+
+        # ==============================
+        # AI STRENGTHS / WEAKNESSES
+        # ==============================
+
+        application.ai_strengths = "\n".join(
+            ai.get("strengths", [])
+        )
+
+        application.ai_weaknesses = "\n".join(
+            ai.get("weaknesses", [])
+        )
+
+
+        # ==============================
+        # QUALIFICATION ANALYSIS
+        # ==============================
+
+        application.ai_matched_qualifications = "\n".join(
+            ai.get("matched_qualifications", [])
+        )
+
+        application.ai_missing_qualifications = "\n".join(
+            ai.get("missing_qualifications", [])
+        )
+
+
+        # ==============================
+        # AI COMPONENT SCORES
+        # ==============================
+
+        application.ai_skills_match = ai.get(
+            "skills_match",
+            0
+        )
+
+        application.ai_experience_match = ai.get(
+            "experience_match",
+            0
+        )
+
+        application.ai_education_match = ai.get(
+            "education_match",
+            0
+        )
+
+        application.ai_qualification_match = ai.get(
+            "qualification_match",
+            0
+        )
+        
+        # application.ai_recommendation = data.get("recommendation", "")
+        application.ai_criteria_weights = ai.get("criteria_weights", {})
+        application.ai_weight_reasoning = ai.get("weight_reasoning", {})
+
+
+        # ==============================
+        # APPLICATION STATUS
+        # ==============================
+
+        application.resume_processed = True
+
+        application.status = "Pending"
+
+        application.save()
         
         return render(request, "jobs/partials/application_success.html",
                     {

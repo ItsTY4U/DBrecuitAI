@@ -1,6 +1,6 @@
 from django import forms
-from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
 import re
 
 from .models import ApplicantProfile
@@ -254,3 +254,12 @@ class ApplicantProfileForm(forms.ModelForm):
             if hasattr(resume, "size") and resume.size > 5 * 1024 * 1024:
                 raise forms.ValidationError("Resume file must not exceed 5MB.")
         return resume
+        
+class ApplicantAuthenticationForm(AuthenticationForm):
+    def confirm_login_allowed(self, user):
+        
+        if user.is_staff or user.is_superuser:
+            raise forms.ValidationError(
+                "This login is for applicants only. ",
+                code="not_applicant",
+            )

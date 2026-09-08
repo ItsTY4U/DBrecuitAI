@@ -33,39 +33,59 @@ document.addEventListener("keydown", function (e) {
     }
 });
 
-// Dynamic job requirements with event delegation
-document.addEventListener("click", function (e) {
-    const addBtn = e.target.closest("#add-requirement");
-    if (addBtn) {
-        const container = document.getElementById("requirements-container");
-        if (!container) return;
+document.addEventListener("DOMContentLoaded", () => {
+
+    const container = document.getElementById("key-qualifications-container");
+    const addBtn = document.getElementById("edit-add-key-qualification");
+
+    if (!container || !addBtn) return;
+
+
+    // ==============================
+    // ADD QUALIFICATION
+    // ==============================
+
+    addBtn.addEventListener("click", () => {
 
         const row = document.createElement("div");
+
         row.className = "requirement-row";
         row.style.marginTop = "8px";
         row.innerHTML = `
             <input
                 type="text"
-                name="requirements"
+                name="key_qualifications"
                 class="form-input"
-                placeholder="Enter a requirement"
-                required>
+                placeholder="Enter a key qualification..."
+                required
+            >
+
             <button
                 type="button"
                 class="remove-requirement"
-                title="Remove requirement">
+                title="Remove qualification"
+            >
                 <i class="fas fa-trash-can"></i>
             </button>
         `;
         container.appendChild(row);
         return;
-    }
+    })
 
-    const removeBtn = e.target.closest(".remove-requirement");
-    if (removeBtn) {
-        const row = removeBtn.closest(".requirement-row");
-        if (row) row.remove();
-    }
+
+    // ==============================
+    // REMOVE QUALIFICATION
+    // ==============================
+
+    container.addEventListener("click", function (e) {
+        const removeBtn = e.target.closest(".remove-requirement");
+        if (removeBtn) {
+            const row = removeBtn.closest(".requirement-row");
+            if (row) {
+                row.remove();
+            }
+        }
+    });
 });
 
 // Manage job status confirmation
@@ -109,3 +129,63 @@ function initInterviewStatus() {
 
 document.addEventListener("DOMContentLoaded", initInterviewStatus);
 document.addEventListener("htmx:afterSwap", initInterviewStatus);
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const container = document.getElementById("key-qualifications-container");
+    const addBtn = document.getElementById("add-key-qualification");
+
+    if (!container || !addBtn) return;
+
+
+    // Add qualification
+    addBtn.addEventListener("click", () => {
+
+        const row = document.createElement("div");
+
+        row.className = "key-qualification-row";
+
+        row.style.display = "flex";
+        row.style.gap = "10px";
+        row.style.marginBottom = "10px";
+
+        row.innerHTML = `
+            <input
+                type="text"
+                name="key_qualifications"
+                placeholder="Enter a key qualification..."
+                style="width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #ddd; font-family: 'Montserrat', sans-serif;"
+            >
+
+            <button
+                type="button"
+                class="remove-key-qualification"
+                style="padding: 0 15px; border: none; border-radius: 8px; cursor: pointer;"
+            >
+                <i class="fas fa-trash-can"></i>
+            </button>
+        `;
+
+        container.appendChild(row);
+    });
+
+
+    // Remove qualification
+    container.addEventListener("click", (event) => {
+
+        if (event.target.classList.contains("remove-key-qualification")) {
+
+            const rows = container.querySelectorAll(".key-qualification-row");
+
+            // Keep at least one field
+            if (rows.length > 1) {
+                event.target.closest(".key-qualification-row").remove();
+            }
+
+        }
+
+    });
+
+});

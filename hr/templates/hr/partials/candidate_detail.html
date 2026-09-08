@@ -1,3 +1,5 @@
+{% load job_filters %}
+
 <div class="page-nav-header">
     <a href="{% url 'candidates' %}?department={{ application.job.department|urlencode }}" class="back-link-pill">
         <i class="fas fa-arrow-left"></i>
@@ -64,32 +66,223 @@
         <div class="content-box ai-eval-box">
             <div class="box-header">
                 <div class="box-header-title">
-                    <i class="fas fa-robot header-icon text-green"></i>
+                    {% comment %} <i class="fas fa-robot header-icon text-green"></i>
                     <div>
                         <h3>AI Screening Intelligence</h3>
                         <p class="box-subtitle">Automated resume parsing and role fit evaluation</p>
-                    </div>
+                    </div> {% endcomment %}
                 </div>
-                <div class="ai-score-badge-large 
-                    {% if application.ai_score >= 90 %}
-                        score-high
-                    {% elif application.ai_score >= 75 %}
-                        score-mid
-                    {% else %}
-                        score-low
-                    {% endif %}">
-                    <span class="score-num">{{ application.ai_score }}%</span>
-                    <span class="score-text">
-                        {% if application.ai_score >= 90 %}
-                            Strong Match
-                        {% elif application.ai_score >= 75 %}
-                            Good Fit
-                        {% else %}
-                            Review Needed
-                        {% endif %}
-                    </span>
+                <div class="eval-content">
+                    <div class="ai-insight">
+                        <strong>
+                            <i class="fas fa-robot"></i>
+                            AI Score: {{ application.ai_score }}%
+                        </strong>
+                        <p>
+                            <strong>Match Level:</strong>
+                            {{ application.ai_recommendation|default:"Not Available" }}
+                        </p>
+                    </div>
+
+                    <div class="ai-analysis-card">
+                        <h2>AI Summary</h2>
+                        <p>
+                            {{ application.ai_summary|default:"No AI summary available." }}
+                        </p>
+                    </div>
+                    <div class="ai-analysis-card">
+                        <h4>Score Breakdown</h4>
+                        <div class="ai-score-breakdown">
+                            <!-- SKILLS -->
+                            <div class="ai-score-item">
+                                <div class="score-header">
+                                    <span>Skills</span>
+                                    <strong>
+                                        {{ application.ai_skills_match }}%
+                                    </strong>
+                                </div>
+                                <div class="ai-progress">
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_skills_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.skills_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.skills }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- EXPERIENCE -->
+                            <div class="ai-score-item">
+
+                                <div class="score-header">
+                                    <span>Experience</span>
+                                    <strong>
+                                        {{ application.ai_experience_match }}%
+                                    </strong>
+                                </div>
+
+                                <div class="ai-progress">
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_experience_match }}%;">
+                                    </div>
+                                </div>
+
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.experience_weight }}%
+                                    </span>
+
+                                    <p>
+                                        {{ application.ai_weight_reasoning.experience }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- EDUCATION -->
+                            <div class="ai-score-item">
+                                <div class="score-header">
+                                    <span>Education</span>
+                                    <strong>
+                                        {{ application.ai_education_match }}%
+                                    </strong>
+                                </div>
+                                <div class="ai-progress">
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_education_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.education_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.education }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- KEY QUALIFICATIONS -->
+                            <div class="ai-score-item">
+                                <div class="score-header">
+                                    <span>Key Qualifications</span>
+                                    <strong>
+                                        {{ application.ai_qualification_match }}%
+                                    </strong>
+                                </div>
+                                <div class="ai-progress">
+                                    <div
+                                        class="ai-progress-fill"
+                                        style="width: {{ application.ai_qualification_match }}%;">
+                                    </div>
+                                </div>
+                                <div class="ai-weight-info">
+                                    <span class="ai-weight">
+                                        Weight:
+                                        {{ application.ai_criteria_weights.qualification_weight }}%
+                                    </span>
+                                    <p>
+                                        {{ application.ai_weight_reasoning.qualification }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ai-analysis-two-column">
+                        <div class="ai-analysis-card">
+                            <h4>
+                                <i class="fas fa-check-circle"></i>
+                                Matched Qualifications
+                            </h4>
+                            {% with matched_qualifications=application.ai_matched_qualifications|splitlines_clean %}
+                                {% if matched_qualifications %}
+                                    <ul class="ai-list">
+                                        {% for qualification in matched_qualifications %}
+                                            <li>
+                                                {{ qualification }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No matched qualifications identified.</p>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+
+                        <div class="ai-analysis-card">
+                            <h4>
+                                <i class="fas fa-exclamation-circle"></i>
+                                Missing Qualifications
+                            </h4>
+                            {% with missing_qualifications=application.ai_missing_qualifications|splitlines_clean %}
+                                {% if missing_qualifications %}
+                                    <ul class="ai-list">
+                                        {% for qualification in missing_qualifications %}
+                                            <li>
+                                                {{ qualification }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No missing qualifications identified.</p>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+
+                    <div class="ai-analysis-two-column">
+                        <div class="ai-analysis-card">
+                            <h4>
+                                <i class="fas fa-thumbs-up"></i>
+                                Strengths
+                            </h4>
+                            {% with strengths=application.ai_strengths|splitlines_clean %}
+                                {% if strengths %}
+                                    <ul class="ai-list">
+                                        {% for strength in strengths %}
+                                            <li>
+                                                {{ strength }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No strengths available.</p>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="ai-analysis-card">
+                            <h4>
+                                <i class="fas fa-thumbs-down"></i>
+                                Weaknesses
+                            </h4>
+                            {% with weaknesses=application.ai_weaknesses|splitlines_clean %}
+                                {% if weaknesses %}
+                                    <ul class="ai-list">
+                                        {% for weakness in weaknesses %}
+                                            <li>
+                                                {{ weakness }}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No weaknesses available.</p>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
                 </div>
             </div>
+        </div>
 
             <div class="ai-summary-content">
                 <h4 class="ai-section-title">
@@ -100,37 +293,41 @@
                 </p>
             </div>
 
-            {% if strengths %}
-            <div class="ai-breakdown-section">
-                <h4 class="ai-section-title text-green">
-                    <i class="fas fa-circle-check"></i> Key Strengths & Qualifications
-                </h4>
-                <ul class="ai-points-list strengths-list">
-                    {% for item in strengths %}
-                    <li>
-                        <i class="fas fa-check text-green"></i>
-                        <span>{{ item }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
+            {% with strengths=application.ai_strengths|splitlines_clean %}
+                {% if strengths %}
+                <div class="ai-breakdown-section">
+                    <h4 class="ai-section-title text-green">
+                        <i class="fas fa-circle-check"></i> Key Strengths & Qualifications
+                    </h4>
+                    <ul class="ai-points-list strengths-list">
+                        {% for item in strengths %}
+                        <li>
+                            <i class="fas fa-check text-green"></i>
+                            <span>{{ item }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            {% endwith %}
 
-            {% if weaknesses %}
-            <div class="ai-breakdown-section">
-                <h4 class="ai-section-title text-amber">
-                    <i class="fas fa-triangle-exclamation"></i> Potential Gaps / Areas to Probe
-                </h4>
-                <ul class="ai-points-list gaps-list">
-                    {% for item in weaknesses %}
-                    <li>
-                        <i class="fas fa-exclamation text-amber"></i>
-                        <span>{{ item }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
+            {% with weaknesses=application.ai_weaknesses|splitlines_clean %}
+                {% if weaknesses %}
+                <div class="ai-breakdown-section">
+                    <h4 class="ai-section-title text-amber">
+                        <i class="fas fa-triangle-exclamation"></i> Potential Gaps / Areas to Probe
+                    </h4>
+                    <ul class="ai-points-list gaps-list">
+                        {% for item in weaknesses %}
+                        <li>
+                            <i class="fas fa-exclamation text-amber"></i>
+                            <span>{{ item }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            {% endwith %}
         </div>
 
         <!-- AI Video Interview Intelligence Card -->

@@ -21,15 +21,15 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path("superadmin/", admin.site.urls),
-    
+    path("admin/", admin.site.urls),
+    # path("superadmin/", admin.site.urls),
     path("", include("main.urls")),
     
     path("jobs/", include("jobs.urls")),
     
     path("track/", include("track_application.urls")),
     
-    path("admin/", include("hr.urls")),
+    path("hr/", include("hr.urls")),
     
     path("accounts/", include("accounts.urls")),
     

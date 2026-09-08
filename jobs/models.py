@@ -24,10 +24,14 @@ class Job(models.Model):
         choices=STATUS_CHOICES,
         default="Active"
     )
+    
+    requirements = models.TextField(
+        blank=True)
+    
 
     def __str__(self):
         return self.title
-
+    
     class Meta:
         indexes = [
             models.Index(fields=["status"]),
@@ -35,6 +39,7 @@ class Job(models.Model):
             models.Index(fields=["status", "-posted_date"]),  # applicant job listings ordering
         ]
     
+# Key Qualification
 class Requirement(models.Model):
     job = models.ForeignKey(
         Job,
@@ -42,7 +47,6 @@ class Requirement(models.Model):
         related_name="requirements_list"
     )
     text = models.CharField(max_length=255)
-
     def __str__(self):
         return self.text
     
@@ -50,7 +54,6 @@ def application_resume_upload_path(instance, filename):
     ext = os.path.splitext(filename)[1].lower() or ".pdf"
     app_id = instance.application_id or uuid4().hex[:8].upper()
     return f"resumes/app_{app_id}_resume{ext}"
-
 
 class Application(models.Model):
     STATUS_CHOICES =[
@@ -89,7 +92,7 @@ class Application(models.Model):
     phone = models.CharField(max_length=20)
     
     resume = models.FileField(
-        upload_to=application_resume_upload_path
+        upload_to = application_resume_upload_path
     )
     
     resume_processed = models.BooleanField(default=False)
@@ -109,7 +112,7 @@ class Application(models.Model):
             self.application_id = uuid4().hex[:8].upper()
             
         super().save(*args, **kwargs)
-
+        
     def delete(self, *args, **kwargs):
         # Only clean up file if it's application-specific and not a shared profile resume
         if self.resume and not self.resume.name.startswith("resumes/user_"):
@@ -118,10 +121,10 @@ class Application(models.Model):
             except Exception:
                 pass
         super().delete(*args, **kwargs)
+    
         
     def __str__(self):
         return f"{self.application_id} - {self.first_name} {self.last_name}"
-
     
     
     ai_score = models.IntegerField(default=0)
@@ -139,4 +142,15 @@ class Application(models.Model):
             models.Index(fields=["applicant", "job"]),                # applicant duplicate application checks
         ]
     
-    
+        
+    ai_match_level = models.CharField(max_length=30, blank=True)
+    ai_recommendation = models.CharField(max_length=30, blank=True)
+    ai_matched_qualifications = models.TextField(blank=True)
+    ai_missing_qualifications = models.TextField(blank=True)
+    ai_skills_match = models.IntegerField(default=0)
+    ai_experience_match = models.IntegerField(default=0)
+    ai_education_match = models.IntegerField(default=0)
+    ai_qualification_match = models.IntegerField(default=0)
+    ai_recommendation = models.CharField(max_length=30, blank=True)
+    ai_criteria_weights = models.JSONField(default=dict, blank=True)
+    ai_weight_reasoning = models.JSONField(default=dict, blank=True)
