@@ -264,8 +264,8 @@ def manage_job(request, pk):
         invalidate_hr_cache()
         return redirect("job_management")
         
-    # requirements = job.requirements_list.all()
-    # applicant_count = Application.objects.filter(job=job).count()
+    requirements = job.requirements_list.all()
+    applicant_count = Application.objects.filter(job=job).count()
     
     return render(request, "hr/manage_job.html", {
         "job": job,
