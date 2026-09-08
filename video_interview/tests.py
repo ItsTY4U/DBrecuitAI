@@ -38,6 +38,9 @@ class VideoInterviewTests(TestCase):
             password="testpassword123",
             is_staff=True
         )
+        from django.contrib.auth.models import Group
+        hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.staff_user.groups.add(hr_group)
 
         # Create Job
         self.job = Job.objects.create(

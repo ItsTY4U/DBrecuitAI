@@ -1,10 +1,10 @@
 <!-- Post Job Modal -->
 <div class="modal-overlay" id="post-job-modal">
-    <div class="modal-content post-job-card">
+    <div class="modal-content post-job-card post-job-card-wide">
         <button type="button" class="close-modal-btn" id="close-post-modal" aria-label="Close modal">
             <i class="fas fa-xmark"></i>
         </button>
-        
+
         <div class="modal-header">
             <div class="modal-icon-badge icon-green">
                 <i class="fas fa-briefcase"></i>
@@ -17,43 +17,77 @@
 
         <form id="post-job-form" method="POST" action="{% url "create_job" %}" hx-boost="false">
             {% csrf_token %}
-            
-            <div class="form-group">
-                <label class="form-label" for="new-job-title">Job Title <span class="required-star">*</span></label>
-                <input type="text" name="title" id="new-job-title" class="form-input" placeholder="e.g. Senior Software Engineer" required>
-            </div>
 
-            <div class="form-row-2col">
-                <div class="form-group">
-                    <label class="form-label" for="new-job-cat">Department <span class="required-star">*</span></label>
-                    <input type="text" name="department" id="new-job-cat" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="new-job-type">Employment Type</label>
-                    <select name="job_type" id="new-job-type" class="form-select">
-                        <option value="Full-time">Full-time</option>
-                        <option value="Part-time">Part-time</option>
-                    </select>
-                </div>
-            </div>
+            <div class="two-col-form-grid">
 
-            <div class="form-group">
-                <label class="form-label">Job Description</label>
-                <textarea name="description" class="form-textarea" placeholder="Outline the main responsibilities, goals, and team expectations..."></textarea>
-            </div>
+                <!-- LEFT COLUMN: General details & description -->
+                <div class="form-col-left">
 
-            <div class="form-group">
-                <div class="req-header-row">
-                    <label class="form-label" style="margin-bottom: 0;">Key Qualifications & Requirements</label>
-                    <button type="button" class="btn-add-req-chip" id="add-requirement">
-                        <i class="fas fa-plus"></i> Add Another
-                    </button>
-                </div>
-                <div id="requirements-container" class="requirements-container">
-                    <div class="requirement-row">
-                        <input type="text" name="requirements" class="form-input" placeholder="e.g. 3+ years experience with Python & Django" required>
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-title">Job Title <span class="required-star">*</span></label>
+                        <input type="text" name="title" id="new-job-title" class="form-input" placeholder="e.g. Senior Software Engineer" required>
                     </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="new-job-cat">Department <span class="required-star">*</span></label>
+                            <input type="text" name="department" id="new-job-cat" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="new-job-type">Employment Type</label>
+                            <select name="job_type" id="new-job-type" class="form-select">
+                                <option value="FULL-TIME">Full-Time</option>
+                                <option value="PART-TIME">Part-Time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Job Description</label>
+                        <textarea name="description" class="form-textarea" rows="9" placeholder="Outline the main responsibilities, goals, and team expectations..."></textarea>
+                    </div>
+
                 </div>
+
+                <!-- RIGHT COLUMN: Requirements & Key Qualifications -->
+                <div class="form-col-right">
+
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-requirements">Requirements</label>
+                        <textarea
+                            name="requirements"
+                            id="new-job-requirements"
+                            class="form-textarea"
+                            rows="6"
+                            placeholder="Enter the general requirements for this position..."
+                        ></textarea>
+                        <small class="form-help">
+                            Free-form requirements shown to applicants (skills, experience, degree, etc).
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="req-header-row">
+                            <label class="form-label" style="margin-bottom: 0;">Key Qualifications</label>
+                            <button type="button" class="btn-add-req-chip" id="add-key-qualification">
+                                <i class="fas fa-plus"></i> Add Another
+                            </button>
+                        </div>
+                        <div id="key-qualifications-container" class="requirements-container">
+                            <div class="requirement-row">
+                                <input type="text" name="key_qualifications" class="form-input" placeholder="Enter a key qualification" required>
+                                <button type="button" class="remove-requirement" title="Remove qualification">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-help">
+                            These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
+                        </small>
+                    </div>
+
+                </div>
+
             </div>
 
             <div class="modal-footer-actions">

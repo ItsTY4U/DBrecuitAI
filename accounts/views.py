@@ -19,13 +19,15 @@ from .forms import (
     ApplicantSignupForm,
     ApplicantLoginForm,
     ApplicantProfileForm,
-    ApplicantUserForm
+    ApplicantUserForm,
+    ApplicantAuthenticationForm,
 )
 
 # Create your views here.
 def signup(request):
 
     if request.user.is_authenticated:
+        return redirect("home")
         return redirect("home")
 
     form = ApplicantSignupForm()
@@ -85,11 +87,7 @@ def signup(request):
                 None
             )
 
-            login(
-                request, 
-                user,
-                backend="django.contrib.auth.backends.ModelBackend"
-                )
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
             next_url = request.POST.get("next")
 
@@ -110,9 +108,13 @@ def signup(request):
     
 def applicant_login(request):
     if request.user.is_authenticated:
+        if request.user.is_superuser:
+            return redirect("/superuser/")
+        if request.user.groups.filter(name="HR").exists():
+            return redirect("dashboard")
         return redirect("home")
     
-    form = AuthenticationForm(
+    form = ApplicantAuthenticationForm(
         request, 
         data=request.POST or None
     )
@@ -123,7 +125,7 @@ def applicant_login(request):
             
             next_url = request.POST.get("next") or request.GET.get("next")
             
-            if next_url:
+            if next_url and not next_url.startswitch("/superadmin"):
                 return redirect(next_url)
             return redirect("home")
         
@@ -172,6 +174,7 @@ def process_profile_resume(profile):
         profile.save(update_fields=["resume_processed"])
         
         return False
+
 
 @login_required
 def profile(request):

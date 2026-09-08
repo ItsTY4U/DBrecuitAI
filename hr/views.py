@@ -7,8 +7,12 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from datetime import date, timedelta
 from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+from functools import wraps
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
@@ -28,44 +32,73 @@ def invalidate_hr_cache():
     ])
 
 # Create your views here.
+def hr_required(view_func=None, login_url="hr_login"):
+    """
+    Decorator for views that checks that the user is logged in, is staff,
+    is not superuser, and belongs to the 'HR' group.
+    - If user is not authenticated: redirects to `login_url` with ?next=...
+    - If user is authenticated and HR: grants access.
+    - Otherwise: raises PermissionDenied (403).
+    Supports both @hr_required and @hr_required(login_url="...").
+    """
+    if isinstance(view_func, str):
+        actual_login_url = view_func
+        actual_view_func = None
+    else:
+        actual_login_url = login_url
+        actual_view_func = view_func
+
+    def decorator(view):
+        @wraps(view)
+        def wrapper(request, *args, **kwargs):
+            user = request.user
+            if not user.is_authenticated:
+                return redirect_to_login(request.get_full_path(), actual_login_url)
+
+            if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                return view(request, *args, **kwargs)
+
+            raise PermissionDenied
+        return wrapper
+
+    if callable(actual_view_func):
+        return decorator(actual_view_func)
+    return decorator
+
+
 @never_cache
 def hr_login(request):
-    if request.user.is_authenticated and request.user.is_staff:
-        next_url = request.POST.get("next") or request.GET.get("next")
-        if next_url:
-            return redirect(next_url)
-        return redirect("dashboard")
-
+    
+    if request.user.is_authenticated:
+        if request.user.groups.filter(name="HR").exists():
+            return redirect("dashboard")
+        
+        if request.user.is_superuser:
+            return redirect("/superadmin/")
+        
+        return redirect("home")
+    
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
         password = request.POST.get("password", "")
-        next_url = request.POST.get("next") or request.GET.get("next")
+        
         
         user = authenticate(request, username=username, password=password)
-        if user is None and "@" in username:
-            try:
-                user_obj = User.objects.get(email__iexact=username)
-                user = authenticate(request, username=user_obj.username, password=password)
-            except (User.DoesNotExist, User.MultipleObjectsReturned):
-                pass
                 
         if user is not None:
-            if user.is_staff:
+            is_hr = (
+                user.is_staff 
+                and not user.is_superuser
+                and user.groups.filter(name="HR").exists()
+            )
+            
+            if is_hr:
                 login(request, user)
-                if next_url:
-                    return redirect(next_url)
                 return redirect("dashboard")
-            else:
-                messages.error(request, "This account does not have admin/staff permissions.")
-        else:
-            messages.error(request, "Invalid username or password.")
         
-    return render(request, "hr/login.html", {"next": request.GET.get("next", "")})
-
-@never_cache
-def hr_logout(request):
-    logout(request)
-    return redirect("hr_login")
+        messages.error(request, "Invalid username or password.")
+        
+    return render(request, "hr/login.html") 
 
 def parse_ai_bullets(text):
     if not text:
@@ -81,7 +114,14 @@ def parse_ai_bullets(text):
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
     return lines
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required
+def hr_logout(request):
+    logout(request)
+    return redirect("hr_login")
+
+
+@hr_required(login_url="hr_login")
 def dashboard(request):
     cache_key = "hr_dashboard_data"
     content = cache.get(cache_key)
@@ -135,28 +175,38 @@ def dashboard(request):
         cache.set(cache_key, content, 15)
     return render(request, "hr/dashboard.html", content)
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def create_job(request):
     if request.method == "POST":
         job = Job.objects.create(
-            title=request.POST.get("title"),
-            department=request.POST.get("department"),
-            job_type=request.POST.get("job_type"),
-            description=request.POST.get("description"),
+            title=request.POST.get("title", "").strip(),
+            department=request.POST.get("department", "").strip(),
+            job_type=request.POST.get("job_type", "FULL-TIME"),
+            description=request.POST.get("description", "").strip(),
+            requirements=request.POST.get("requirements", "").strip(),
             status="Active",
         )
-        requirements = request.POST.getlist("requirements")
 
-        for req in requirements:
-            if req.strip():
+        # Get all Key Qualifications
+        key_qualifications = request.POST.getlist(
+            "key_qualifications"
+        )
+
+        # Save each Key Qualification
+        for qualification in key_qualifications:
+            qualification = qualification.strip()
+
+            if qualification:
                 Requirement.objects.create(
                     job=job,
-                    text=req.strip()
+                    text=qualification
                 )
         invalidate_hr_cache()
     return redirect("job_management")
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def job_management(request):
     cache_key = "hr_job_management_data"
     data = cache.get(cache_key)
@@ -194,26 +244,28 @@ def job_management(request):
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
-        job.title = request.POST.get("title", job.title)
-        job.department = request.POST.get("department", job.department)
-        job.job_type = request.POST.get("job_type", job.job_type)
-        job.description = request.POST.get("description", job.description)
+        job.title = request.POST["title"]
+        job.department = request.POST["department"]
+        job.job_type = request.POST["job_type"]
+        job.description = request.POST["description"]
         job.status = request.POST.get("status", job.status)
         job.save()
         
-        # Handle requirements update
-        requirements = request.POST.getlist("requirements")
-        if requirements:
-            job.requirements_list.all().delete()
-            for req in requirements:
-                if req.strip():
-                    Requirement.objects.create(job=job, text=req.strip())
-                    
+        key_qualifications = request.POST.getlist(
+            "key_qualifications"
+        )
+        
+        job.requirements_list.all().delete()
+        
+        for qualification in key_qualifications:
+            if qualification.strip():
+                Requirement.objects.create(job=job, text=qualification.strip())
+                
         invalidate_hr_cache()
         return redirect("job_management")
         
-    requirements = job.requirements_list.all()
-    applicant_count = Application.objects.filter(job=job).count()
+    # requirements = job.requirements_list.all()
+    # applicant_count = Application.objects.filter(job=job).count()
     
     return render(request, "hr/manage_job.html", {
         "job": job,
@@ -320,7 +372,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         }
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
     selected_job = request.GET.get("job", "").strip()
@@ -402,7 +454,7 @@ def candidates(request):
     })
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def candidate_job_table(request, job_id):
     job = get_object_or_404(
         Job.objects.annotate(applicant_count=Count("application")),
@@ -419,12 +471,12 @@ def candidate_job_table(request, job_id):
     )
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def candidate_department(request, department):
     return redirect(f"{reverse('candidates')}?department={quote(department)}")
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def candidate_detail(request, pk):
     application = get_object_or_404(
         Application.objects.select_related("job"),
@@ -451,7 +503,7 @@ def candidate_detail(request, pk):
     })
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def reset_candidate_interview(request, pk):
     application = get_object_or_404(Application, pk=pk)
     session = InterviewSession.objects.filter(application=application).first()
@@ -467,7 +519,7 @@ def reset_candidate_interview(request, pk):
 
 
 @never_cache
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def reanalyze_candidate_interview(request, pk):
     application = get_object_or_404(Application, pk=pk)
     session = InterviewSession.objects.filter(application=application).first()
@@ -489,7 +541,7 @@ def reanalyze_candidate_interview(request, pk):
     return redirect("candidate_detail", pk=pk)
 
 
-@staff_member_required(login_url="hr_login")
+@hr_required(login_url="hr_login")
 def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
     
@@ -500,7 +552,8 @@ def update_application_status(request, pk):
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def interviews(request):
     # 1. Combine 5 separate COUNT queries into 1 single aggregate query
     counts = Interview.objects.aggregate(
@@ -596,7 +649,8 @@ def interviews(request):
     return render(request, "hr/interview.html", context)
 
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def schedule_interview(request, job_id):
     job = get_object_or_404(Job, pk=job_id)
 
@@ -633,7 +687,8 @@ def schedule_interview(request, job_id):
     )
 
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def interview_detail(request, pk):
     interview = get_object_or_404(
         Interview.objects.prefetch_related("applicants__job"),
@@ -645,8 +700,9 @@ def interview_detail(request, pk):
         "hr/interview_detail.html",
         {"interview": interview}
     )
-
-@staff_member_required(login_url="hr_login")
+    
+@never_cache
+@hr_required(login_url="hr_login")
 def update_interview_status(request, pk):
 
     interview = get_object_or_404(
