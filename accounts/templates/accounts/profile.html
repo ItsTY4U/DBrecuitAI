@@ -103,15 +103,13 @@
     {% endif %}
 
 
-    <!-- =========================================
-         PERSONAL INFO + RESUME
+        <!-- =========================================
+        PERSONAL INFO + RESUME
     ========================================== -->
 
     <section class="profile-two-column">
 
-
         <!-- PERSONAL INFO -->
-
         <div class="profile-mini-card">
 
             <div class="mini-card-title">
@@ -119,7 +117,6 @@
             </div>
 
             <div class="mini-info-item">
-
                 <span class="mini-info-label">
                     Address
                 </span>
@@ -127,12 +124,9 @@
                 <span class="mini-info-value">
                     {{ profile.address|default:"Not provided" }}
                 </span>
-
             </div>
 
-
             <div class="mini-info-item">
-
                 <span class="mini-info-label">
                     Phone
                 </span>
@@ -140,14 +134,12 @@
                 <span class="mini-info-value">
                     {{ profile.phone|default:"Not provided" }}
                 </span>
-
             </div>
 
         </div>
 
 
         <!-- DEFAULT RESUME -->
-
         <div class="profile-mini-card">
 
             <div class="mini-card-title">
@@ -173,18 +165,16 @@
                         </div>
 
                     </div>
-                    </div>
-
-                    <a
-                        href="{{ profile.default_resume.url }}"
-                        target="_blank"
-                        class="mini-resume-view"
-                    >
-                        View
-                    </a>
 
                 </div>
-                </div>
+
+                <a
+                    href="{{ profile.default_resume.url }}"
+                    target="_blank"
+                    class="mini-resume-view"
+                >
+                    View
+                </a>
 
             {% else %}
 
