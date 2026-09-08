@@ -1,3 +1,5 @@
+import json
+from unittest.mock import patch, MagicMock
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -148,4 +150,96 @@ class ApplicantJobPerformanceTests(TestCase):
         job_text = "Looking for a Python developer."
         matched = find_matched_skills(applicant_skills, job_text)
         self.assertEqual(matched, ["Python"])
+
+
+class JobsAIEngineTests(TestCase):
+    def setUp(self):
+        self.job = Job.objects.create(
+            title="Software Engineer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            description="Build scalable Django systems.",
+            status="Active"
+        )
+        Requirement.objects.create(job=self.job, text="Python and Django expertise")
+        Requirement.objects.create(job=self.job, text="PostgreSQL experience")
+
+    def test_parse_resume_short_circuit_empty(self):
+        """parse_resume returns None immediately on empty or too-short inputs without calling API."""
+        from jobs.ai import parse_resume
+
+        self.assertIsNone(parse_resume(""))
+        self.assertIsNone(parse_resume("   "))
+        self.assertIsNone(parse_resume("short resume"))
+
+    def test_analyze_resume_short_circuit_empty(self):
+        """analyze_resume returns fallback dictionary when resume text is empty or unreadable."""
+        from jobs.ai import analyze_resume
+
+        res = analyze_resume("", self.job)
+        self.assertEqual(res["score"], 0)
+        self.assertIn("unreadable", res["summary"].lower())
+
+    @patch("jobs.ai.get_genai_client")
+    def test_parse_resume_success_with_markdown_fence(self, mock_get_client):
+        """parse_resume parses JSON cleanly even if wrapped in markdown codeblocks and preambles."""
+        from jobs.ai import parse_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = """Here is the extracted resume JSON:
+```json
+{
+    "personal": {
+        "first_name": "Maria",
+        "middle_name": "Santos",
+        "last_name": "Cruz",
+        "email": "maria@example.com",
+        "phone": "09123456789"
+    },
+    "summary": "Experienced software developer.",
+    "skills": ["Python", "Django", "PostgreSQL"],
+    "education": [],
+    "experience": [],
+    "certifications": [],
+    "projects": []
+}
+```
+"""
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Maria Santos Cruz, software engineer with 5 years experience in Python and Django."
+        result = parse_resume(resume_sample)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["personal"]["first_name"], "Maria")
+        self.assertEqual(result["personal"]["last_name"], "Cruz")
+        self.assertIn("Django", result["skills"])
+
+    @patch("jobs.ai.get_genai_client")
+    def test_analyze_resume_calibrated_scoring(self, mock_get_client):
+        """analyze_resume returns calibrated score, recommendation, and list-formatted strengths/weaknesses."""
+        from jobs.ai import analyze_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "score": 88,
+            "recommendation": "Highly Recommended",
+            "summary": "Strong match for the Software Engineer role with proven Django experience.",
+            "strengths": ["Extensive Django experience", "Solid database knowledge"],
+            "weaknesses": ["No explicit cloud deployment details"]
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Software Engineer with 4 years building Django REST APIs and PostgreSQL backends."
+        result = analyze_resume(resume_sample, self.job)
+
+        self.assertEqual(result["score"], 88)
+        self.assertEqual(result["recommendation"], "Highly Recommended")
+        self.assertEqual(len(result["strengths"]), 2)
+        self.assertIn("Extensive Django experience", result["strengths"])
+
 
