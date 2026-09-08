@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-```
 /*
 =========================================
 PASSWORD
@@ -727,6 +726,5 @@ if (
     );
 
 }
-```
 
 });
