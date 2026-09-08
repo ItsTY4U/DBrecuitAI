@@ -125,3 +125,6 @@ class Application(models.Model):
     ai_experience_match = models.IntegerField(default=0)
     ai_education_match = models.IntegerField(default=0)
     ai_qualification_match = models.IntegerField(default=0)
+    ai_recommendation = models.CharField(max_length=30, blank=True)
+    ai_criteria_weights = models.JSONField(default=dict, blank=True)
+    ai_weight_reasoning = models.JSONField(default=dict, blank=True)

@@ -194,6 +194,10 @@ def apply_job(request, pk):
             "qualification_match",
             0
         )
+        
+        # application.ai_recommendation = data.get("recommendation", "")
+        application.ai_criteria_weights = ai.get("criteria_weights", {})
+        application.ai_weight_reasoning = ai.get("weight_reasoning", {})
 
 
         # ==============================

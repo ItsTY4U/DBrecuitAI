@@ -161,21 +161,29 @@ def dashboard(request):
 def create_job(request):
     if request.method == "POST":
         job = Job.objects.create(
-            title=request.POST.get("title"),
-            department=request.POST.get("department"),
-            job_type=request.POST.get("job_type"),
-            description=request.POST.get("description"),
-            requirements=request.POST.get("requirements", ""),
+            title=request.POST.get("title", "").strip(),
+            department=request.POST.get("department", "").strip(),
+            job_type=request.POST.get("job_type", "FULL-TIME"),
+            description=request.POST.get("description", "").strip(),
+            requirements=request.POST.get("requirements", "").strip(),
             status="Active",
         )
-        key_qualifications = request.POST.getlist("key_qualification")
 
+        # Get all Key Qualifications
+        key_qualifications = request.POST.getlist(
+            "key_qualifications"
+        )
+
+        # Save each Key Qualification
         for qualification in key_qualifications:
-            if qualification.strip():
+            qualification = qualification.strip()
+
+            if qualification:
                 Requirement.objects.create(
                     job=job,
-                    text=req.strip()
+                    text=qualification
                 )
+
     return redirect("job_management")
 
 @never_cache

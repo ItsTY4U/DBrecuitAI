@@ -30,11 +30,17 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", () => {
 
     const container = document.getElementById("key-qualifications-container");
-    const addBtn = document.getElementById("add-key-qualification");
+    const addBtn = document.getElementById("edit-add-key-qualification");
 
     if (!container || !addBtn) return;
 
+
+    // ==============================
+    // ADD QUALIFICATION
+    // ==============================
+
     addBtn.addEventListener("click", () => {
+
         const row = document.createElement("div");
 
         row.className = "requirement-row";
@@ -44,13 +50,16 @@ document.addEventListener("DOMContentLoaded", () => {
             <input
                 type="text"
                 name="key_qualifications"
-                placeholder="Enter a key qualification"
-                required>
+                class="form-input"
+                placeholder="Enter a key qualification..."
+                required
+            >
 
             <button
                 type="button"
                 class="remove-requirement"
-                title="Remove requirement">
+                title="Remove qualification"
+            >
                 <i class="fas fa-trash-can"></i>
             </button>
         `;
@@ -59,17 +68,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 
-    container.addEventListener("click", function(e) {
+    // ==============================
+    // REMOVE QUALIFICATION
+    // ==============================
 
-        if (e.target.classList.contains("remove-requirement")) {
+    container.addEventListener("click", (event) => {
 
-            e.target.parentElement.remove();
+        const removeButton = event.target.closest(".remove-requirement");
 
+        if (!removeButton) return;
+
+        const rows = container.querySelectorAll(".requirement-row");
+
+        // Keep at least one qualification field
+        if (rows.length > 1) {
+            removeButton.closest(".requirement-row").remove();
         }
 
     });
 
 });
+
 
 const form = document.getElementById("manage-job-form");
 const statusSelect = document.getElementById("status");
@@ -160,7 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 class="remove-key-qualification"
                 style="padding: 0 15px; border: none; border-radius: 8px; cursor: pointer;"
             >
-                ×
+                <i class="fas fa-trash-can"></i>
             </button>
         `;
 

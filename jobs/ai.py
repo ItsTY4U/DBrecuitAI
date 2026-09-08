@@ -4,6 +4,8 @@ import re
 import pdfplumber
 from google import genai
 from django.conf import settings
+from django import template
+
 
 from .rubric import (
     clamp as _clamp,
@@ -254,7 +256,8 @@ def analyze_resume(resume_text, job):
     )
     text = response.text.strip()
 
-    text = re.sub(r"^```json\s*```$", "", text, flags=re.IGNORECASE).strip()
+    text = re.sub(r"^```json\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*```$", "", text).strip()
 
     try:
         data = json.loads(text)
@@ -427,3 +430,4 @@ RESUME:
         print("Resume AI parsing error:", e)
 
         return None
+    

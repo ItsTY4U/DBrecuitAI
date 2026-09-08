@@ -27,7 +27,7 @@ DEFAULT_WEIGHT = WEIGHT_TOTAL // 4  # 25 — used when a weight is missing
 
 # ---- Final recommendation bands (Step 2 decision matrix) ----
 QUALIFIED_THRESHOLD = 85.0
-POTENTIALLY_QUALIFIED_THRESHOLD = 70.0
+POTENTIALLY_QUALIFIED_THRESHOLD = 60.0
 
 # ---- match_level bands (mirrors the rubric's per-criterion table) ----
 EXCEPTIONAL_THRESHOLD = 90
