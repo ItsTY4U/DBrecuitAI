@@ -385,25 +385,23 @@ def candidates(request):
         hired=Count("id", filter=Q(status="Hired")),
     )
 
-    # Distinct departments for top dropdown filter
-    available_departments = list(
-        Job.objects.filter(status="Active")
-        .values_list("department", flat=True)
-        .distinct()
-        .order_by("department")
-    )
-
-    # Active jobs annotated with applicant count
-    jobs_qs = (
+    # All active jobs that currently have applicants
+    active_jobs_with_apps = list(
         Job.objects.filter(status="Active")
         .annotate(applicant_count=Count("application"))
+        .filter(applicant_count__gt=0)
         .order_by("department", "title")
     )
 
+    # Distinct departments that have applicants
+    available_departments = sorted(list(set(j.department for j in active_jobs_with_apps)))
+
+    filtered_jobs = active_jobs_with_apps
     if selected_department:
-        jobs_qs = jobs_qs.filter(department=selected_department)
+        filtered_jobs = [j for j in filtered_jobs if j.department == selected_department]
     if selected_job and selected_job.isdigit():
-        jobs_qs = jobs_qs.filter(id=int(selected_job))
+        target_job_id = int(selected_job)
+        filtered_jobs = [j for j in filtered_jobs if j.id == target_job_id]
 
     base_candidate_fields = (
         "id", "application_id", "first_name", "middle_initial", "last_name",
@@ -412,7 +410,7 @@ def candidates(request):
 
     # Group jobs by department and prepare top 3 cards + initial table context for each job
     departments_dict = defaultdict(list)
-    for job in jobs_qs:
+    for job in filtered_jobs:
         top_candidates = list(
             Application.objects.filter(job=job)
             .only(*base_candidate_fields)
@@ -429,11 +427,11 @@ def candidates(request):
     department_sections = []
     for dept_name, jobs_list in departments_dict.items():
         total_dept_applicants = sum(j.applicant_count for j in jobs_list)
-        all_dept_jobs = list(
-            Job.objects.filter(status="Active", department=dept_name)
-            .values("id", "title")
-            .order_by("title")
-        )
+        all_dept_jobs = [
+            {"id": j.id, "title": j.title}
+            for j in active_jobs_with_apps
+            if j.department == dept_name
+        ]
         department_sections.append({
             "name": dept_name,
             "jobs": jobs_list,

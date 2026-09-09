@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from jobs.models import Job, Application
 
 class CandidateManagementTests(TestCase):
@@ -11,6 +11,8 @@ class CandidateManagementTests(TestCase):
             password="testpassword123",
             is_staff=True
         )
+        hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.staff_user.groups.add(hr_group)
         self.client.login(username="admin_hr", password="testpassword123")
 
         # Create two departments with jobs
@@ -135,12 +137,18 @@ class CandidateManagementTests(TestCase):
         self.assertIn("department=Sales", response.url)
 
     def test_job_filter_param(self):
-        url = f"{reverse('candidates')}?job={self.job_sales_mgr.id}"
+        url = f"{reverse('candidates')}?job={self.job_sales_staff.id}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         jobs_in_view = [j for d in response.context["department_sections"] for j in d["jobs"]]
         self.assertEqual(len(jobs_in_view), 1)
-        self.assertEqual(jobs_in_view[0].id, self.job_sales_mgr.id)
+        self.assertEqual(jobs_in_view[0].id, self.job_sales_staff.id)
+
+        # Filtering by a job with 0 applicants should return no jobs
+        url_empty = f"{reverse('candidates')}?job={self.job_sales_mgr.id}"
+        response_empty = self.client.get(url_empty)
+        self.assertEqual(response_empty.status_code, 200)
+        self.assertEqual(len(response_empty.context["department_sections"]), 0)
 
     def test_job_with_three_or_fewer_candidates(self):
         # Create 2 applicants for Sales Manager
@@ -252,6 +260,51 @@ class CandidateManagementTests(TestCase):
         self.assertEqual(res_cand.status_code, 200)
         self.assertNotContains(res_cand, 'id="open-post-modal"')
         self.assertNotContains(res_cand, 'id="post-job-modal"')
+
+    def test_empty_jobs_and_departments_are_excluded(self):
+        # Create an active department and job with zero applicants
+        empty_job = Job.objects.create(
+            title="Empty Position",
+            department="Empty Department",
+            status="Active",
+            job_type="FULL-TIME"
+        )
+
+        response = self.client.get(reverse("candidates"))
+        self.assertEqual(response.status_code, 200)
+
+        # Department with 0 applicants must NOT be in available_departments
+        self.assertNotIn("Empty Department", response.context["available_departments"])
+
+        # Department with 0 applicants must NOT be in department_sections
+        dept_names = [d["name"] for d in response.context["department_sections"]]
+        self.assertNotIn("Empty Department", dept_names)
+        self.assertNotIn(self.hr_dept, dept_names) # HR department also has 0 apps
+
+        # In Sales section, Sales Manager (0 apps) must NOT be in jobs or all_jobs
+        sales_section = next(d for d in response.context["department_sections"] if d["name"] == self.sales_dept)
+        sales_job_ids = [j.id for j in sales_section["jobs"]]
+        sales_all_job_ids = [j["id"] for j in sales_section["all_jobs"]]
+        self.assertNotIn(self.job_sales_mgr.id, sales_job_ids)
+        self.assertNotIn(self.job_sales_mgr.id, sales_all_job_ids)
+        self.assertIn(self.job_sales_staff.id, sales_job_ids)
+
+        # Once an applicant applies to Empty Position, it should now appear
+        Application.objects.create(
+            job=empty_job,
+            first_name="First",
+            last_name="Applicant",
+            email="first@empty.com",
+            phone="1112223333",
+            ai_score=88,
+            status="Pending"
+        )
+
+        response2 = self.client.get(reverse("candidates"))
+        self.assertEqual(response2.status_code, 200)
+        self.assertIn("Empty Department", response2.context["available_departments"])
+        dept_names2 = [d["name"] for d in response2.context["department_sections"]]
+        self.assertIn("Empty Department", dept_names2)
 
 
 
