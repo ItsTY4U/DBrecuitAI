@@ -1,0 +1,46 @@
+<!-- Create New Department Modal -->
+<div class="modal-overlay" id="new-department-modal">
+    <div class="modal-content post-job-card" style="max-width: 480px;">
+        <button type="button" class="close-modal-btn" id="close-dept-modal" aria-label="Close modal">
+            <i class="fas fa-xmark"></i>
+        </button>
+
+        <div class="modal-header">
+            <div class="modal-icon-badge icon-purple">
+                <i class="fas fa-building"></i>
+            </div>
+            <div>
+                <h2 class="modal-title">Create New Department</h2>
+                <p class="modal-subtitle">Organize and group hiring roles by business department.</p>
+            </div>
+        </div>
+
+        <form id="create-department-form"
+              method="POST"
+              action="{% url 'create_department' %}"
+              hx-post="{% url 'create_department' %}"
+              hx-target="#job-management-content"
+              hx-swap="outerHTML">
+            {% csrf_token %}
+            <div class="form-group" style="margin-top: 18px;">
+                <label class="form-label" for="new-dept-name">Department Name <span class="required-star">*</span></label>
+                <input type="text"
+                       name="name"
+                       id="new-dept-name"
+                       class="form-input"
+                       placeholder="e.g. Engineering, Sales, Human Resources, Design"
+                       required>
+                <small class="form-help">
+                    Enter the organizational department name to group relevant active job positions.
+                </small>
+            </div>
+
+            <div class="modal-footer-actions" style="margin-top: 24px;">
+                <button type="button" class="btn-modal-cancel" id="cancel-dept-modal">Cancel</button>
+                <button type="submit" class="btn-modal-submit">
+                    <i class="fas fa-check"></i> Create Department
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Job, Requirement, Application
+from .models import Job, Requirement, Application, Department
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ("name", "created_at")
+    search_fields = ("name",)
 
 # Register your models here.
 class KeyQualificationInline(admin.TabularInline):

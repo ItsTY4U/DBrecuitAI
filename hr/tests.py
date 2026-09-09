@@ -1,27 +1,20 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
-<<<<<<< HEAD
-from jobs.models import Job, Application
-=======
-from jobs.models import Job, Application, Requirement
->>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
+from jobs.models import Job, Application, Requirement, Department
+from hr.views import invalidate_hr_cache
 
 class CandidateManagementTests(TestCase):
     def setUp(self):
+        invalidate_hr_cache()
         self.client = Client()
         self.staff_user = User.objects.create_user(
             username="admin_hr",
             password="testpassword123",
             is_staff=True
         )
-<<<<<<< HEAD
-        hr_group, _ = Group.objects.get_or_create(name="HR")
-        self.staff_user.groups.add(hr_group)
-=======
         self.hr_group, _ = Group.objects.get_or_create(name="HR")
         self.staff_user.groups.add(self.hr_group)
->>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
         self.client.login(username="admin_hr", password="testpassword123")
 
         # Create two departments with jobs
@@ -252,25 +245,25 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, "Next")
 
     def test_post_job_modal_only_in_jobs(self):
-        # /admin/jobs/ must have both button and modal
+        # /admin/jobs/ must have department new job button and post modal
         res_jobs = self.client.get(reverse("job_management"))
         self.assertEqual(res_jobs.status_code, 200)
-        self.assertContains(res_jobs, 'id="open-post-modal"')
+        self.assertContains(res_jobs, 'open-post-modal-btn')
         self.assertContains(res_jobs, 'id="post-job-modal"')
+        self.assertNotContains(res_jobs, 'id="open-post-modal"')
 
         # /admin/ (dashboard) must NOT have button or modal
         res_dash = self.client.get(reverse("dashboard"))
         self.assertEqual(res_dash.status_code, 200)
-        self.assertNotContains(res_dash, 'id="open-post-modal"')
+        self.assertNotContains(res_dash, 'open-post-modal-btn')
         self.assertNotContains(res_dash, 'id="post-job-modal"')
 
         # /admin/candidates/ must NOT have button or modal
         res_cand = self.client.get(reverse("candidates"))
         self.assertEqual(res_cand.status_code, 200)
-        self.assertNotContains(res_cand, 'id="open-post-modal"')
+        self.assertNotContains(res_cand, 'open-post-modal-btn')
         self.assertNotContains(res_cand, 'id="post-job-modal"')
 
-<<<<<<< HEAD
     def test_empty_jobs_and_departments_are_excluded(self):
         # Create an active department and job with zero applicants
         empty_job = Job.objects.create(
@@ -315,7 +308,7 @@ class CandidateManagementTests(TestCase):
         self.assertIn("Empty Department", response2.context["available_departments"])
         dept_names2 = [d["name"] for d in response2.context["department_sections"]]
         self.assertIn("Empty Department", dept_names2)
-=======
+
     def test_manage_job_get_displays_existing_details_and_qualifications(self):
         # Set requirements and add key qualifications
         self.job_sales_staff.requirements = "Minimum 2 years B2B sales experience"
@@ -358,7 +351,104 @@ class CandidateManagementTests(TestCase):
         saved_reqs = list(self.job_sales_staff.requirements_list.values_list("text", flat=True))
         self.assertEqual(saved_reqs, ["Enterprise Sales", "Contract Negotiation", "SaaS"])
 
->>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
+    def test_job_management_active_jobs_separated_per_department(self):
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("department_sections", response.context)
+        dept_sections = response.context["department_sections"]
+        dept_names = [d["name"] for d in dept_sections]
+        self.assertIn("Sales", dept_names)
+        self.assertIn("Human Resources", dept_names)
+
+        sales_sec = next(d for d in dept_sections if d["name"] == "Sales")
+        sales_job_ids = [j.id for j in sales_sec["jobs"]]
+        self.assertIn(self.job_sales_staff.id, sales_job_ids)
+        self.assertIn(self.job_sales_mgr.id, sales_job_ids)
+        self.assertEqual(sales_sec["active_count"], 2)
+
+    def test_create_department_creates_model_and_sections(self):
+        url = reverse("create_department")
+        response = self.client.post(url, {"name": "Engineering"})
+        self.assertRedirects(response, reverse("job_management"))
+        self.assertTrue(Department.objects.filter(name="Engineering").exists())
+
+        res = self.client.get(reverse("job_management"))
+        dept_names = [d["name"] for d in res.context["department_sections"]]
+        self.assertIn("Engineering", dept_names)
+
+    def test_create_department_htmx(self):
+        url = reverse("create_department")
+        response = self.client.post(url, {"name": "Design"}, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("HX-Trigger"), "closeDeptModal")
+        self.assertContains(response, "Design Department")
+        self.assertTrue(Department.objects.filter(name="Design").exists())
+
+    def test_department_section_contains_new_job_button(self):
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="open-new-department-modal"')
+        self.assertContains(response, 'data-department="Sales"')
+        self.assertContains(response, 'data-department="Human Resources"')
+
+    def test_manage_job_htmx_get_returns_partial_modal(self):
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="edit-job-modal"')
+        self.assertContains(response, 'id="manage-job-form"')
+        self.assertContains(response, 'id="edit-status-toggle"')
+        self.assertContains(response, 'status-toggle-card')
+        self.assertContains(response, self.job_sales_staff.title)
+        self.assertNotContains(response, "<!DOCTYPE html>")
+
+    def test_manage_job_htmx_post_updates_and_swaps_content(self):
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        post_data = {
+            "title": "Lead Sales Executive",
+            "department": "Global Sales",
+            "job_type": "FULL-TIME",
+            "description": "Lead global deals.",
+            "requirements": "7+ years global B2B experience",
+            "status": "Active",
+            "key_qualifications": ["Global Deals", "Negotiation"],
+        }
+        response = self.client.post(url, post_data, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("HX-Trigger"), "closeEditModal")
+        self.assertContains(response, "Global Sales Department")
+        self.assertContains(response, "Lead Sales Executive")
+
+        self.job_sales_staff.refresh_from_db()
+        self.assertEqual(self.job_sales_staff.title, "Lead Sales Executive")
+        self.assertEqual(self.job_sales_staff.department, "Global Sales")
+
+    def test_manage_job_editing_department_does_not_create_new_department_model(self):
+        self.assertFalse(Department.objects.filter(name="Brand New Dept").exists())
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        post_data = {
+            "title": "Sales Rep",
+            "department": "Brand New Dept",
+            "job_type": "FULL-TIME",
+            "description": "Sales role.",
+            "requirements": "Experience required",
+            "status": "Active",
+        }
+        self.client.post(url, post_data)
+        self.job_sales_staff.refresh_from_db()
+        self.assertEqual(self.job_sales_staff.department, "Brand New Dept")
+        # System must NOT create a new Department model record when editing a job's department
+        self.assertFalse(Department.objects.filter(name="Brand New Dept").exists())
+
+    def test_minimized_department_section_without_active_jobs(self):
+        Department.objects.create(name="Product Design")
+        invalidate_hr_cache()
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "dept-section-minimized")
+        self.assertContains(response, "Product Design Department")
+        self.assertContains(response, "0 Active Positions")
+        self.assertContains(response, "inactive-jobs-box")
 
 
 

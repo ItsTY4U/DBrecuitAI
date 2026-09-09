@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from jobs.models import Application, Job, Requirement
+from jobs.models import Application, Job, Requirement, Department
 from .models import Interview
 from video_interview.models import InterviewSession
 from django.db.models import Q, Count, Prefetch
@@ -175,13 +175,87 @@ def dashboard(request):
         cache.set(cache_key, content, 15)
     return render(request, "hr/dashboard.html", content)
 
+def get_job_management_context():
+    active_jobs = list(
+        Job.objects.filter(status="Active")
+        .annotate(applicant_count=Count("application", distinct=True))
+        .prefetch_related("requirements_list")
+        .order_by("-posted_date")
+    )
+    
+    inactive_jobs = list(
+        Job.objects.filter(status="Inactive")
+        .annotate(applicant_count=Count("application", distinct=True))
+        .prefetch_related("requirements_list")
+        .order_by("-posted_date")
+    )
+    
+    total_active = len(active_jobs)
+    total_inactive = len(inactive_jobs)
+    total_jobs = total_active + total_inactive
+    
+    # Retrieve all explicit departments plus any from existing jobs
+    db_dept_names = set(Department.objects.values_list("name", flat=True))
+    job_dept_names = set(j.department.strip() for j in active_jobs if j.department and j.department.strip())
+    all_dept_names = sorted(list(db_dept_names | job_dept_names))
+    
+    # Group active jobs by department
+    departments_dict = defaultdict(list)
+    for job in active_jobs:
+        dept = job.department.strip() if job.department and job.department.strip() else "General"
+        departments_dict[dept].append(job)
+        if dept not in all_dept_names:
+            all_dept_names.append(dept)
+            
+    all_dept_names = sorted(list(set(all_dept_names)))
+    
+    department_sections = []
+    for dept_name in all_dept_names:
+        jobs_in_dept = departments_dict.get(dept_name, [])
+        department_sections.append({
+            "name": dept_name,
+            "jobs": jobs_in_dept,
+            "active_count": len(jobs_in_dept),
+        })
+        
+    return {
+        "active_jobs": active_jobs,
+        "inactive_jobs": inactive_jobs,
+        "department_sections": department_sections,
+        "all_departments": all_dept_names,
+        "total_active": total_active,
+        "total_inactive": total_inactive,
+        "total_jobs": total_jobs,
+    }
+
+@never_cache
+@hr_required(login_url="hr_login")
+def create_department(request):
+    if request.method == "POST":
+        dept_name = request.POST.get("name", "").strip()
+        if dept_name:
+            Department.objects.get_or_create(name=dept_name)
+            invalidate_hr_cache()
+
+    if request.headers.get("HX-Request"):
+        data = get_job_management_context()
+        response = render(request, "hr/partials/job_management_content.html", data)
+        response["HX-Trigger"] = "closeDeptModal"
+        return response
+
+    return redirect("job_management")
+
 @never_cache
 @hr_required(login_url="hr_login")
 def create_job(request):
     if request.method == "POST":
+        dept_name = request.POST.get("department", "").strip()
+        if dept_name:
+            Department.objects.get_or_create(name=dept_name)
+
         job = Job.objects.create(
             title=request.POST.get("title", "").strip(),
-            department=request.POST.get("department", "").strip(),
+            department=dept_name,
             job_type=request.POST.get("job_type", "FULL-TIME"),
             description=request.POST.get("description", "").strip(),
             requirements=request.POST.get("requirements", "").strip(),
@@ -211,33 +285,12 @@ def job_management(request):
     cache_key = "hr_job_management_data"
     data = cache.get(cache_key)
     if data is None:
-        active_jobs = list(
-            Job.objects.filter(status="Active")
-            .annotate(applicant_count=Count("application", distinct=True))
-            .prefetch_related("requirements_list")
-            .order_by("-posted_date")
-        )
-        
-        inactive_jobs = list(
-            Job.objects.filter(status="Inactive")
-            .annotate(applicant_count=Count("application", distinct=True))
-            .prefetch_related("requirements_list")
-            .order_by("-posted_date")
-        )
-        
-        total_active = len(active_jobs)
-        total_inactive = len(inactive_jobs)
-        total_jobs = total_active + total_inactive
-        
-        data = {
-            "active_jobs": active_jobs,
-            "inactive_jobs": inactive_jobs,
-            "total_active": total_active,
-            "total_inactive": total_inactive,
-            "total_jobs": total_jobs,
-        }
+        data = get_job_management_context()
         cache.set(cache_key, data, 15)
     
+    if request.headers.get("HX-Request") and request.GET.get("partial") == "content":
+        return render(request, "hr/partials/job_management_content.html", data)
+
     return render(request, "hr/job_management.html", data)
 
 @never_cache
@@ -245,8 +298,9 @@ def job_management(request):
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
+        dept_name = request.POST.get("department", "").strip()
         job.title = request.POST.get("title", "").strip()
-        job.department = request.POST.get("department", "").strip()
+        job.department = dept_name
         job.job_type = request.POST.get("job_type", "FULL-TIME")
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
@@ -264,17 +318,31 @@ def manage_job(request, pk):
                 Requirement.objects.create(job=job, text=qualification.strip())
                 
         invalidate_hr_cache()
+
+        if request.headers.get("HX-Request"):
+            data = get_job_management_context()
+            response = render(request, "hr/partials/job_management_content.html", data)
+            response["HX-Trigger"] = "closeEditModal"
+            return response
+
         return redirect("job_management")
         
     requirements = job.requirements_list.all()
     applicant_count = Application.objects.filter(job=job).count()
+    all_depts = sorted(list(set(Department.objects.values_list("name", flat=True)) | set(Job.objects.values_list("department", flat=True))))
     
-    return render(request, "hr/manage_job.html", {
+    context = {
         "job": job,
         "key_qualifications": requirements,
         "requirements": requirements,
         "applicant_count": applicant_count,
-    })
+        "all_departments": all_depts,
+    }
+
+    if request.headers.get("HX-Request"):
+        return render(request, "hr/partials/edit_job_modal.html", context)
+
+    return render(request, "hr/manage_job.html", context)
 
 TABLE_PAGE_SIZE = 5
 

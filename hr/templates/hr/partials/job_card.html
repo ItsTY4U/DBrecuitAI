@@ -28,7 +28,11 @@
     </div>
 
     <div class="job-card-actions">
-        <a href="{% url 'manage_job' job.pk %}" class="btn-job-edit">
+        <a href="{% url 'manage_job' job.pk %}"
+           class="btn-job-edit"
+           hx-get="{% url 'manage_job' job.pk %}"
+           hx-target="#edit-job-modal-container"
+           hx-swap="innerHTML">
             <i class="fas fa-pen-to-square"></i> Edit Details
         </a>
         <a href="{% url 'candidates' %}?department={{ job.department|urlencode }}&job={{ job.id }}" class="btn-job-view">

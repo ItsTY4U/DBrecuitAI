@@ -8,56 +8,16 @@
             <p class="dashboard-subtitle">Create, monitor, and configure active hiring roles across all departments.</p>
         </div>
         <div class="header-right">
-            <button type="button" class="btn-header-action" id="open-post-modal">
+            <button type="button" class="btn-header-action" id="open-new-department-modal">
                 <i class="fas fa-plus"></i>
-                <span>Post New Job</span>
+                <span>+ New Department</span>
             </button>
         </div>
     </header>
 
-    <!-- Job Stats Summary -->
-    <section class="stats-grid job-summary-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-briefcase"></i>
-                </div>
-                <span class="stat-badge">Live</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_active }}</h3>
-                <span class="stat-label">Active Job Openings</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-amber">
-                    <i class="fas fa-box-archive"></i>
-                </div>
-                <span class="stat-badge">Closed</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_inactive }}</h3>
-                <span class="stat-label">Inactive / Archived</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-layer-group"></i>
-                </div>
-                <span class="stat-badge">Total</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_jobs }}</h3>
-                <span class="stat-label">Total Created Roles</span>
-            </div>
-        </div>
-    </section>
-
-    {% include "hr/partials/job_grid.html" %}
+    {% include "hr/partials/job_management_content.html" %}
     {% include "hr/partials/post_job.html" %}
+    {% include "hr/partials/new_department_modal.html" %}
+    <div id="edit-job-modal-container"></div>
 </main>
 {% endblock %}

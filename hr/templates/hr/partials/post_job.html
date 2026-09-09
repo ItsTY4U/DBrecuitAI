@@ -31,7 +31,12 @@
                     <div class="form-row-2col">
                         <div class="form-group">
                             <label class="form-label" for="new-job-cat">Department <span class="required-star">*</span></label>
-                            <input type="text" name="department" id="new-job-cat" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
+                            <input type="text" name="department" id="new-job-cat" list="new-department-list" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
+                            <datalist id="new-department-list">
+                                {% for dept in all_departments %}
+                                <option value="{{ dept }}">
+                                {% endfor %}
+                            </datalist>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="new-job-type">Employment Type</label>

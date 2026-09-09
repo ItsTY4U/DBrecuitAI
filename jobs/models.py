@@ -3,6 +3,16 @@ from django.db import models
 from uuid import uuid4
 from django.contrib.auth.models import User
 
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
 class Job(models.Model):
     JOB_TYPES = [
         ("FULL-TIME", "Full-Time"),
