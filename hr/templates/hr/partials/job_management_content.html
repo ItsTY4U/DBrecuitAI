@@ -1,0 +1,159 @@
+<!-- Job Management Main Content (HTMX Swappable Container) -->
+<div id="job-management-content">
+    <!-- Job Stats Summary -->
+    <section class="stats-grid job-summary-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-green">
+                    <i class="fas fa-briefcase"></i>
+                </div>
+                <span class="stat-badge">Live</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_active }}</h3>
+                <span class="stat-label">Active Job Openings</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-amber">
+                    <i class="fas fa-box-archive"></i>
+                </div>
+                <span class="stat-badge">Closed</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_inactive }}</h3>
+                <span class="stat-label">Inactive / Archived</span>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-header">
+                <div class="stat-icon-wrapper icon-blue">
+                    <i class="fas fa-layer-group"></i>
+                </div>
+                <span class="stat-badge">Total</span>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value">{{ total_jobs }}</h3>
+                <span class="stat-label">Total Created Roles</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Active Jobs Separated Per Department -->
+    <div class="department-sections-container">
+        {% for dept in department_sections %}
+        {% if dept.active_count == 0 %}
+        <!-- Minimized Department Section without active jobs -->
+        <section class="dept-section-block dept-section-minimized" id="dept-section-{{ forloop.counter }}">
+            <div class="dept-minimized-row">
+                <div class="dept-title-left">
+                    <div class="dept-icon-badge dept-icon-badge-sm">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="dept-minimized-text">
+                        <h3 class="dept-title-text-sm">{{ dept.name }} Department</h3>
+                        <span class="dept-sub-info-sm">0 Active Positions</span>
+                    </div>
+                </div>
+
+                <div class="dept-header-actions">
+                    <button type="button" class="btn-dept-add-job open-post-modal-btn" data-department="{{ dept.name }}"
+                        title="Add a new job opening to {{ dept.name }}">
+                        <i class="fas fa-plus"></i>
+                        <span>+ New Job</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+        {% else %}
+        <section class="dept-section-block" id="dept-section-{{ forloop.counter }}">
+            <div class="dept-section-header">
+                <div class="dept-title-left">
+                    <div class="dept-icon-badge">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <h2 class="dept-title-text">{{ dept.name }} Department</h2>
+                        <span class="dept-sub-info">
+                            <strong>{{ dept.active_count }}</strong> Active Position{{ dept.active_count|pluralize }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="dept-header-actions">
+                    <button type="button" class="btn-dept-add-job open-post-modal-btn" data-department="{{ dept.name }}"
+                        title="Add a new job opening to {{ dept.name }}">
+                        <i class="fas fa-plus"></i>
+                        <span>+ New Job</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-job-grid">
+                {% for job in dept.jobs %}
+                {% include "hr/partials/job_card.html" %}
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        {% empty %}
+        <div class="content-box job-section-box">
+            <div class="empty-state-box full-grid-empty">
+                <div class="empty-state-icon">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h4>No active jobs</h4>
+                <p>Click "+ New Department" above to create and publish your first opening.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Inactive Jobs Section -->
+    <div class="content-box job-section-box inactive-jobs-box" style="margin-top: 48px;">
+        <div class="box-header">
+            <div class="box-header-title">
+                <i class="fas fa-box-archive header-icon text-amber"></i>
+                <div>
+                    <h3>Inactive / Closed Positions</h3>
+                    <p class="box-subtitle">Archived roles not visible to prospective candidates</p>
+                </div>
+            </div>
+            <span class="stat-badge">{{ inactive_jobs|length }} Inactive</span>
+        </div>
+
+        <div class="admin-job-grid">
+            {% for job in inactive_jobs %}
+            {% include "hr/partials/inactive_job_card.html" %}
+            {% empty %}
+            <div class="empty-state-box full-grid-empty">
+                <div class="empty-state-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <h4>No inactive jobs</h4>
+                <p>All created job postings are currently active.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Out-of-band updates for department lists across modals -->
+    <div id="existing-dept-chips-list" hx-swap-oob="innerHTML">
+        {% for dept in all_departments %}
+        <span class="dept-chip-badge" title="Department already exists">
+            <i class="fas fa-folder text-purple"></i> {{ dept }}
+        </span>
+        {% empty %}
+        <span class="no-depts-text">No departments created yet.</span>
+        {% endfor %}
+    </div>
+    <span id="existing-depts-count" hx-swap-oob="innerHTML">{{ all_departments|length }}</span>
+    <datalist id="new-department-list" hx-swap-oob="innerHTML">
+        {% for dept in all_departments %}
+        <option value="{{ dept }}">
+        {% endfor %}
+    </datalist>
+</div>

@@ -1421,6 +1421,28 @@ body {
     box-shadow: 0 8px 20px rgba(45, 90, 39, 0.35);
 }
 
+.btn-header-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    color: #2d5a27 !important;
+    border: 1.5px solid #2d5a27;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 9px 18px;
+    border-radius: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+}
+
+.btn-header-secondary:hover {
+    background: #f0fdf4;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(45, 90, 39, 0.18);
+}
+
 .notif-bell { 
     width: 42px; 
     height: 42px; 
@@ -4029,8 +4051,8 @@ body {
 
 .two-col-form-grid {
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 32px;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
     align-items: start;
 }
 
@@ -4049,9 +4071,9 @@ body {
     margin-bottom: 0;
 }
 
-/* Widen the Post Job modal so two columns have room to breathe */
+/* Widen the Post Job modal and Edit Job modal so two columns have room to breathe */
 .post-job-card-wide {
-    max-width: 860px !important;
+    max-width: 1000px !important;
 }
 
 /* Referenced by the "not visible to applicants" hint under
@@ -4298,14 +4320,14 @@ body {
 .department-sections-container {
     display: flex;
     flex-direction: column;
-    gap: 36px;
+    gap: 16px;
 }
 
 .dept-section-block {
     background: #f8fafc;
     border: 1.5px solid #e2e8f0;
-    border-radius: 24px;
-    padding: 24px;
+    border-radius: 18px;
+    padding: 18px 20px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
@@ -4314,9 +4336,9 @@ body {
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 16px;
-    padding-bottom: 20px;
-    margin-bottom: 24px;
+    gap: 14px;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
     border-bottom: 2px solid #e2e8f0;
 }
 
@@ -4357,6 +4379,184 @@ body {
     color: #1e293b;
 }
 
+.btn-dept-add-job {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    color: #2d5a27;
+    border: 1.5px solid #2d5a27;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-dept-add-job:hover {
+    background: #2d5a27;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.2);
+}
+
+.dept-empty-box {
+    margin-top: 10px;
+    padding: 32px 20px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px dashed #cbd5e1;
+}
+
+/* Minimized Department Section without active jobs */
+.dept-section-minimized {
+    padding: 14px 22px;
+    background: #f8fafc;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 16px;
+    box-shadow: none;
+    transition: all 0.2s ease;
+}
+
+.dept-section-minimized:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.dept-minimized-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.dept-icon-badge-sm {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+    border-radius: 10px;
+    opacity: 0.85;
+}
+
+.dept-minimized-text {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dept-title-text-sm {
+    font-size: 16px;
+    font-weight: 700;
+    color: #334155;
+    margin: 0;
+}
+
+.dept-sub-info-sm {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    background: #e2e8f0;
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+/* Inactive Jobs Section Margin */
+.inactive-jobs-box {
+    margin-top: 48px !important;
+}
+
+/* Status Toggle Switch Component */
+.status-toggle-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    transition: all 0.2s ease;
+}
+
+.status-toggle-card:hover {
+    border-color: #cbd5e1;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #2d5a27;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+.status-toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.status-toggle-label {
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.status-toggle-label.status-active {
+    color: #166534;
+}
+
+.status-toggle-label.status-inactive {
+    color: #991b1b;
+}
+
+.status-toggle-desc {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
 /* Top-Right Job Filter Dropdown for each Department */
 .dept-job-filter-box {
     display: flex;
@@ -4387,6 +4587,68 @@ body {
     color: #0f172a;
     cursor: pointer;
     outline: none;
+}
+
+/* Existing Departments in Create Department Modal */
+.existing-departments-box {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+}
+
+.existing-depts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.existing-depts-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.existing-depts-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.existing-dept-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.dept-chip-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.no-depts-text {
+    font-size: 12px;
+    color: #94a3b8;
+    font-style: italic;
 }
 
 /* Department Jobs List */

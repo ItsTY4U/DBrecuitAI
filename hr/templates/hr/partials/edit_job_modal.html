@@ -1,61 +1,61 @@
-{% extends "home_admin.html" %}
-{% load static %}
-{% block admin_body %}
-<main class="main-dashboard">
-    <div class="page-nav-header">
-        <a href="{% url 'job_management' %}" class="back-link-pill">
-            <i class="fas fa-arrow-left"></i>
-            <span>Back to Job Management</span>
-        </a>
-    </div>
+<!-- Edit Job Details Modal (Loaded via HTMX into #edit-job-modal-container) -->
+<div class="modal-overlay active" id="edit-job-modal">
+    <div class="modal-content post-job-card post-job-card-wide">
+        <button type="button" class="close-modal-btn" id="close-edit-modal" aria-label="Close modal">
+            <i class="fas fa-xmark"></i>
+        </button>
 
-    <header class="dashboard-header">
-        <div class="header-left">
-            <div class="title-with-badge">
-                <h1 class="dashboard-title">Edit Job: {{ job.title }}</h1>
-                {% if job.status == 'Active' %}
-                    <span class="status-pill status-hired">Active</span>
-                {% else %}
-                    <span class="status-pill status-screening">Inactive</span>
-                {% endif %}
+        <div class="modal-header">
+            <div class="modal-icon-badge icon-blue">
+                <i class="fas fa-pen-to-square"></i>
             </div>
-            <p class="dashboard-subtitle">Update job details, employment terms, status, and qualification criteria.</p>
-        </div>
-        <div class="header-right">
-            <div class="applicant-stat-pill">
-                <i class="fas fa-users text-green"></i>
-                <span><strong>{{ applicant_count|default:0 }}</strong> Candidate{{ applicant_count|pluralize }} Applied</span>
+            <div>
+                <div class="title-with-badge" style="display: flex; align-items: center; gap: 10px;">
+                    <h2 class="modal-title">Edit Job: {{ job.title }}</h2>
+                    {% if job.status == 'Active' %}
+                        <span class="status-pill status-hired">Active</span>
+                    {% else %}
+                        <span class="status-pill status-screening">Inactive</span>
+                    {% endif %}
+                </div>
+                <p class="modal-subtitle">Update job details, status, description, and qualification criteria.</p>
             </div>
         </div>
-    </header>
 
-    <div class="content-box form-edit-container">
-        <form action="" method="POST" id="manage-job-form">
+        <form id="manage-job-form"
+              method="POST"
+              action="{% url 'manage_job' job.pk %}"
+              hx-post="{% url 'manage_job' job.pk %}"
+              hx-target="#job-management-content"
+              hx-swap="outerHTML">
             {% csrf_token %}
 
             <div class="two-col-form-grid">
-
                 <!-- LEFT COLUMN: General details, status, description -->
                 <div class="form-col-left">
-
                     <div class="form-section-title">
                         <i class="fas fa-info-circle"></i>
                         <span>General Information</span>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="edit-title">Job Title <span class="required-star">*</span></label>
-                        <input type="text" id="edit-title" name="title" value="{{ job.title }}" class="form-input" required>
+                        <label class="form-label" for="edit-modal-title">Job Title <span class="required-star">*</span></label>
+                        <input type="text" id="edit-modal-title" name="title" value="{{ job.title }}" class="form-input" required>
                     </div>
 
                     <div class="form-row-2col">
                         <div class="form-group">
-                            <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
-                            <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
+                            <label class="form-label" for="edit-modal-dept">Department <span class="required-star">*</span></label>
+                            <input type="text" id="edit-modal-dept" name="department" value="{{ job.department }}" list="edit-department-list" class="form-input" required>
+                            <datalist id="edit-department-list">
+                                {% for dept in all_departments %}
+                                <option value="{{ dept }}">
+                                {% endfor %}
+                            </datalist>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="edit-type">Employment Type</label>
-                            <select id="edit-type" name="job_type" class="form-select">
+                            <label class="form-label" for="edit-modal-type">Employment Type</label>
+                            <select id="edit-modal-type" name="job_type" class="form-select">
                                 <option value="FULL-TIME" {% if job.job_type == "FULL-TIME" %}selected{% endif %}>Full-Time</option>
                                 <option value="PART-TIME" {% if job.job_type == "PART-TIME" %}selected{% endif %}>Part-Time</option>
                             </select>
@@ -64,12 +64,12 @@
 
                     <div class="form-row-2col">
                         <div class="form-group">
-                            <label class="form-label" for="edit-schedule">Work Schedule</label>
-                            <input type="text" id="edit-schedule" name="schedule" value="{{ job.schedule|default:'' }}" class="form-input" placeholder="e.g. Monday to Friday">
+                            <label class="form-label" for="edit-modal-schedule">Work Schedule</label>
+                            <input type="text" id="edit-modal-schedule" name="schedule" value="{{ job.schedule|default:'' }}" class="form-input" placeholder="e.g. Monday to Friday">
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="edit-shift">Shift Hours</label>
-                            <input type="text" id="edit-shift" name="shift" value="{{ job.shift|default:'' }}" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
+                            <label class="form-label" for="edit-modal-shift">Shift Hours</label>
+                            <input type="text" id="edit-modal-shift" name="shift" value="{{ job.shift|default:'' }}" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
                         </div>
                     </div>
 
@@ -94,7 +94,7 @@
                                 </span>
                             </div>
                         </div>
-                        <input type="hidden" name="status" id="status" value="{{ job.status }}" data-initial-status="{{ job.status }}">
+                        <input type="hidden" name="status" id="edit-status" value="{{ job.status }}" data-initial-status="{{ job.status }}">
                     </div>
 
                     <div class="form-section-title" style="margin-top: 24px;">
@@ -106,12 +106,10 @@
                         <label class="form-label">Description</label>
                         <textarea name="description" class="form-textarea" rows="6">{{ job.description }}</textarea>
                     </div>
-
                 </div>
 
                 <!-- RIGHT COLUMN: Requirements & Key Qualifications -->
                 <div class="form-col-right">
-
                     <div class="form-section-title">
                         <i class="fas fa-list-check"></i>
                         <span>Requirements</span>
@@ -158,18 +156,15 @@
                             These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
                         </small>
                     </div>
-
                 </div>
-
             </div>
 
-            <div class="form-actions-footer">
-                <a href="{% url 'job_management' %}" class="btn-modal-cancel">Cancel</a>
+            <div class="modal-footer-actions">
+                <button type="button" class="btn-modal-cancel" id="cancel-edit-modal">Cancel</button>
                 <button type="submit" class="btn-modal-submit">
                     <i class="fas fa-floppy-disk"></i> Save Changes
                 </button>
             </div>
         </form>
     </div>
-</main>
-{% endblock %}
+</div>

@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import Job, Requirement, Application
+from .models import Job, Requirement, Application, Department
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ("name", "created_at")
+    search_fields = ("name",)
 
 # Register your models here.
 class KeyQualificationInline(admin.TabularInline):
@@ -11,13 +16,13 @@ class KeyQualificationInline(admin.TabularInline):
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ("title", "department", "job_type", "status", "posted_date")
+    list_display = ("title", "department", "job_type", "schedule", "shift", "status", "posted_date")
     list_filter = ("department", "job_type", "status")
-    search_fields = ("title", "department", "description", "requirements")
+    search_fields = ("title", "department", "schedule", "shift", "description", "requirements")
 
     fieldsets = (
         ("Basic Information", {
-            "fields": ("title", "department", "job_type", "status"),
+            "fields": ("title", "department", "job_type", "schedule", "shift", "status"),
         }),
         ("Role Description", {
             "fields": ("description",),

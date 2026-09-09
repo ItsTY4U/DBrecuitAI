@@ -12,6 +12,16 @@
         <span class="meta-item">
             <i class="fas fa-calendar-day"></i> {{ job.posted_date|date:"M d, Y" }}
         </span>
+        {% if job.schedule %}
+        <span class="meta-item" title="Schedule">
+            <i class="fas fa-calendar-week"></i> {{ job.schedule }}
+        </span>
+        {% endif %}
+        {% if job.shift %}
+        <span class="meta-item" title="Shift">
+            <i class="fas fa-clock"></i> {{ job.shift }}
+        </span>
+        {% endif %}
         {% if job.requirements_list.count %}
         <span class="meta-item">
             <i class="fas fa-list-check"></i> {{ job.requirements_list.count }} Req{{ job.requirements_list.count|pluralize }}
@@ -28,7 +38,11 @@
     </div>
 
     <div class="job-card-actions">
-        <a href="{% url 'manage_job' job.pk %}" class="btn-job-edit">
+        <a href="{% url 'manage_job' job.pk %}"
+           class="btn-job-edit"
+           hx-get="{% url 'manage_job' job.pk %}"
+           hx-target="#edit-job-modal-container"
+           hx-swap="innerHTML">
             <i class="fas fa-pen-to-square"></i> Edit Details
         </a>
         <a href="{% url 'candidates' %}?department={{ job.department|urlencode }}&job={{ job.id }}" class="btn-job-view">

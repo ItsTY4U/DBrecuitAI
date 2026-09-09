@@ -3,6 +3,16 @@ from django.db import models
 from uuid import uuid4
 from django.contrib.auth.models import User
 
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
 class Job(models.Model):
     JOB_TYPES = [
         ("FULL-TIME", "Full-Time"),
@@ -23,6 +33,20 @@ class Job(models.Model):
         max_length=20,
         choices=STATUS_CHOICES,
         default="Active"
+    )
+    schedule = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Work Schedule",
+        help_text="Working days (e.g. Monday to Friday, Weekends)"
+    )
+    shift = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Shift Hours",
+        help_text="Working hours (e.g. 8:00 AM - 5:00 PM, Night Shift)"
     )
     
     requirements = models.TextField(

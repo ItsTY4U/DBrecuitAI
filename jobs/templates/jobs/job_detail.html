@@ -58,6 +58,18 @@
                     <span class="o-label">Type</span>
                     <span class="o-val">{{ job.job_type }}</span>
                 </div>
+                {% if job.schedule %}
+                <div class="o-item">
+                    <span class="o-label">Schedule</span>
+                    <span class="o-val">{{ job.schedule }}</span>
+                </div>
+                {% endif %}
+                {% if job.shift %}
+                <div class="o-item">
+                    <span class="o-label">Shift</span>
+                    <span class="o-val">{{ job.shift }}</span>
+                </div>
+                {% endif %}
                 <div class="o-item">
                     <span class="o-label">Status</span>
                     <span class="o-val">{{ job.status }}</span>
