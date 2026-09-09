@@ -140,15 +140,18 @@ def applicant_logout(request):
 def process_profile_resume(profile):
     
     if not profile.default_resume:
-        return False
+        return False, "No resume file was uploaded."
     
     try:
         resume_text = extract_resume_text(profile.default_resume)
         
+        if not resume_text or len(resume_text.strip()) < 30:
+            return False, "Unable to extract readable text from your resume. Please ensure the PDF contains text and is not a scanned photo or image."
+
         parsed_data = parse_resume(resume_text)
         
         if not parsed_data:
-            return False
+            return False, "Unable to process resume data. Please try again."
         
         profile.resume_text = resume_text
         profile.resume_data = parsed_data
@@ -164,16 +167,16 @@ def process_profile_resume(profile):
             ]
         )
         
-        return True
+        return True, ""
     
     except Exception as e:
-        print("Profile resume processing error:", e)
+        import logging
+        logging.getLogger(__name__).error("Profile resume processing error: %s", e)
         
         profile.resume_processed = False
-        
         profile.save(update_fields=["resume_processed"])
         
-        return False
+        return False, f"An unexpected error occurred while processing your resume: {str(e)}"
 
 
 @login_required
@@ -220,7 +223,7 @@ def profile(request):
 
             # Process new resume
             if resume_changed:
-                processed = process_profile_resume(profile)
+                processed, err_msg = process_profile_resume(profile)
                 
                 if processed:
                     messages.success(request,
@@ -228,8 +231,8 @@ def profile(request):
                                     "Job recommendations have been updated.")
                 else:
                     messages.error(request,
-                                    "Your resume was uploaded, but it could not be processed. "
-                                    "Please Try Again.")
+                                    err_msg or ("Your resume was uploaded, but it could not be processed. "
+                                    "Please Try Again."))
                     
             else:
                 messages.success(request, 

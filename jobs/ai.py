@@ -66,23 +66,38 @@ def extract_resume_text(pdf_file: Any) -> str:
     Extracts plain text from a PDF file-like object, Django FieldFile, or filesystem path.
     Returns cleaned, stripped text.
     """
+    if not pdf_file:
+        return ""
+
     text = ""
-    if hasattr(pdf_file, "open") and not hasattr(pdf_file, "read"):
+    source = pdf_file
+
+    # Ensure file is opened in binary mode and positioned at byte 0
+    if hasattr(pdf_file, "open"):
         try:
             pdf_file.open("rb")
         except Exception as e:
             logger.debug("Could not open pdf_file directly: %s", e)
 
-    source = pdf_file
+    if hasattr(pdf_file, "seek"):
+        try:
+            pdf_file.seek(0)
+        except Exception as e:
+            logger.debug("Could not seek(0) on pdf_file: %s", e)
+
     if hasattr(pdf_file, "read"):
         try:
             content = pdf_file.read()
-            if hasattr(pdf_file, "seek"):
-                pdf_file.seek(0)
             source = io.BytesIO(content)
         except Exception as e:
             logger.warning("Failed to buffer file content: %s", e)
             source = pdf_file
+        finally:
+            if hasattr(pdf_file, "seek"):
+                try:
+                    pdf_file.seek(0)
+                except Exception:
+                    pass
 
     try:
         with pdfplumber.open(source) as pdf:
@@ -93,8 +108,54 @@ def extract_resume_text(pdf_file: Any) -> str:
     except Exception as e:
         logger.error("pdfplumber failed to extract text: %s", e)
         return ""
+    finally:
+        if hasattr(pdf_file, "close"):
+            try:
+                pdf_file.close()
+            except Exception:
+                pass
 
     return text.strip()
+
+
+def _build_fallback_parsed_data(resume_text: str) -> Dict[str, Any]:
+    """
+    Constructs structured applicant data using heuristic token matching
+    when Gemini API is temporarily offline, rate-limited (429), or unavailable (503).
+    """
+    from .recommendations import find_matched_skills
+
+    skills = find_matched_skills(resume_text) if resume_text else []
+
+    email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", resume_text) if resume_text else None
+    email = email_match.group(0) if email_match else ""
+
+    phone_match = re.search(
+        r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume_text
+    ) if resume_text else None
+    phone = phone_match.group(0) if phone_match else ""
+
+    first_line = ""
+    if resume_text:
+        lines = [line.strip() for line in resume_text.splitlines() if line.strip()]
+        if lines:
+            first_line = lines[0][:80]
+
+    return {
+        "personal": {
+            "first_name": "",
+            "middle_name": "",
+            "last_name": "",
+            "email": email,
+            "phone": phone,
+        },
+        "summary": first_line or "Applicant Profile",
+        "skills": skills,
+        "education": [],
+        "experience": [],
+        "certifications": [],
+        "projects": [],
+    }
 
 
 def parse_resume(resume_text: str) -> Optional[Dict[str, Any]]:
@@ -108,8 +169,8 @@ def parse_resume(resume_text: str) -> Optional[Dict[str, Any]]:
 
     ai_client = get_genai_client()
     if not ai_client:
-        logger.error("parse_resume aborted: Gemini API key is missing.")
-        return None
+        logger.warning("Gemini client unavailable, using heuristic fallback for resume parsing.")
+        return _build_fallback_parsed_data(resume_text)
 
     system_instruction = (
         "You are an expert HR resume parser. Extract accurate, factual biographical, "
@@ -187,10 +248,10 @@ EXTRACTION RULES:
 
     except json.JSONDecodeError as e:
         logger.error("parse_resume JSON decoding failed: %s | Response: %s", e, getattr(response, "text", ""))
-        return None
+        return _build_fallback_parsed_data(resume_text)
     except Exception as e:
         logger.error("parse_resume Gemini API call failed: %s", e)
-        return None
+        return _build_fallback_parsed_data(resume_text)
 
 
 def analyze_resume(resume_text: str, job: Any) -> Dict[str, Any]:
