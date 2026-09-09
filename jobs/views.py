@@ -157,8 +157,14 @@ def apply_job(request, pk):
                 "weight_reasoning": {},
             }
         
-        # Create complete application in a single INSERT
-        application = Application.objects.create(
+        # Create application instance with an explicit application_id
+        import os
+        from uuid import uuid4
+        from django.core.files.base import ContentFile
+
+        app_id = uuid4().hex[:8].upper()
+        application = Application(
+            application_id=app_id,
             applicant=request.user,
             job=job,
             first_name=request.user.first_name,
@@ -166,9 +172,29 @@ def apply_job(request, pk):
             last_name=request.user.last_name,
             email=request.user.email,
             phone=profile.phone,
-            resume=profile.default_resume,
             status="Pending"
         )
+
+        # Snapshot the resume file specifically for this application
+        # so HR can always view the exact resume used when applying,
+        # even if the candidate changes or deletes their profile resume later.
+        if profile.default_resume:
+            try:
+                profile.default_resume.open("rb")
+                content = profile.default_resume.read()
+                filename = os.path.basename(profile.default_resume.name or "resume.pdf")
+                application.resume.save(filename, ContentFile(content), save=False)
+            except Exception as resume_copy_err:
+                import logging
+                logging.getLogger(__name__).warning("Failed to clone resume for application: %s", resume_copy_err)
+                application.resume = profile.default_resume
+            finally:
+                try:
+                    profile.default_resume.close()
+                except Exception:
+                    pass
+
+        application.save()
 
         # ==============================
         # AI OVERALL RESULTS
