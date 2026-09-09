@@ -26,7 +26,10 @@ class Job(models.Model):
     )
     
     requirements = models.TextField(
-        blank=True)
+        blank=True,
+        verbose_name="General Requirements",
+        help_text="Applicant-facing requirements shown directly on the job posting (education, general experience, etc.)."
+    )
     
 
     def __str__(self):
@@ -46,7 +49,16 @@ class Requirement(models.Model):
         on_delete=models.CASCADE,
         related_name="requirements_list"
     )
-    text = models.CharField(max_length=255)
+    text = models.CharField(
+        max_length=255,
+        verbose_name="Key Qualification",
+        help_text="Specific qualification used by the AI during candidate screening (e.g. Python, B2B Sales, AWS)."
+    )
+
+    class Meta:
+        verbose_name = "Key Qualification"
+        verbose_name_plural = "Key Qualifications"
+
     def __str__(self):
         return self.text
     
