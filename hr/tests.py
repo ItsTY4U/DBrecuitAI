@@ -1,7 +1,11 @@
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
+<<<<<<< HEAD
 from jobs.models import Job, Application
+=======
+from jobs.models import Job, Application, Requirement
+>>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
 
 class CandidateManagementTests(TestCase):
     def setUp(self):
@@ -11,8 +15,13 @@ class CandidateManagementTests(TestCase):
             password="testpassword123",
             is_staff=True
         )
+<<<<<<< HEAD
         hr_group, _ = Group.objects.get_or_create(name="HR")
         self.staff_user.groups.add(hr_group)
+=======
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.staff_user.groups.add(self.hr_group)
+>>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
         self.client.login(username="admin_hr", password="testpassword123")
 
         # Create two departments with jobs
@@ -261,6 +270,7 @@ class CandidateManagementTests(TestCase):
         self.assertNotContains(res_cand, 'id="open-post-modal"')
         self.assertNotContains(res_cand, 'id="post-job-modal"')
 
+<<<<<<< HEAD
     def test_empty_jobs_and_departments_are_excluded(self):
         # Create an active department and job with zero applicants
         empty_job = Job.objects.create(
@@ -305,6 +315,50 @@ class CandidateManagementTests(TestCase):
         self.assertIn("Empty Department", response2.context["available_departments"])
         dept_names2 = [d["name"] for d in response2.context["department_sections"]]
         self.assertIn("Empty Department", dept_names2)
+=======
+    def test_manage_job_get_displays_existing_details_and_qualifications(self):
+        # Set requirements and add key qualifications
+        self.job_sales_staff.requirements = "Minimum 2 years B2B sales experience"
+        self.job_sales_staff.save()
+        Requirement.objects.create(job=self.job_sales_staff, text="Lead Generation")
+        Requirement.objects.create(job=self.job_sales_staff, text="CRM Mastery")
+
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        # Verify general requirements text is populated in textarea
+        self.assertIn("Minimum 2 years B2B sales experience", content)
+        # Verify key qualifications are rendered in inputs
+        self.assertIn("Lead Generation", content)
+        self.assertIn("CRM Mastery", content)
+        # Verify context contains key_qualifications
+        self.assertIn("key_qualifications", response.context)
+        self.assertEqual(len(response.context["key_qualifications"]), 2)
+
+    def test_manage_job_post_updates_details_and_qualifications(self):
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        post_data = {
+            "title": "Senior Sales Executive",
+            "department": "Enterprise Sales",
+            "job_type": "FULL-TIME",
+            "description": "Lead enterprise client acquisition.",
+            "requirements": "5+ years enterprise SaaS experience",
+            "status": "Active",
+            "key_qualifications": ["Enterprise Sales", "Contract Negotiation", "SaaS"],
+        }
+        response = self.client.post(url, post_data)
+        self.assertRedirects(response, reverse("job_management"))
+
+        self.job_sales_staff.refresh_from_db()
+        self.assertEqual(self.job_sales_staff.title, "Senior Sales Executive")
+        self.assertEqual(self.job_sales_staff.department, "Enterprise Sales")
+        self.assertEqual(self.job_sales_staff.requirements, "5+ years enterprise SaaS experience")
+        saved_reqs = list(self.job_sales_staff.requirements_list.values_list("text", flat=True))
+        self.assertEqual(saved_reqs, ["Enterprise Sales", "Contract Negotiation", "SaaS"])
+
+>>>>>>> 277e1c6125cf966215adf7d3086d49af8083b6ce
 
 
 

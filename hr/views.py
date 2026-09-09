@@ -240,14 +240,16 @@ def job_management(request):
     
     return render(request, "hr/job_management.html", data)
 
-@staff_member_required(login_url="hr_login")
+@never_cache
+@hr_required(login_url="hr_login")
 def manage_job(request, pk):
     job = get_object_or_404(Job, pk=pk)
     if request.method == "POST":
-        job.title = request.POST["title"]
-        job.department = request.POST["department"]
-        job.job_type = request.POST["job_type"]
-        job.description = request.POST["description"]
+        job.title = request.POST.get("title", "").strip()
+        job.department = request.POST.get("department", "").strip()
+        job.job_type = request.POST.get("job_type", "FULL-TIME")
+        job.description = request.POST.get("description", "").strip()
+        job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)
         job.save()
         
@@ -269,6 +271,7 @@ def manage_job(request, pk):
     
     return render(request, "hr/manage_job.html", {
         "job": job,
+        "key_qualifications": requirements,
         "requirements": requirements,
         "applicant_count": applicant_count,
     })
