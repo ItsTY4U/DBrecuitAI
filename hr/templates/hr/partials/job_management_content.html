@@ -139,4 +139,21 @@
             {% endfor %}
         </div>
     </div>
+
+    <!-- Out-of-band updates for department lists across modals -->
+    <div id="existing-dept-chips-list" hx-swap-oob="innerHTML">
+        {% for dept in all_departments %}
+        <span class="dept-chip-badge" title="Department already exists">
+            <i class="fas fa-folder text-purple"></i> {{ dept }}
+        </span>
+        {% empty %}
+        <span class="no-depts-text">No departments created yet.</span>
+        {% endfor %}
+    </div>
+    <span id="existing-depts-count" hx-swap-oob="innerHTML">{{ all_departments|length }}</span>
+    <datalist id="new-department-list" hx-swap-oob="innerHTML">
+        {% for dept in all_departments %}
+        <option value="{{ dept }}">
+        {% endfor %}
+    </datalist>
 </div>

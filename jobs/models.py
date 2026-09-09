@@ -34,6 +34,20 @@ class Job(models.Model):
         choices=STATUS_CHOICES,
         default="Active"
     )
+    schedule = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Work Schedule",
+        help_text="Working days (e.g. Monday to Friday, Weekends)"
+    )
+    shift = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Shift Hours",
+        help_text="Working hours (e.g. 8:00 AM - 5:00 PM, Night Shift)"
+    )
     
     requirements = models.TextField(
         blank=True,

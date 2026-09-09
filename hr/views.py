@@ -257,6 +257,8 @@ def create_job(request):
             title=request.POST.get("title", "").strip(),
             department=dept_name,
             job_type=request.POST.get("job_type", "FULL-TIME"),
+            schedule=request.POST.get("schedule", "").strip(),
+            shift=request.POST.get("shift", "").strip(),
             description=request.POST.get("description", "").strip(),
             requirements=request.POST.get("requirements", "").strip(),
             status="Active",
@@ -302,6 +304,8 @@ def manage_job(request, pk):
         job.title = request.POST.get("title", "").strip()
         job.department = dept_name
         job.job_type = request.POST.get("job_type", "FULL-TIME")
+        job.schedule = request.POST.get("schedule", "").strip()
+        job.shift = request.POST.get("shift", "").strip()
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)

@@ -62,6 +62,17 @@
                         </div>
                     </div>
 
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="edit-schedule">Work Schedule</label>
+                            <input type="text" id="edit-schedule" name="schedule" value="{{ job.schedule|default:'' }}" class="form-input" placeholder="e.g. Monday to Friday">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-shift">Shift Hours</label>
+                            <input type="text" id="edit-shift" name="shift" value="{{ job.shift|default:'' }}" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
+                        </div>
+                    </div>
+
                     <div class="form-section-title" style="margin-top: 24px;">
                         <i class="fas fa-toggle-on"></i>
                         <span>Visibility & Status</span>
@@ -93,7 +104,7 @@
 
                     <div class="form-group">
                         <label class="form-label">Description</label>
-                        <textarea name="description" class="form-textarea" rows="9">{{ job.description }}</textarea>
+                        <textarea name="description" class="form-textarea" rows="6">{{ job.description }}</textarea>
                     </div>
 
                 </div>

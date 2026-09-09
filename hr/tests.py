@@ -450,5 +450,70 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, "0 Active Positions")
         self.assertContains(response, "inactive-jobs-box")
 
+    def test_job_forms_contain_schedule_and_shift(self):
+        # Check job management page has schedule and shift in post-job modal
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="new-job-schedule"')
+        self.assertContains(response, 'id="new-job-shift"')
+        self.assertContains(response, 'existing-departments-box')
+        self.assertContains(response, 'Sales')
+        self.assertContains(response, 'Human Resources')
+
+        # Check edit job modal has schedule and shift
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        edit_response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(edit_response.status_code, 200)
+        self.assertContains(edit_response, 'id="edit-modal-schedule"')
+        self.assertContains(edit_response, 'id="edit-modal-shift"')
+
+    def test_create_job_saves_schedule_and_shift(self):
+        post_data = {
+            "title": "Operations Specialist",
+            "department": "Operations",
+            "job_type": "FULL-TIME",
+            "schedule": "Monday to Friday",
+            "shift": "8:00 AM - 5:00 PM",
+            "description": "Handle day-to-day operations.",
+            "requirements": "3+ years operations experience",
+            "key_qualifications": ["Supply Chain", "Logistics"],
+        }
+        response = self.client.post(reverse("create_job"), post_data)
+        self.assertRedirects(response, reverse("job_management"))
+
+        job = Job.objects.filter(title="Operations Specialist").first()
+        self.assertIsNotNone(job)
+        self.assertEqual(job.schedule, "Monday to Friday")
+        self.assertEqual(job.shift, "8:00 AM - 5:00 PM")
+        self.assertEqual(job.department, "Operations")
+
+    def test_manage_job_updates_schedule_and_shift(self):
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        post_data = {
+            "title": "Senior Sales Staff",
+            "department": "Sales",
+            "job_type": "FULL-TIME",
+            "schedule": "Tuesday to Saturday",
+            "shift": "9:00 AM - 6:00 PM",
+            "description": "Updated description",
+            "requirements": "Updated requirements",
+            "status": "Active",
+            "key_qualifications": ["Negotiation"],
+        }
+        response = self.client.post(url, post_data, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+        self.job_sales_staff.refresh_from_db()
+        self.assertEqual(self.job_sales_staff.schedule, "Tuesday to Saturday")
+        self.assertEqual(self.job_sales_staff.shift, "9:00 AM - 6:00 PM")
+
+    def test_create_department_oob_updates_existing_dept_list(self):
+        url = reverse("create_department")
+        response = self.client.post(url, {"name": "Finance"}, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="existing-dept-chips-list"')
+        self.assertContains(response, 'Finance')
+
+
 
 

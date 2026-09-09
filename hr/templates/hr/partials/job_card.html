@@ -12,6 +12,16 @@
         <span class="meta-item">
             <i class="fas fa-calendar-day"></i> {{ job.posted_date|date:"M d, Y" }}
         </span>
+        {% if job.schedule %}
+        <span class="meta-item" title="Schedule">
+            <i class="fas fa-calendar-week"></i> {{ job.schedule }}
+        </span>
+        {% endif %}
+        {% if job.shift %}
+        <span class="meta-item" title="Shift">
+            <i class="fas fa-clock"></i> {{ job.shift }}
+        </span>
+        {% endif %}
         {% if job.requirements_list.count %}
         <span class="meta-item">
             <i class="fas fa-list-check"></i> {{ job.requirements_list.count }} Req{{ job.requirements_list.count|pluralize }}
