@@ -63,7 +63,7 @@
                     <button type="button" class="btn-dept-add-job open-post-modal-btn" data-department="{{ dept.name }}"
                         title="Add a new job opening to {{ dept.name }}">
                         <i class="fas fa-plus"></i>
-                        <span>+ New Job</span>
+                        <span>New Job</span>
                     </button>
                 </div>
             </div>
@@ -87,7 +87,7 @@
                     <button type="button" class="btn-dept-add-job open-post-modal-btn" data-department="{{ dept.name }}"
                         title="Add a new job opening to {{ dept.name }}">
                         <i class="fas fa-plus"></i>
-                        <span>+ New Job</span>
+                        <span>New Job</span>
                     </button>
                 </div>
             </div>
@@ -154,6 +154,6 @@
     <datalist id="new-department-list" hx-swap-oob="innerHTML">
         {% for dept in all_departments %}
         <option value="{{ dept }}">
-        {% endfor %}
+            {% endfor %}
     </datalist>
 </div>
