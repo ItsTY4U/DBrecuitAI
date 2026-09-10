@@ -299,3 +299,17 @@ if not DEBUG:
 # Static files cache headers for production CDN / browser caching
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 WHITENOISE_MANIFEST_STRICT = False
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": [
+            "profile",
+            "email",
+        ],
+    }
+}
