@@ -109,7 +109,7 @@ def signup(request):
 def applicant_login(request):
     if request.user.is_authenticated:
         if request.user.is_superuser:
-            return redirect("/admin/")
+            return redirect("/superuser/")
         if request.user.groups.filter(name="HR").exists():
             return redirect("dashboard")
         return redirect("home")
