@@ -25,11 +25,7 @@ from django.urls import reverse
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
-    cache.delete_many([
-        "hr_dashboard_data",
-        "hr_job_management_data",
-        "hr_candidates_data",
-    ])
+    cache.clear()
 
 # Create your views here.
 def hr_required(view_func=None, login_url="hr_login"):
@@ -175,7 +171,7 @@ def dashboard(request):
         cache.set(cache_key, content, 15)
     return render(request, "hr/dashboard.html", content)
 
-def get_job_management_context():
+def get_job_management_context(selected_department=""):
     active_jobs = list(
         Job.objects.filter(status="Active")
         .annotate(applicant_count=Count("application", distinct=True))
@@ -194,9 +190,9 @@ def get_job_management_context():
     total_inactive = len(inactive_jobs)
     total_jobs = total_active + total_inactive
     
-    # Retrieve all explicit departments plus any from existing jobs
+    # Retrieve all explicit departments plus any from existing jobs (both active and inactive)
     db_dept_names = set(Department.objects.values_list("name", flat=True))
-    job_dept_names = set(j.department.strip() for j in active_jobs if j.department and j.department.strip())
+    job_dept_names = set(j.department.strip() for j in (active_jobs + inactive_jobs) if j.department and j.department.strip())
     all_dept_names = sorted(list(db_dept_names | job_dept_names))
     
     # Group active jobs by department
@@ -206,23 +202,45 @@ def get_job_management_context():
         departments_dict[dept].append(job)
         if dept not in all_dept_names:
             all_dept_names.append(dept)
+
+    # Group inactive jobs by department
+    inactive_depts_dict = defaultdict(list)
+    for job in inactive_jobs:
+        dept = job.department.strip() if job.department and job.department.strip() else "General"
+        inactive_depts_dict[dept].append(job)
+        if dept not in all_dept_names:
+            all_dept_names.append(dept)
             
     all_dept_names = sorted(list(set(all_dept_names)))
     
     department_sections = []
     for dept_name in all_dept_names:
         jobs_in_dept = departments_dict.get(dept_name, [])
+        inactive_in_dept = inactive_depts_dict.get(dept_name, [])
         department_sections.append({
             "name": dept_name,
             "jobs": jobs_in_dept,
+            "inactive_jobs": inactive_in_dept,
             "active_count": len(jobs_in_dept),
+            "inactive_count": len(inactive_in_dept),
         })
+
+    filtered_department_sections = department_sections
+    filtered_inactive_jobs = inactive_jobs
+    if selected_department:
+        filtered_department_sections = [
+            d for d in department_sections if d["name"] == selected_department
+        ]
+        filtered_inactive_jobs = [
+            j for j in inactive_jobs if (j.department.strip() if j.department else "General") == selected_department
+        ]
         
     return {
         "active_jobs": active_jobs,
-        "inactive_jobs": inactive_jobs,
-        "department_sections": department_sections,
+        "inactive_jobs": filtered_inactive_jobs,
+        "department_sections": filtered_department_sections,
         "all_departments": all_dept_names,
+        "selected_department": selected_department,
         "total_active": total_active,
         "total_inactive": total_inactive,
         "total_jobs": total_jobs,
@@ -284,10 +302,11 @@ def create_job(request):
 @never_cache
 @hr_required(login_url="hr_login")
 def job_management(request):
-    cache_key = "hr_job_management_data"
+    selected_department = request.GET.get("department", "").strip()
+    cache_key = f"hr_job_management_data_{selected_department}" if selected_department else "hr_job_management_data"
     data = cache.get(cache_key)
     if data is None:
-        data = get_job_management_context()
+        data = get_job_management_context(selected_department=selected_department)
         cache.set(cache_key, data, 15)
     
     if request.headers.get("HX-Request") and request.GET.get("partial") == "content":

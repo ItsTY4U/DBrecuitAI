@@ -22,11 +22,6 @@
             <i class="fas fa-clock"></i> {{ job.shift }}
         </span>
         {% endif %}
-        {% if job.requirements_list.count %}
-        <span class="meta-item">
-            <i class="fas fa-list-check"></i> {{ job.requirements_list.count }} Req{{ job.requirements_list.count|pluralize }}
-        </span>
-        {% endif %}
     </div>
 
     <div class="job-card-stats-row">

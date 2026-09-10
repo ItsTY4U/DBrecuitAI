@@ -42,6 +42,35 @@
         </div>
     </section>
 
+    <!-- Global Top Toolbar: Department Filter -->
+    <div class="candidates-top-toolbar">
+        <form method="GET" action="{% url 'job_management' %}" class="toolbar-filter-form" id="deptFilterForm">
+            <div class="toolbar-filter-group">
+                <label for="deptSelect" class="toolbar-filter-label">
+                    <i class="fas fa-building"></i> Filter by Department:
+                </label>
+                <select name="department" id="deptSelect" class="toolbar-select"
+                    hx-get="{% url 'job_management' %}?partial=content" hx-target="#job-management-content"
+                    hx-swap="outerHTML" hx-include="#deptFilterForm" hx-push-url="true"
+                    onchange="if(!window.htmx) this.form.submit()">
+                    <option value="">All Available Departments</option>
+                    {% for dept in all_departments %}
+                    <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>
+                        {{ dept }} Department
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if selected_department %}
+            <a href="{% url 'job_management' %}" class="btn-reset-filters" title="Reset all filters"
+                hx-get="{% url 'job_management' %}?partial=content" hx-target="#job-management-content"
+                hx-swap="outerHTML" hx-push-url="true">
+                <i class="fas fa-rotate-left"></i> Reset Filter
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
     <!-- Active Jobs Separated Per Department -->
     <div class="department-sections-container">
         {% for dept in department_sections %}
@@ -55,7 +84,14 @@
                     </div>
                     <div class="dept-minimized-text">
                         <h3 class="dept-title-text-sm">{{ dept.name }} Department</h3>
-                        <span class="dept-sub-info-sm">0 Active Positions</span>
+                        <span class="dept-sub-info-sm">
+                            <span class="dept-count-active">0 Active Positions</span>
+                            <span class="dept-sub-info-sep">•</span>
+                            <span class="dept-count-inactive {% if dept.inactive_count > 0 %}has-inactive{% endif %}">
+                                <i class="fas fa-box-archive text-amber" style="font-size: 10px;"></i>
+                                <strong>{{ dept.inactive_count }}</strong> Inactive Position{{ dept.inactive_count|pluralize }}
+                            </span>
+                        </span>
                     </div>
                 </div>
 
@@ -78,7 +114,15 @@
                     <div>
                         <h2 class="dept-title-text">{{ dept.name }} Department</h2>
                         <span class="dept-sub-info">
-                            <strong>{{ dept.active_count }}</strong> Active Position{{ dept.active_count|pluralize }}
+                            <span class="dept-count-active">
+                                <i class="fas fa-circle-check text-green" style="font-size: 11px;"></i>
+                                <strong>{{ dept.active_count }}</strong> Active Position{{ dept.active_count|pluralize }}
+                            </span>
+                            <span class="dept-sub-info-sep">•</span>
+                            <span class="dept-count-inactive {% if dept.inactive_count > 0 %}has-inactive{% endif %}">
+                                <i class="fas fa-box-archive text-amber" style="font-size: 11px;"></i>
+                                <strong>{{ dept.inactive_count }}</strong> Inactive Position{{ dept.inactive_count|pluralize }}
+                            </span>
                         </span>
                     </div>
                 </div>
@@ -105,8 +149,9 @@
                 <div class="empty-state-icon">
                     <i class="fas fa-folder-open"></i>
                 </div>
-                <h4>No active jobs</h4>
-                <p>Click "+ New Department" above to create and publish your first opening.</p>
+                <h4>No departments found</h4>
+                <p>{% if selected_department %}No jobs found in "{{ selected_department }}" department.{% else %}Click
+                    "+ New Department" above to create and publish your first opening.{% endif %}</p>
             </div>
         </div>
         {% endfor %}
@@ -119,7 +164,7 @@
                 <i class="fas fa-box-archive header-icon text-amber"></i>
                 <div>
                     <h3>Inactive / Closed Positions</h3>
-                    <p class="box-subtitle">Archived roles not visible to prospective candidates</p>
+                    <p class="box-subtitle">Archived roles not visible to prospective candidates{% if selected_department %} for {{ selected_department }} Department{% endif %}</p>
                 </div>
             </div>
             <span class="stat-badge">{{ inactive_jobs|length }} Inactive</span>
@@ -134,13 +179,13 @@
                     <i class="fas fa-check-double"></i>
                 </div>
                 <h4>No inactive jobs</h4>
-                <p>All created job postings are currently active.</p>
+                <p>{% if selected_department %}No inactive jobs in {{ selected_department }} Department.{% else %}All created job postings are currently active.{% endif %}</p>
             </div>
             {% endfor %}
         </div>
     </div>
 
-    <!-- Out-of-band updates for department lists across modals -->
+    <!-- Out-of-band updates for department lists across modals 
     <div id="existing-dept-chips-list" hx-swap-oob="innerHTML">
         {% for dept in all_departments %}
         <span class="dept-chip-badge" title="Department already exists">
@@ -155,5 +200,5 @@
         {% for dept in all_departments %}
         <option value="{{ dept }}">
             {% endfor %}
-    </datalist>
+    </datalist> -->
 </div>
