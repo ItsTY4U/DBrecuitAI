@@ -279,8 +279,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
 # Reverse proxy SSL and host detection (e.g. Vercel, Cloudflare)
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-USE_X_FORWARDED_HOST = True
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# USE_X_FORWARDED_HOST = True
 
 # Production Security Hardening
 if not DEBUG:

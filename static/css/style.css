@@ -4489,7 +4489,7 @@ body {
 
 /* Inactive Jobs Section Margin */
 .inactive-jobs-box {
-    margin-top: 48px !important;
+    margin-top: 24px !important;
 }
 
 /* Status Toggle Switch Component */
@@ -5390,7 +5390,7 @@ body {
 .department-sections-container {
     display: flex;
     flex-direction: column;
-    gap: 36px;
+    gap: 24px;
 }
 
 .dept-section-block {
