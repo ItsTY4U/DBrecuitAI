@@ -4379,6 +4379,31 @@ body {
     color: #1e293b;
 }
 
+.dept-sub-info-sep {
+    margin: 0 8px;
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.dept-count-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #1e293b;
+}
+
+.dept-count-inactive {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #64748b;
+}
+
+.dept-count-inactive.has-inactive {
+    color: #b45309;
+    font-weight: 600;
+}
+
 .btn-dept-add-job {
     display: inline-flex;
     align-items: center;
@@ -4464,7 +4489,7 @@ body {
 
 /* Inactive Jobs Section Margin */
 .inactive-jobs-box {
-    margin-top: 48px !important;
+    margin-top: 24px !important;
 }
 
 /* Status Toggle Switch Component */
@@ -5365,7 +5390,7 @@ body {
 .department-sections-container {
     display: flex;
     flex-direction: column;
-    gap: 36px;
+    gap: 24px;
 }
 
 .dept-section-block {

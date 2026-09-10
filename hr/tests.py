@@ -514,6 +514,53 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, 'id="existing-dept-chips-list"')
         self.assertContains(response, 'Finance')
 
+    def test_job_management_department_filter_dropdown_renders(self):
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'candidates-top-toolbar')
+        self.assertContains(response, 'id="deptSelect"')
+        self.assertContains(response, 'All Available Departments')
+        self.assertContains(response, 'Sales Department')
+        self.assertContains(response, 'Human Resources Department')
+
+    def test_job_management_department_filter_filters_sections(self):
+        # Filter by Sales department
+        url = f"{reverse('job_management')}?department=Sales"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<h2 class="dept-title-text">Sales Department</h2>')
+        self.assertNotContains(response, '<h2 class="dept-title-text">Human Resources Department</h2>')
+        self.assertContains(response, "Reset Filter")
+        self.assertEqual(response.context["selected_department"], "Sales")
+
+    def test_inactive_count_displayed_per_department_section(self):
+        # Create an inactive job in Sales
+        Job.objects.create(
+            title="Archived Sales Lead",
+            department="Sales",
+            job_type="FULL-TIME",
+            status="Inactive"
+        )
+        invalidate_hr_cache()
+
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        # Sales section should show 2 active and 1 inactive
+        self.assertContains(response, "<strong>2</strong> Active Positions")
+        self.assertContains(response, "<strong>1</strong> Inactive Position")
+
+    def test_req_indicator_removed_from_job_cards(self):
+        # Add a requirement to job_sales_staff
+        Requirement.objects.create(job=self.job_sales_staff, text="B2B Sales")
+        invalidate_hr_cache()
+
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        # Should not display the "1 Req" badge in the card meta
+        self.assertNotContains(response, "1 Req")
+        self.assertNotContains(response, "Reqs")
+
+
 
 
 
