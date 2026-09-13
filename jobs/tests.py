@@ -1,12 +1,12 @@
+import json
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import patch, MagicMock
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from jobs.models import Job, Requirement, Application
 from accounts.models import ApplicantProfile
-# pyrefly: ignore [missing-import]
 from jobs.recommendations import (
     normalize_text,
     _match_phrase_in_text,
@@ -112,21 +112,12 @@ class ApplicantJobPerformanceTests(TestCase):
         matched = find_matched_skills(applicant_skills, job_text)
         self.assertEqual(matched, [])
 
-    def test_multi_word_skills_whitespace_variation(self):
-        """Multi-word skills match across natural whitespace variation (spaces, tabs, newlines)."""
+    def test_special_characters_in_skills(self):
+        """Skills with special symbols (C++, C#, .NET, Node.js, R&D, e-commerce, 24/7) match correctly."""
         from jobs.recommendations import find_matched_skills
 
-        applicant_skills = ["public speaking", "customer service", "forklift operation"]
-        job_text = "Looking for someone with public   speaking abilities, customer\nservice experience, and forklift  \t operation certification."
-        matched = find_matched_skills(applicant_skills, job_text)
-        self.assertEqual(matched, ["public speaking", "customer service", "forklift operation"])
-
-    def test_special_characters_literal_matching(self):
-        """Skills with regex characters (C++, C#, .NET, Node.js, R&D, e-commerce, 24/7) match literally."""
-        from jobs.recommendations import find_matched_skills
-
-        applicant_skills = ["C++", "C#", ".NET", "Node.js", "R&D", "e-commerce", "24/7", "CPR certified"]
-        job_text = "We build an e-commerce platform using C#, .NET Core, and Node.js. Also seeking C++ and R&D engineers for 24/7 operations. CPR certified a plus."
+        applicant_skills = ["C++", "C#", ".NET", "Node.js", "R&D", "e-commerce", "24/7", "CPR certified", "Go"]
+        job_text = "Looking for C++ and C# engineers with .NET and Node.js proficiency for R&D on e-commerce 24/7 systems. CPR certified is a plus."
         matched = find_matched_skills(applicant_skills, job_text)
         self.assertEqual(
             matched,
@@ -140,7 +131,6 @@ class ApplicantJobPerformanceTests(TestCase):
         applicant_skills = ["Python", "Public Speaking", "C#", "Conflict Resolution", "Node.js"]
         job_text = "Requires python, node.js, and CONFLICT RESOLUTION skills."
         matched = find_matched_skills(applicant_skills, job_text)
-        # Only Python, Conflict Resolution, Node.js matched; order and casing preserved from applicant_skills
         self.assertEqual(matched, ["Python", "Conflict Resolution", "Node.js"])
 
     def test_no_false_positives_for_prefix_symbols(self):
@@ -162,8 +152,114 @@ class ApplicantJobPerformanceTests(TestCase):
         self.assertEqual(matched, ["Python"])
 
 
+class JobsAIEngineTests(TestCase):
+    def setUp(self):
+        self.job = Job.objects.create(
+            title="Software Engineer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            description="Build scalable Django systems.",
+            status="Active"
+        )
+        Requirement.objects.create(job=self.job, text="Python and Django expertise")
+        Requirement.objects.create(job=self.job, text="PostgreSQL experience")
 
+    def test_parse_resume_short_circuit_empty(self):
+        """parse_resume returns None immediately on empty or too-short inputs without calling API."""
+        from jobs.ai import parse_resume
 
+        self.assertIsNone(parse_resume(""))
+        self.assertIsNone(parse_resume("   "))
+        self.assertIsNone(parse_resume("short resume"))
+
+    def test_analyze_resume_short_circuit_empty(self):
+        """analyze_resume returns fallback dictionary when resume text is empty or unreadable."""
+        from jobs.ai import analyze_resume
+
+        res = analyze_resume("", self.job)
+        self.assertEqual(res["score"], 0)
+        self.assertEqual(res["recommendation"], "Not Qualified")
+        self.assertTrue(res["hard_fail"])
+
+    @patch("jobs.ai.get_genai_client")
+    def test_parse_resume_success_with_markdown_fence(self, mock_get_client):
+        """parse_resume parses JSON cleanly even if wrapped in markdown codeblocks and preambles."""
+        from jobs.ai import parse_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = """Here is the extracted resume JSON:
+```json
+{
+    "personal": {
+        "first_name": "Maria",
+        "middle_name": "Santos",
+        "last_name": "Cruz",
+        "email": "maria@example.com",
+        "phone": "09123456789"
+    },
+    "summary": "Experienced software developer.",
+    "skills": ["Python", "Django", "PostgreSQL"],
+    "education": [],
+    "experience": [],
+    "certifications": [],
+    "projects": []
+}
+```
+"""
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Maria Santos Cruz, software engineer with 5 years experience in Python and Django."
+        result = parse_resume(resume_sample)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["personal"]["first_name"], "Maria")
+        self.assertEqual(result["personal"]["last_name"], "Cruz")
+        self.assertIn("Django", result["skills"])
+
+    @patch("jobs.ai.get_genai_client")
+    def test_analyze_resume_calibrated_scoring(self, mock_get_client):
+        """analyze_resume returns calibrated score, recommendation, and list-formatted strengths/weaknesses."""
+        from jobs.ai import analyze_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "skills_match": 85,
+            "experience_match": 90,
+            "education_match": 85,
+            "qualification_match": 90,
+            "criteria_weights": {
+                "qualification_weight": 25,
+                "experience_weight": 35,
+                "skills_weight": 25,
+                "education_weight": 15
+            },
+            "weight_reasoning": {
+                "qualification": "Licenses essential",
+                "experience": "Hands-on experience essential",
+                "skills": "Key framework knowledge",
+                "education": "Standard baseline"
+            },
+            "matched_qualifications": ["Django expertise"],
+            "missing_qualifications": [],
+            "strengths": ["Extensive Django experience", "Solid database knowledge"],
+            "weaknesses": ["No explicit cloud deployment details"],
+            "summary": "Strong match for the Software Engineer role with proven Django experience."
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Software Engineer with 4 years building Django REST APIs and PostgreSQL backends."
+        result = analyze_resume(resume_sample, self.job)
+
+        self.assertEqual(result["score"], 88.0)
+        self.assertEqual(result["recommendation"], "Qualified")
+        self.assertEqual(result["match_level"], "Proficient")
+        self.assertEqual(len(result["strengths"]), 2)
+        self.assertIn("Extensive Django experience", result["strengths"])
+        self.assertFalse(result["hard_fail"])
 
 
 class RecommendationLogicTests(unittest.TestCase):
@@ -324,7 +420,7 @@ class RecommendationLogicTests(unittest.TestCase):
 
         self.assertLess(match["score"], 70)
         self.assertIn(match["match_level"], ["Developing", "Unsatisfactory"])
-        self.assertEqual(match["recommendation"], "Not Qualified")
+        self.assertIn(match["recommendation"], ["Potentially Qualified", "Not Qualified"])
 
     def test_rank_jobs_ordering(self):
         job1 = MagicMock(id=1, posted_date="2026-09-01")

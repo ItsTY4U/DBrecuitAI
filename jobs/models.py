@@ -3,6 +3,16 @@ from django.db import models
 from uuid import uuid4
 from django.contrib.auth.models import User
 
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
 class Job(models.Model):
     JOB_TYPES = [
         ("FULL-TIME", "Full-Time"),
@@ -24,9 +34,26 @@ class Job(models.Model):
         choices=STATUS_CHOICES,
         default="Active"
     )
+    schedule = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Work Schedule",
+        help_text="Working days (e.g. Monday to Friday, Weekends)"
+    )
+    shift = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Shift Hours",
+        help_text="Working hours (e.g. 8:00 AM - 5:00 PM, Night Shift)"
+    )
     
     requirements = models.TextField(
-        blank=True)
+        blank=True,
+        verbose_name="General Requirements",
+        help_text="Applicant-facing requirements shown directly on the job posting (education, general experience, etc.)."
+    )
     
 
     def __str__(self):
@@ -46,7 +73,16 @@ class Requirement(models.Model):
         on_delete=models.CASCADE,
         related_name="requirements_list"
     )
-    text = models.CharField(max_length=255)
+    text = models.CharField(
+        max_length=255,
+        verbose_name="Key Qualification",
+        help_text="Specific qualification used by the AI during candidate screening (e.g. Python, B2B Sales, AWS)."
+    )
+
+    class Meta:
+        verbose_name = "Key Qualification"
+        verbose_name_plural = "Key Qualifications"
+
     def __str__(self):
         return self.text
     
@@ -151,6 +187,5 @@ class Application(models.Model):
     ai_experience_match = models.IntegerField(default=0)
     ai_education_match = models.IntegerField(default=0)
     ai_qualification_match = models.IntegerField(default=0)
-    ai_recommendation = models.CharField(max_length=30, blank=True)
     ai_criteria_weights = models.JSONField(default=dict, blank=True)
     ai_weight_reasoning = models.JSONField(default=dict, blank=True)

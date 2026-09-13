@@ -278,6 +278,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
+# Reverse proxy SSL and host detection (e.g. Vercel, Cloudflare)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 # Production Security Hardening
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
@@ -295,3 +299,17 @@ if not DEBUG:
 # Static files cache headers for production CDN / browser caching
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 WHITENOISE_MANIFEST_STRICT = False
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": [
+            "profile",
+            "email",
+        ],
+    }
+}

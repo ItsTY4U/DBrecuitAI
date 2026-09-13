@@ -22,6 +22,7 @@
             <nav class="nav-menu">
                 <a href="{% url 'home' %}" class="nav-link">Home</a>
                 <a href="{% url 'jobs' %}" class="nav-link">Jobs</a>
+                <a href="{% url 'track' %}" class="nav-link">Track Application</a>
                 {% if user.is_authenticated and not user.is_staff %}
                 <a href="{% url 'profile' %}" class="nav-link">Profile</a>
                 <a href="{% url 'applicant_logout' %}" class="nav-link">Logout</a>
@@ -29,8 +30,6 @@
                 <a href="{% url 'applicant_login' %}" class="nav-link">Login</a>
                 <a href="{% url 'signup' %}" class="nav-link">Sign Up</a>
                 {% endif %}
-                {% comment %}
-                <a href="{% url 'track' %}" class="nav-link">Track Application</a> {% endcomment %}
             </nav>
         </header>
     {% block body%}

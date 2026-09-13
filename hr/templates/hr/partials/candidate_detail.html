@@ -560,9 +560,22 @@
 
             <div class="resume-cta-box">
                 {% if application.resume %}
-                <a href="{{ application.resume.url }}" target="_blank" class="btn-resume-view">
+                <a href="{{ application.resume.url }}" target="_blank" class="btn-resume-view" title="Submitted Application Resume">
                     <i class="fas fa-file-pdf"></i>
-                    <span>Open Full Resume (PDF)</span>
+                    <span>Open Submitted Resume (PDF)</span>
+                    <i class="fas fa-external-link"></i>
+                </a>
+                {% if application.applicant.profile.default_resume and application.applicant.profile.default_resume.name != application.resume.name %}
+                <a href="{{ application.applicant.profile.default_resume.url }}" target="_blank" class="btn-resume-view secondary-resume-link" style="margin-top: 8px; background: rgba(255,255,255,0.08); font-size: 0.82rem; border-color: rgba(255,255,255,0.15);" title="Updated Resume on Applicant Profile">
+                    <i class="fas fa-file-alt"></i>
+                    <span>View Updated Profile Resume</span>
+                    <i class="fas fa-external-link"></i>
+                </a>
+                {% endif %}
+                {% elif application.applicant.profile.default_resume %}
+                <a href="{{ application.applicant.profile.default_resume.url }}" target="_blank" class="btn-resume-view">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Open Profile Resume (PDF)</span>
                     <i class="fas fa-external-link"></i>
                 </a>
                 {% else %}

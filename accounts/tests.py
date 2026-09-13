@@ -85,3 +85,77 @@ class AccountSecurityTests(TestCase):
         response = self.client.post(reverse("process_signup_resume"), {"resume": dummy_file})
         self.assertEqual(response.status_code, 429)
         self.assertIn("Too many requests", response.json()["error"])
+
+    def test_profile_resume_update_preserves_application_resume(self):
+        """When an applicant updates their profile resume, existing application resumes must not be deleted."""
+        from jobs.models import Job, Application
+        from django.core.files.storage import default_storage
+
+        job = Job.objects.create(
+            title="Software Engineer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            status="Active",
+        )
+
+        # 1. Profile with first resume
+        first_file = SimpleUploadedFile("first_resume.pdf", b"%PDF-1.4 first version", content_type="application/pdf")
+        self.profile.default_resume.save("first_resume.pdf", first_file)
+        self.profile.save()
+        first_path = self.profile.default_resume.name
+        self.assertTrue(default_storage.exists(first_path))
+
+        # 2. Candidate applies to job (Application references or clones the resume)
+        app = Application.objects.create(
+            applicant=self.user,
+            job=job,
+            first_name="Test",
+            last_name="User",
+            email=self.user.email,
+            phone=self.profile.phone,
+            resume=self.profile.default_resume,
+            status="Pending",
+        )
+        self.assertEqual(app.resume.name, first_path)
+
+        # 3. Candidate updates profile with a new resume
+        second_file = SimpleUploadedFile("second_resume.pdf", b"%PDF-1.4 second version", content_type="application/pdf")
+        self.profile.default_resume.save("second_resume.pdf", second_file)
+        self.profile.save()
+
+        # 4. Ensure the first resume STILL exists because the application references it!
+        self.assertTrue(
+            default_storage.exists(first_path),
+            "First resume file was deleted even though an active application referenced it!"
+        )
+        self.assertTrue(default_storage.exists(self.profile.default_resume.name))
+
+        # Clean up test files
+        default_storage.delete(first_path)
+        default_storage.delete(self.profile.default_resume.name)
+
+    def test_profile_resume_update_cleans_unreferenced_file(self):
+        """Unreferenced old profile resumes are cleaned up when updated if no application uses them."""
+        from django.core.files.storage import default_storage
+
+        # 1. Profile with first resume (no applications submitted)
+        first_file = SimpleUploadedFile("orphan_resume.pdf", b"%PDF-1.4 orphan version", content_type="application/pdf")
+        self.profile.default_resume.save("orphan_resume.pdf", first_file)
+        self.profile.save()
+        first_path = self.profile.default_resume.name
+        self.assertTrue(default_storage.exists(first_path))
+
+        # 2. Candidate updates profile with new resume
+        second_file = SimpleUploadedFile("new_profile_resume.pdf", b"%PDF-1.4 new version", content_type="application/pdf")
+        self.profile.default_resume.save("new_profile_resume.pdf", second_file)
+        self.profile.save()
+
+        # 3. First resume SHOULD be cleaned up since no application references it
+        self.assertFalse(
+            default_storage.exists(first_path),
+            "Unreferenced old resume was not cleaned up."
+        )
+        self.assertTrue(default_storage.exists(self.profile.default_resume.name))
+
+        # Clean up
+        default_storage.delete(self.profile.default_resume.name)

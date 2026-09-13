@@ -292,7 +292,54 @@ def analyze_applicant_resume(resume_data, resume_text=""):
 
 # ==============================================================================
 # PIPELINE STEP 3: COMPARE WITH ACTIVE JOBS
-# ==============================================================================
+@lru_cache(maxsize=512)
+def build_skill_pattern(skill: str):
+    """
+    Compile a regex pattern for a skill with whole-word / phrase-boundary semantics.
+    Handles special characters (C++, C#, .NET, Node.js, R&D, 24/7), case-insensitivity,
+    and arbitrary whitespace variation between words.
+    """
+    tokens = skill.strip().split()
+    if not tokens:
+        return None
+
+    escaped_tokens = [re.escape(token) for token in tokens]
+    phrase = r"\s+".join(escaped_tokens)
+
+    last_char = tokens[-1][-1]
+    left_boundary = r"(?<!\w)"
+
+    if last_char == "+":
+        right_boundary = r"(?![\w+])"
+    elif last_char == "#":
+        right_boundary = r"(?![\w#])"
+    else:
+        right_boundary = r"(?!(?:&[a-zA-Z]|[\w+#]))"
+
+    return re.compile(f"{left_boundary}{phrase}{right_boundary}", re.IGNORECASE)
+
+
+def find_matched_skills(applicant_skills, job_text):
+    """
+    Matches a list of applicant skills against job text using normalized,
+    token/phrase-aware matching for any industry. Preserves original casing and order.
+    """
+    if not applicant_skills or not job_text:
+        return []
+
+    matched = []
+    for skill in applicant_skills:
+        if not skill or not isinstance(skill, str):
+            continue
+        trimmed = skill.strip()
+        if not trimmed:
+            continue
+        pattern = build_skill_pattern(trimmed)
+        if pattern and pattern.search(job_text):
+            matched.append(trimmed)
+
+    return matched
+
 
 def _match_phrase_in_text(phrase, text):
     """
@@ -301,8 +348,12 @@ def _match_phrase_in_text(phrase, text):
     """
     if not phrase or not text:
         return False
-    pattern = r"(?:^|[\s,;./\-_()])" + re.escape(phrase) + r"(?:$|[\s,;./\-_()])"
-    return bool(re.search(pattern, text))
+    pattern = build_skill_pattern(phrase)
+    if pattern:
+        return bool(pattern.search(text))
+    escaped = re.escape(phrase)
+    pattern = r"(?:^|[\s,;./\-_()])" + escaped + r"(?:$|[\s,;./\-_()])"
+    return bool(re.search(pattern, text, re.IGNORECASE))
 
 
 def _score_skills_match(applicant_skills, job_text, requirements_text):

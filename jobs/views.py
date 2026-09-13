@@ -132,7 +132,6 @@ def apply_job(request, pk):
         })
         
     try:
-        # Attempt AI analysis with safe fallback if Gemini rate limits or times out
         ai = {}
         try:
             resume_text = profile.resume_text
@@ -143,13 +142,29 @@ def apply_job(request, pk):
             logging.getLogger(__name__).warning("Gemini resume analysis fallback triggered: %s", ai_err)
             ai = {
                 "score": 0,
+                "recommendation": "Pending Review",
+                "match_level": "Unsatisfactory",
                 "summary": "AI evaluation queued.",
+                "matched_qualifications": [],
+                "missing_qualifications": ["Evaluation queued for manual review."],
                 "strengths": [],
-                "weaknesses": [],
+                "weaknesses": ["Automated evaluation temporarily unavailable."],
+                "skills_match": 0,
+                "experience_match": 0,
+                "education_match": 0,
+                "qualification_match": 0,
+                "criteria_weights": {},
+                "weight_reasoning": {},
             }
         
-        # Create complete application in a single INSERT
-        application = Application.objects.create(
+        # Create application instance with an explicit application_id
+        import os
+        from uuid import uuid4
+        from django.core.files.base import ContentFile
+
+        app_id = uuid4().hex[:8].upper()
+        application = Application(
+            application_id=app_id,
             applicant=request.user,
             job=job,
             first_name=request.user.first_name,
@@ -157,17 +172,29 @@ def apply_job(request, pk):
             last_name=request.user.last_name,
             email=request.user.email,
             phone=profile.phone,
-            resume=profile.default_resume,
             status="Pending"
         )
-        # Use the already processed resume text 
-        resume_text = profile.resume_text
-        
-        # Run job-specific AI analysis
-        ai = analyze_resume(
-            resume_text,
-            job
-        )
+
+        # Snapshot the resume file specifically for this application
+        # so HR can always view the exact resume used when applying,
+        # even if the candidate changes or deletes their profile resume later.
+        if profile.default_resume:
+            try:
+                profile.default_resume.open("rb")
+                content = profile.default_resume.read()
+                filename = os.path.basename(profile.default_resume.name or "resume.pdf")
+                application.resume.save(filename, ContentFile(content), save=False)
+            except Exception as resume_copy_err:
+                import logging
+                logging.getLogger(__name__).warning("Failed to clone resume for application: %s", resume_copy_err)
+                application.resume = profile.default_resume
+            finally:
+                try:
+                    profile.default_resume.close()
+                except Exception:
+                    pass
+
+        application.save()
 
         # ==============================
         # AI OVERALL RESULTS
