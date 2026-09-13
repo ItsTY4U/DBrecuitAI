@@ -1,32 +1,31 @@
 FROM python:3.14-slim
 
-# Prevent Python from writing .pyc files
+# Prevent Python from writing .pyc files & buffer stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
-# Show Python output immediately
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies for PostgreSQL (libpq), MySQL, networking, and compilation
+RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
+    curl \
+    libpq-dev \
     default-libmysqlclient-dev \
     build-essential \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better Docker layer caching
+# Leverage Docker layer caching for pip dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copy project (single copy)
+# Copy source code
 COPY . .
-RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
-# Optional: drop root
-# RUN useradd -m appuser && chown -R appuser /app
-# USER appuser
+# Normalize entrypoint script line endings and set permissions
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 EXPOSE 8000
 
