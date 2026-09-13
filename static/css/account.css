@@ -2138,7 +2138,6 @@ body {
     animation: resumeSpin 1s linear infinite;
 }
 
-
 @keyframes resumeSpin {
 
     from {
@@ -2150,6 +2149,1656 @@ body {
     }
 
 }
+
+
+/* =========================================
+   FORGOT PASSWORD
+========================================= */
+
+.forgot-password-page {
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+
+/* =========================================
+   Forgot Password Layout
+========================================= */
+
+.forgot-password-split {
+    max-width: 980px;
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Image Panel
+========================================= */
+
+.forgot-image-panel {
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Forgot Password Card
+========================================= */
+
+.forgot-password-card {
+    width: 100% !important;
+    max-width: none;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 45px 48px !important;
+}
+
+
+/* =========================================
+   Back To Login
+========================================= */
+
+.forgot-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    width: fit-content;
+
+    margin-bottom: 25px;
+
+    color: #5f7569;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.forgot-back-link:hover {
+    color: #25864a;
+    transform: translateX(-2px);
+}
+
+
+/* =========================================
+   Forgot Password Icon
+========================================= */
+
+.forgot-icon {
+    width: 52px;
+    height: 52px;
+
+    margin: 0 auto 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e1f4e8;
+
+    color: #299653;
+
+    font-size: 21px;
+}
+
+
+/* =========================================
+   Heading
+========================================= */
+
+.forgot-password-card h1 {
+    margin: 0;
+
+    text-align: center;
+
+    color: #205c3b;
+
+    font-size: 28px;
+    font-weight: 700;
+}
+
+
+/* =========================================
+   Description
+========================================= */
+
+.forgot-description {
+    max-width: 390px;
+
+    margin: 9px auto 28px !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================
+   Form
+========================================= */
+
+.forgot-password-form {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 17px;
+}
+
+
+/* =========================================
+   Email Input
+========================================= */
+
+.forgot-input-wrapper {
+    position: relative;
+
+    width: 100%;
+}
+
+
+.forgot-input-wrapper > i {
+    position: absolute;
+
+    top: 50%;
+    left: 15px;
+
+    transform: translateY(-50%);
+
+    color: #8ca096;
+
+    font-size: 14px;
+
+    pointer-events: none;
+
+    transition: color 0.2s ease;
+}
+
+
+.forgot-input-wrapper input {
+    width: 100%;
+
+    height: 49px;
+
+    box-sizing: border-box;
+
+    padding: 0 14px 0 42px;
+
+    border: 1px solid #cfe2d5;
+
+    border-radius: 10px;
+
+    background: #fbfefc;
+
+    color: #18352a;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+
+.forgot-input-wrapper input::placeholder {
+    color: #9aaa9f;
+}
+
+
+.forgot-input-wrapper input:focus {
+    border-color: #45a968;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 4px rgba(69, 169, 104, 0.10);
+}
+
+
+.forgot-input-wrapper:focus-within > i {
+    color: #299653;
+}
+
+
+/* =========================================
+   Submit Button
+========================================= */
+
+.forgot-submit-btn {
+    width: 100% !important;
+
+    height: 51px;
+
+    margin-top: 5px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    box-sizing: border-box;
+}
+
+
+.forgot-submit-btn i {
+    font-size: 13px;
+
+    transition:
+        transform 0.2s ease;
+}
+
+
+.forgot-submit-btn:hover i {
+    transform: translateX(3px);
+}
+
+
+/* =========================================
+   Bottom Login Text
+========================================= */
+
+.forgot-login-text {
+    margin: 24px 0 0 !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 13px;
+}
+
+
+.forgot-login-text a {
+    color: #25864a;
+
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+
+.forgot-login-text a:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================
+   Messages
+========================================= */
+
+.forgot-messages {
+    margin-bottom: 18px;
+}
+
+
+.forgot-message {
+    padding: 11px 13px;
+
+    border-radius: 9px;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+
+.forgot-message.success {
+    color: #166534;
+
+    background: #dcfce7;
+
+    border: 1px solid #86efac;
+}
+
+
+.forgot-message.error {
+    color: #991b1b;
+
+    background: #fee2e2;
+
+    border: 1px solid #fca5a5;
+}
+
+
+/* =========================================
+   Responsive
+========================================= */
+
+@media (max-width: 750px) {
+
+    .forgot-password-page {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+
+    .forgot-password-split {
+        min-height: auto;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .forgot-image-panel {
+        min-height: 250px;
+
+        order: 2;
+    }
+
+
+    .forgot-password-card {
+        padding: 35px 25px !important;
+
+        order: 1;
+    }
+
+
+    .forgot-password-card h1 {
+        font-size: 25px;
+    }
+
+
+    .forgot-description {
+        font-size: 13px;
+    }
+
+}
+
+
+@media (max-width: 450px) {
+
+    .forgot-password-card {
+        padding: 30px 20px !important;
+    }
+
+
+    .forgot-back-link {
+        margin-bottom: 20px;
+    }
+
+
+    .forgot-icon {
+        width: 48px;
+        height: 48px;
+
+        font-size: 19px;
+    }
+
+
+    .forgot-password-card h1 {
+        font-size: 23px;
+    }
+
+}
+
+
+
+/* =========================================
+   OTP VERIFICATION
+========================================= */
+
+.otp-page {
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+
+/* =========================================
+   Layout
+========================================= */
+
+.otp-split {
+    max-width: 980px;
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Image
+========================================= */
+
+.otp-image-panel {
+    min-height: 590px;
+}
+
+
+/* =========================================
+   OTP Card
+========================================= */
+
+.otp-card {
+    width: 100% !important;
+    max-width: none;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 45px 48px !important;
+}
+
+
+/* =========================================
+   Back Button
+========================================= */
+
+.otp-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    width: fit-content;
+
+    margin-bottom: 25px;
+
+    color: #5f7569;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.otp-back-link:hover {
+    color: #25864a;
+
+    transform: translateX(-2px);
+}
+
+
+/* =========================================
+   Icon
+========================================= */
+
+.otp-icon {
+    width: 52px;
+    height: 52px;
+
+    margin: 0 auto 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e1f4e8;
+
+    color: #299653;
+
+    font-size: 21px;
+}
+
+
+/* =========================================
+   Heading
+========================================= */
+
+.otp-card h1 {
+    margin: 0;
+
+    text-align: center;
+
+    color: #205c3b;
+
+    font-size: 28px;
+    font-weight: 700;
+}
+
+
+/* =========================================
+   Description
+========================================= */
+
+.otp-description {
+    max-width: 390px;
+
+    margin: 9px auto 30px !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================
+   OTP Form
+========================================= */
+
+.otp-form {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* =========================================
+   OTP INPUTS
+========================================= */
+
+.otp-inputs {
+    display: flex;
+
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-bottom: 20px;
+}
+
+
+.otp-input {
+    width: 48px;
+    height: 54px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #cfe2d5;
+
+    border-radius: 10px;
+
+    background: #fbfefc;
+
+    color: #205c3b;
+
+    font-family: inherit;
+
+    font-size: 21px;
+    font-weight: 700;
+
+    text-align: center;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease,
+        transform 0.15s ease;
+}
+
+
+.otp-input:hover {
+    border-color: #9fc9ad;
+}
+
+
+.otp-input:focus {
+    border-color: #45a968;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 4px rgba(69, 169, 104, 0.10);
+
+    transform: translateY(-1px);
+}
+
+
+.otp-input.filled {
+    border-color: #45a968;
+
+    background: #f4fbf6;
+}
+
+
+/* =========================================
+   TIMER
+========================================= */
+
+.otp-timer {
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 7px;
+
+    margin-bottom: 22px;
+
+    color: #71847a;
+
+    font-size: 12px;
+}
+
+
+.otp-timer i {
+    color: #6e877a;
+}
+
+
+.otp-timer strong {
+    color: #25864a;
+
+    font-weight: 700;
+}
+
+
+.otp-timer.expired strong {
+    color: #dc2626;
+}
+
+
+/* =========================================
+   RESEND
+========================================= */
+
+.otp-resend {
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 5px;
+
+    margin-bottom: 20px;
+
+    color: #71847a;
+
+    font-size: 12px;
+}
+
+
+.otp-resend button {
+    padding: 0;
+
+    border: none;
+
+    background: transparent;
+
+    color: #25864a;
+
+    font-family: inherit;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+.otp-resend button:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+
+.otp-resend button:disabled {
+    color: #a5b3ab;
+
+    cursor: not-allowed;
+}
+
+
+/* =========================================
+   ERROR
+========================================= */
+
+.otp-error {
+    display: none;
+
+    margin-bottom: 15px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #fca5a5;
+
+    border-radius: 9px;
+
+    background: #fee2e2;
+
+    color: #991b1b;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+
+    text-align: center;
+}
+
+
+.otp-error.show {
+    display: block;
+}
+
+
+/* =========================================
+   VERIFY BUTTON
+========================================= */
+
+.otp-submit-btn {
+    width: 100% !important;
+
+    height: 51px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    box-sizing: border-box;
+}
+
+
+.otp-submit-btn i {
+    font-size: 13px;
+
+    transition:
+        transform 0.2s ease;
+}
+
+
+.otp-submit-btn:hover i {
+    transform: translateX(3px);
+}
+
+
+/* =========================================
+   Responsive
+========================================= */
+
+@media (max-width: 750px) {
+
+    .otp-page {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+
+    .otp-split {
+        min-height: auto;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .otp-image-panel {
+        min-height: 250px;
+
+        order: 2;
+    }
+
+
+    .otp-card {
+        padding: 35px 25px !important;
+
+        order: 1;
+    }
+
+
+    .otp-card h1 {
+        font-size: 25px;
+    }
+
+}
+
+
+@media (max-width: 500px) {
+
+    .otp-inputs {
+        gap: 7px;
+    }
+
+
+    .otp-input {
+        width: 43px;
+        height: 50px;
+
+        font-size: 19px;
+    }
+
+}
+
+
+@media (max-width: 380px) {
+
+    .otp-inputs {
+        gap: 5px;
+    }
+
+
+    .otp-input {
+        width: 40px;
+        height: 47px;
+    }
+
+}
+
+
+/* =========================================
+   RESET PASSWORD
+========================================= */
+
+.reset-password-page {
+    padding-top: 100px;
+    padding-bottom: 70px;
+}
+
+
+/* =========================================
+   Layout
+========================================= */
+
+.reset-password-split {
+    max-width: 980px;
+    min-height: 650px;
+}
+
+
+/* =========================================
+   Image Panel
+========================================= */
+
+.reset-image-panel {
+    min-height: 650px;
+}
+
+
+/* =========================================
+   Reset Card
+========================================= */
+
+.reset-password-card {
+    width: 100% !important;
+    max-width: none;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 38px 48px !important;
+}
+
+
+/* =========================================
+   Back Link
+========================================= */
+
+.reset-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    width: fit-content;
+
+    margin-bottom: 18px;
+
+    color: #5f7569;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.reset-back-link:hover {
+    color: #25864a;
+
+    transform: translateX(-2px);
+}
+
+
+/* =========================================
+   Icon
+========================================= */
+
+.reset-icon {
+    width: 50px;
+    height: 50px;
+
+    margin: 0 auto 14px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e1f4e8;
+
+    color: #299653;
+
+    font-size: 20px;
+}
+
+
+/* =========================================
+   Heading
+========================================= */
+
+.reset-password-card h1 {
+    margin: 0;
+
+    text-align: center;
+
+    color: #205c3b;
+
+    font-size: 27px;
+    font-weight: 700;
+}
+
+
+/* =========================================
+   Description
+========================================= */
+
+.reset-description {
+    max-width: 410px;
+
+    margin: 8px auto 22px !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 12.5px;
+
+    line-height: 1.55;
+}
+
+
+/* =========================================
+   Form
+========================================= */
+
+.reset-password-form {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 13px;
+}
+
+
+/* =========================================
+   Form Groups
+========================================= */
+
+.reset-form-group {
+    width: 100%;
+}
+
+
+.reset-form-group label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: #365448;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+
+/* =========================================
+   Password Input
+========================================= */
+
+.reset-password-wrapper {
+    position: relative;
+
+    width: 100%;
+}
+
+
+.reset-input-icon {
+    position: absolute;
+
+    top: 50%;
+    left: 15px;
+
+    transform: translateY(-50%);
+
+    color: #8ca096;
+
+    font-size: 13px;
+
+    pointer-events: none;
+
+    transition: color 0.2s ease;
+}
+
+
+.reset-password-wrapper input {
+    width: 100%;
+
+    height: 47px;
+
+    box-sizing: border-box;
+
+    padding: 0 45px 0 41px;
+
+    border: 1px solid #cfe2d5;
+
+    border-radius: 10px;
+
+    background: #fbfefc;
+
+    color: #18352a;
+
+    font-family: inherit;
+
+    font-size: 13px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+
+.reset-password-wrapper input::placeholder {
+    color: #9aaa9f;
+}
+
+
+.reset-password-wrapper input:focus {
+    border-color: #45a968;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 4px rgba(69, 169, 104, 0.10);
+}
+
+
+.reset-password-wrapper:focus-within .reset-input-icon {
+    color: #299653;
+}
+
+
+/* =========================================
+   Show / Hide Password
+========================================= */
+
+.reset-password-toggle {
+    position: absolute;
+
+    top: 50%;
+    right: 14px;
+
+    width: 25px;
+    height: 25px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    transform: translateY(-50%);
+
+    border: none;
+
+    background: transparent;
+
+    color: #8ca096;
+
+    cursor: pointer;
+
+    font-size: 13px;
+}
+
+
+.reset-password-toggle:hover {
+    color: #25864a;
+}
+
+
+/* =========================================
+   PASSWORD STRENGTH
+========================================= */
+
+.reset-strength-section {
+    margin-top: -2px;
+}
+
+
+.reset-strength-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-bottom: 6px;
+
+    color: #71847a;
+
+    font-size: 10.5px;
+}
+
+
+#reset-strength-text {
+    font-weight: 600;
+}
+
+
+.reset-strength-meter {
+    width: 100%;
+    height: 5px;
+
+    overflow: hidden;
+
+    border-radius: 10px;
+
+    background: #e4ece7;
+}
+
+
+.reset-strength-bar {
+    width: 0;
+    height: 100%;
+
+    border-radius: 10px;
+
+    background: #e4ece7;
+
+    transition:
+        width 0.25s ease,
+        background 0.25s ease;
+}
+
+
+/* =========================================
+   PASSWORD REQUIREMENTS
+========================================= */
+
+.reset-requirements {
+    margin-top: -2px;
+
+    padding: 11px 13px;
+
+    border: 1px solid #e0ebe3;
+
+    border-radius: 9px;
+
+    background: #f8fcf9;
+}
+
+
+.reset-requirements > p {
+    margin: 0 0 7px !important;
+
+    color: #365448;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+
+.reset-requirement {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin-top: 5px;
+
+    color: #84948b;
+
+    font-size: 10.5px;
+
+    transition: color 0.2s ease;
+}
+
+
+.reset-requirement i {
+    color: #b5c2ba;
+
+    font-size: 6px;
+
+    transition: color 0.2s ease;
+}
+
+
+.reset-requirement.valid {
+    color: #25864a;
+}
+
+
+.reset-requirement.valid i {
+    color: #299653;
+}
+
+
+/* =========================================
+   PASSWORD MATCH
+========================================= */
+
+.reset-password-match {
+    min-height: 16px;
+
+    margin-top: 5px;
+
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+
+.reset-password-match.match {
+    color: #299653;
+}
+
+
+.reset-password-match.no-match {
+    color: #dc2626;
+}
+
+
+/* =========================================
+   ERROR
+========================================= */
+
+.reset-password-error {
+    display: none;
+
+    padding: 9px 12px;
+
+    border: 1px solid #fca5a5;
+
+    border-radius: 8px;
+
+    background: #fee2e2;
+
+    color: #991b1b;
+
+    font-size: 11px;
+
+    line-height: 1.5;
+
+    text-align: center;
+}
+
+
+.reset-password-error.show {
+    display: block;
+}
+
+
+/* =========================================
+   SUBMIT BUTTON
+========================================= */
+
+.reset-submit-btn {
+    width: 100% !important;
+
+    height: 49px;
+
+    margin-top: 1px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    box-sizing: border-box;
+}
+
+
+.reset-submit-btn i {
+    font-size: 12px;
+
+    transition:
+        transform 0.2s ease;
+}
+
+
+.reset-submit-btn:hover i {
+    transform: translateX(3px);
+}
+
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 750px) {
+
+    .reset-password-page {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+
+    .reset-password-split {
+        min-height: auto;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .reset-image-panel {
+        min-height: 250px;
+
+        order: 2;
+    }
+
+
+    .reset-password-card {
+        padding: 35px 25px !important;
+
+        order: 1;
+    }
+
+
+    .reset-password-card h1 {
+        font-size: 25px;
+    }
+
+}
+
+
+@media (max-width: 450px) {
+
+    .reset-password-card {
+        padding: 30px 20px !important;
+    }
+
+
+    .reset-password-card h1 {
+        font-size: 23px;
+    }
+
+}
+
+
+
+
+/* =========================================
+   PASSWORD RESET SUCCESS
+========================================= */
+
+.reset-success-page {
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+
+/* =========================================
+   Layout
+========================================= */
+
+.reset-success-split {
+    max-width: 980px;
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Image Panel
+========================================= */
+
+.reset-success-image-panel {
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Success Card
+========================================= */
+
+.reset-success-card {
+    width: 100% !important;
+    max-width: none;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 45px 48px !important;
+
+    text-align: center;
+}
+
+
+/* =========================================
+   Success Icon
+========================================= */
+
+.reset-success-icon {
+    width: 70px;
+    height: 70px;
+
+    margin-bottom: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #dcfce7;
+
+    color: #299653;
+
+    font-size: 30px;
+
+    box-shadow:
+        0 8px 20px rgba(41, 150, 83, 0.10);
+}
+
+
+/* =========================================
+   Heading
+========================================= */
+
+.reset-success-card h1 {
+    max-width: 400px;
+
+    margin: 0;
+
+    color: #205c3b;
+
+    font-size: 27px;
+    font-weight: 700;
+
+    line-height: 1.3;
+}
+
+
+/* =========================================
+   Description
+========================================= */
+
+.reset-success-description {
+    max-width: 390px;
+
+    margin: 13px auto 30px !important;
+
+    color: #71847a;
+
+    font-size: 13px;
+
+    line-height: 1.7;
+}
+
+
+/* =========================================
+   Login Button
+========================================= */
+
+.reset-success-btn {
+    width: 100% !important;
+    max-width: 420px;
+
+    height: 51px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    box-sizing: border-box;
+
+    text-decoration: none;
+}
+
+
+.reset-success-btn i {
+    font-size: 13px;
+
+    transition: transform 0.2s ease;
+}
+
+
+.reset-success-btn:hover i {
+    transform: translateX(3px);
+}
+
+
+/* =========================================
+   Security Note
+========================================= */
+
+.reset-success-note {
+    max-width: 360px;
+
+    margin-top: 24px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    color: #829189;
+
+    font-size: 11px;
+
+    line-height: 1.5;
+}
+
+
+.reset-success-note i {
+    color: #299653;
+
+    font-size: 13px;
+
+    flex-shrink: 0;
+}
+
+
+/* =========================================
+   Responsive
+========================================= */
+
+@media (max-width: 750px) {
+
+    .reset-success-page {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+
+    .reset-success-split {
+        min-height: auto;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .reset-success-image-panel {
+        min-height: 250px;
+
+        order: 2;
+    }
+
+
+    .reset-success-card {
+        padding: 40px 25px !important;
+
+        order: 1;
+    }
+
+
+    .reset-success-card h1 {
+        font-size: 25px;
+    }
+
+}
+
+
+@media (max-width: 450px) {
+
+    .reset-success-card {
+        padding: 35px 20px !important;
+    }
+
+
+    .reset-success-icon {
+        width: 60px;
+        height: 60px;
+
+        font-size: 26px;
+    }
+
+
+    .reset-success-card h1 {
+        font-size: 23px;
+    }
+
+
+    .reset-success-description {
+        font-size: 12px;
+    }
+
+}
+
 
 
 /* =========================================

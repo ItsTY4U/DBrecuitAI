@@ -350,3 +350,10 @@ def process_signup_resume(request):
             },
             status=500
         )
+
+
+def forgot_password(request):
+    return render(request, "accounts/forgot_password.html")
+
+def verify_password_otp(request):
+    return render(request, "accounts/verify_otp.html")
