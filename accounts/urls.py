@@ -11,4 +11,5 @@ urlpatterns = [
     views.process_signup_resume,
     name="process_signup_resume"
 ),
+    path("forgot-password/", views.forgot_password, name="forgot_password"),
 ]

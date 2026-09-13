@@ -2138,7 +2138,6 @@ body {
     animation: resumeSpin 1s linear infinite;
 }
 
-
 @keyframes resumeSpin {
 
     from {
@@ -2150,6 +2149,416 @@ body {
     }
 
 }
+
+
+/* =========================================
+   FORGOT PASSWORD
+========================================= */
+
+.forgot-password-page {
+    padding-top: 120px;
+    padding-bottom: 80px;
+}
+
+
+/* =========================================
+   Forgot Password Layout
+========================================= */
+
+.forgot-password-split {
+    max-width: 980px;
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Image Panel
+========================================= */
+
+.forgot-image-panel {
+    min-height: 590px;
+}
+
+
+/* =========================================
+   Forgot Password Card
+========================================= */
+
+.forgot-password-card {
+    width: 100% !important;
+    max-width: none;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    padding: 45px 48px !important;
+}
+
+
+/* =========================================
+   Back To Login
+========================================= */
+
+.forgot-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    width: fit-content;
+
+    margin-bottom: 25px;
+
+    color: #5f7569;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    text-decoration: none;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.forgot-back-link:hover {
+    color: #25864a;
+    transform: translateX(-2px);
+}
+
+
+/* =========================================
+   Forgot Password Icon
+========================================= */
+
+.forgot-icon {
+    width: 52px;
+    height: 52px;
+
+    margin: 0 auto 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e1f4e8;
+
+    color: #299653;
+
+    font-size: 21px;
+}
+
+
+/* =========================================
+   Heading
+========================================= */
+
+.forgot-password-card h1 {
+    margin: 0;
+
+    text-align: center;
+
+    color: #205c3b;
+
+    font-size: 28px;
+    font-weight: 700;
+}
+
+
+/* =========================================
+   Description
+========================================= */
+
+.forgot-description {
+    max-width: 390px;
+
+    margin: 9px auto 28px !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 13px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================
+   Form
+========================================= */
+
+.forgot-password-form {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 17px;
+}
+
+
+/* =========================================
+   Email Input
+========================================= */
+
+.forgot-input-wrapper {
+    position: relative;
+
+    width: 100%;
+}
+
+
+.forgot-input-wrapper > i {
+    position: absolute;
+
+    top: 50%;
+    left: 15px;
+
+    transform: translateY(-50%);
+
+    color: #8ca096;
+
+    font-size: 14px;
+
+    pointer-events: none;
+
+    transition: color 0.2s ease;
+}
+
+
+.forgot-input-wrapper input {
+    width: 100%;
+
+    height: 49px;
+
+    box-sizing: border-box;
+
+    padding: 0 14px 0 42px;
+
+    border: 1px solid #cfe2d5;
+
+    border-radius: 10px;
+
+    background: #fbfefc;
+
+    color: #18352a;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+
+.forgot-input-wrapper input::placeholder {
+    color: #9aaa9f;
+}
+
+
+.forgot-input-wrapper input:focus {
+    border-color: #45a968;
+
+    background: #ffffff;
+
+    box-shadow:
+        0 0 0 4px rgba(69, 169, 104, 0.10);
+}
+
+
+.forgot-input-wrapper:focus-within > i {
+    color: #299653;
+}
+
+
+/* =========================================
+   Submit Button
+========================================= */
+
+.forgot-submit-btn {
+    width: 100% !important;
+
+    height: 51px;
+
+    margin-top: 5px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    box-sizing: border-box;
+}
+
+
+.forgot-submit-btn i {
+    font-size: 13px;
+
+    transition:
+        transform 0.2s ease;
+}
+
+
+.forgot-submit-btn:hover i {
+    transform: translateX(3px);
+}
+
+
+/* =========================================
+   Bottom Login Text
+========================================= */
+
+.forgot-login-text {
+    margin: 24px 0 0 !important;
+
+    text-align: center;
+
+    color: #71847a;
+
+    font-size: 13px;
+}
+
+
+.forgot-login-text a {
+    color: #25864a;
+
+    font-weight: 700;
+
+    text-decoration: none;
+}
+
+
+.forgot-login-text a:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================
+   Messages
+========================================= */
+
+.forgot-messages {
+    margin-bottom: 18px;
+}
+
+
+.forgot-message {
+    padding: 11px 13px;
+
+    border-radius: 9px;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+
+.forgot-message.success {
+    color: #166534;
+
+    background: #dcfce7;
+
+    border: 1px solid #86efac;
+}
+
+
+.forgot-message.error {
+    color: #991b1b;
+
+    background: #fee2e2;
+
+    border: 1px solid #fca5a5;
+}
+
+
+/* =========================================
+   Responsive
+========================================= */
+
+@media (max-width: 750px) {
+
+    .forgot-password-page {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+
+    .forgot-password-split {
+        min-height: auto;
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .forgot-image-panel {
+        min-height: 250px;
+
+        order: 2;
+    }
+
+
+    .forgot-password-card {
+        padding: 35px 25px !important;
+
+        order: 1;
+    }
+
+
+    .forgot-password-card h1 {
+        font-size: 25px;
+    }
+
+
+    .forgot-description {
+        font-size: 13px;
+    }
+
+}
+
+
+@media (max-width: 450px) {
+
+    .forgot-password-card {
+        padding: 30px 20px !important;
+    }
+
+
+    .forgot-back-link {
+        margin-bottom: 20px;
+    }
+
+
+    .forgot-icon {
+        width: 48px;
+        height: 48px;
+
+        font-size: 19px;
+    }
+
+
+    .forgot-password-card h1 {
+        font-size: 23px;
+    }
+
+}
+
+
+
+
+
+
 
 
 /* =========================================

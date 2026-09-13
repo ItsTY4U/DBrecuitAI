@@ -1,7 +1,15 @@
 services:
   web:
     build:
+      context: .
       dockerfile: Dockerfile
-
     volumes:
-      - .:/app
+      - .:/app:delegated
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+    environment:
+      - DJANGO_DEBUG=True
+
+volumes:
+  media_data:
+  static_data:

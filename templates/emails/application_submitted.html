@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Received - DBRecruitAI</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #f1f5f9;
+            padding: 40px 16px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #2563eb 100%);
+            padding: 36px 32px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .brand-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .header-title {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            margin: 8px 0 0 0;
+            font-size: 14px;
+            color: #cbd5e1;
+        }
+        .content {
+            padding: 36px 32px;
+        }
+        .greeting {
+            font-size: 17px;
+            font-weight: 600;
+            color: #0f172a;
+            margin: 0 0 16px 0;
+        }
+        .lead-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #475569;
+            margin: 0 0 24px 0;
+        }
+        .card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 28px;
+        }
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+            font-size: 14px;
+        }
+        .card-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .card-label {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .card-value {
+            color: #0f172a;
+            font-weight: 600;
+            text-align: right;
+        }
+        .ref-pill {
+            display: inline-block;
+            background-color: #eff6ff;
+            color: #2563eb;
+            font-family: monospace;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            border: 1px solid #bfdbfe;
+        }
+        .status-pill {
+            display: inline-block;
+            background-color: #ecfdf5;
+            color: #059669;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .cta-section {
+            text-align: center;
+            margin: 32px 0 24px 0;
+        }
+        .btn-track {
+            display: inline-block;
+            background: #2563eb;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 14px 32px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            letter-spacing: 0.2px;
+        }
+        .next-steps {
+            background-color: #fdfdfd;
+            border-left: 4px solid #3b82f6;
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 24px;
+        }
+        .next-steps-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e40af;
+            margin: 0 0 6px 0;
+        }
+        .next-steps-text {
+            font-size: 13px;
+            color: #475569;
+            margin: 0;
+            line-height: 1.5;
+        }
+        .footer {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 24px 32px;
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .footer p {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <span class="brand-badge">DBRecruitAI</span>
+                <h1 class="header-title">Application Received!</h1>
+                <p class="header-subtitle">Your job application has been successfully submitted.</p>
+            </div>
+
+            <!-- Main Content -->
+            <div class="content">
+                <p class="greeting">Hello {{ applicant_name }},</p>
+                <p class="lead-text">
+                    Thank you for applying for the <strong>{{ job.title }}</strong> role at <strong>DBRecruitAI</strong>. We have received your application materials and our recruitment team has begun processing your submission.
+                </p>
+
+                <!-- Application Summary Card -->
+                <div class="card">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px dashed #e2e8f0;">
+                            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Role:</td>
+                            <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right; font-size: 14px;">{{ job.title }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px dashed #e2e8f0;">
+                            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Department:</td>
+                            <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right; font-size: 14px;">{{ job.department }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px dashed #e2e8f0;">
+                            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Reference ID:</td>
+                            <td style="padding: 8px 0; text-align: right;">
+                                <span class="ref-pill">{{ application.application_id }}</span>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px dashed #e2e8f0;">
+                            <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Submitted On:</td>
+                            <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right; font-size: 14px;">{{ submitted_at }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0 0 0; color: #64748b; font-size: 14px;">Initial Status:</td>
+                            <td style="padding: 8px 0 0 0; text-align: right;">
+                                <span class="status-pill">Pending Screening</span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Next Steps Info -->
+                <div class="next-steps">
+                    <div class="next-steps-title">What happens next?</div>
+                    <p class="next-steps-text">
+                        Our AI screening intelligence matches your profile and qualifications with role requirements. If your background aligns with our criteria, our HR team will reach out regarding an interview.
+                    </p>
+                </div>
+
+                <!-- Track Button -->
+                {% if tracking_url %}
+                <div class="cta-section">
+                    <a href="{{ tracking_url }}" class="btn-track" target="_blank" rel="noopener noreferrer">
+                        Track Application Status &rarr;
+                    </a>
+                </div>
+                {% endif %}
+
+                <p style="font-size: 13px; color: #64748b; text-align: center; margin-top: 16px;">
+                    You can also track your progress anytime using your Reference ID (<strong>{{ application.application_id }}</strong>) on our application tracking portal.
+                </p>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>This is an automated confirmation email sent by <strong>DBRecruitAI</strong>.</p>
+                <p>&copy; 2026 DBRecruitAI. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

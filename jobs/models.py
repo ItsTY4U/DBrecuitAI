@@ -156,7 +156,7 @@ class Application(models.Model):
                 self.resume.delete(save=False)
             except Exception:
                 pass
-        super().delete(*args, **kwargs)
+        return super().delete(*args, **kwargs)
     
         
     def __str__(self):
