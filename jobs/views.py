@@ -287,6 +287,10 @@ def apply_job(request, pk):
         application.status = "Pending"
 
         application.save()
+
+        # Send confirmation email to applicant via Google Gmail API (sole authorized trigger)
+        from main.emailer import send_application_submitted_email
+        send_application_submitted_email(application)
         
         return render(request, "jobs/partials/application_success.html",
                     {
