@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Verify Code | DBRecruitAI{% endblock  %}
+
+{% block content %}
+
+<div class="bg">
+    
+    <div class="auth-page otp-page">
+
+        <div class="auth-split otp-split">
+
+            <div class="auth-image-panel otp-image-panel">
+                <img src="{% static 'accounts/img/signup-side.jpg' %}" alt="DBRecruitAI">
+                <div class="auth-image-overlay">
+                    <h2>Find. Apply. Get Hired.</h2>
+                    <p>
+                        Discover job oppurtunities that match
+                        your skills and experience.
+                    </p>
+                </div>
+            </div>
+
+            <div class="auth-card otp-card">
+                <a href="{% url "forgot_password" %}">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Back
+                </a>
+
+                <div class="otp-icon">
+                    <i class="fa-regular fa-envelope"></i>
+                </div>
+
+                <!-- Heading -->
+                <h1>Verify Your Email</h1>
+
+                <p class="otp-description">
+                    Enter the 6-digit verification code sent
+                    to your email address.
+                </p>
+
+                <!-- OTP Form -->
+                <form
+                    method="POST"
+                    class="otp-form"
+                    id="otp-form">
+                    {% csrf_token %}
+
+                    <!--OTP input-->
+                    <div class="otp-inputs">
+
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            aria-label="OTP digit 1"
+                            autofocus
+                            >
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            aria-label="OTP digit 2"
+                            >
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            aria-label="OTP digit 3"
+                            >
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            aria-label="OTP digit 4"
+                            >
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            aria-label="OTP digit 5"
+                            >
+                        <input
+                            type="text"
+                            class="otp-input"
+                            maxlengths="1"
+                            inputmode="numeric"
+                            aria-label="OTP digit 6"
+                            >
+
+                    </div>
+
+                    <!-- Hidden OTP Value -->
+                    <input
+                        type="hidden"
+                        name="otp"
+                        id="otp-value"
+                    >
+
+                    <!-- Timer -->
+                    <div class="otp-timer">
+
+                        <i class="fa-regular fa-clock"></i>
+
+                        <span>
+                            Code expires in
+                            <strong id="otp-countdown">
+                                05:00
+                            </strong>
+                        </span>
+
+                    </div>
+
+                     <!-- Resend -->
+                    <div class="otp-resend">
+
+                        <span>Didn't receive the code?</span>
+
+                        <button
+                            type="button"
+                            id="resend-otp"
+                            disabled
+                        >
+                            Resend Code
+                        </button>
+
+                    </div>
+
+
+                    <!-- Error -->
+                    <div
+                        class="otp-error"
+                        id="otp-error"
+                        role="alert"
+                    ></div>
+
+
+                    <!-- Verify -->
+                    <button
+                        type="submit"
+                        class="btn btn-primary otp-submit-btn"
+                    >
+                        <span>Verify Code</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock  %}
