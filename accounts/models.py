@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 
 def applicant_resume_upload_path(instance, filename):
     ext = os.path.splitext(filename)[1].lower() or ".pdf"
-    user_id = instance.user_id or uuid.uuid4().hex[:8]
+    user_id = getattr(instance, "user_id", None) or uuid.uuid4().hex[:8]
     unique_token = uuid.uuid4().hex[:6]
     return f"resumes/user_{user_id}_{unique_token}_resume{ext}"
 
