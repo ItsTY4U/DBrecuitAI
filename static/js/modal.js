@@ -146,6 +146,30 @@ document.addEventListener("closeDeptModal", function () {
         const form = modal.querySelector('form');
         if (form) form.reset();
     }
+    showAlertify("New department created successfully!", "success");
+});
+
+document.addEventListener("closePostModal", function () {
+    const modal = document.getElementById('post-job-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        const form = modal.querySelector('form');
+        if (form) {
+            form.reset();
+            const container = form.querySelector('#key-qualifications-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="requirement-row">
+                        <input type="text" name="key_qualifications" class="form-input" placeholder="Enter a key qualification" required>
+                        <button type="button" class="remove-requirement" title="Remove qualification">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    }
+    showAlertify("New job created successfully!", "success");
 });
 
 document.addEventListener("closeEditModal", function () {
@@ -153,6 +177,7 @@ document.addEventListener("closeEditModal", function () {
     if (editContainer) {
         editContainer.innerHTML = '';
     }
+    showAlertify("Changes saved successfully!", "success");
 });
 
 // Job Status Toggle Switch handler
@@ -183,23 +208,66 @@ document.addEventListener("change", function (e) {
     }
 });
 
-// Manage job status confirmation
-document.addEventListener("submit", function (event) {
-    if (event.target && event.target.id === "manage-job-form") {
-        const statusSelect = event.target.querySelector("#status, #edit-status, input[name='status']");
-        const initialStatus = statusSelect ? statusSelect.getAttribute("data-initial-status") : "";
-        if (statusSelect && statusSelect.value === "Inactive" && initialStatus === "Active") {
-            const confirmed = confirm(
-                "Are you sure you want to close this job?\n\n" +
-                "This job will no longer appear in the Active Jobs section " +
-                "and applicants will no longer be able to apply."
-            );
-            if (!confirmed) {
-                event.preventDefault();
-            }
+// Alertify Notification (placed on top of Logout section)
+function showAlertify(message, type = 'success') {
+    const container = document.getElementById('sidebar-alert-container');
+    if (container) {
+        container.innerHTML = '';
+
+        const alertEl = document.createElement('div');
+        alertEl.className = `sidebar-alert alertify-banner alertify-${type}`;
+
+        let iconClass = 'fa-circle-check';
+        if (type === 'error') iconClass = 'fa-circle-xmark';
+        else if (type === 'warning') iconClass = 'fa-triangle-exclamation';
+
+        alertEl.innerHTML = `
+            <div class="alertify-content">
+                <i class="fas ${iconClass}"></i>
+                <span>${message}</span>
+            </div>
+            <button type="button" class="alertify-close" aria-label="Close">&times;</button>
+        `;
+
+        const closeBtn = alertEl.querySelector('.alertify-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                alertEl.remove();
+            });
         }
+
+        container.appendChild(alertEl);
+
+        setTimeout(function () {
+            alertEl.classList.add('fade-out');
+            setTimeout(function () {
+                alertEl.remove();
+            }, 400);
+        }, 4500);
     }
-});
+}
+window.showAlertify = showAlertify;
+
+function initSidebarAlerts() {
+    const alerts = document.querySelectorAll('#sidebar-alert-container .sidebar-alert');
+    alerts.forEach(function (alertEl) {
+        const closeBtn = alertEl.querySelector('.alertify-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                alertEl.remove();
+            });
+        }
+        setTimeout(function () {
+            alertEl.classList.add('fade-out');
+            setTimeout(function () {
+                alertEl.remove();
+            }, 400);
+        }, 4500);
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initSidebarAlerts);
+document.addEventListener("htmx:afterSwap", initSidebarAlerts);
 
 // Interview reschedule fields toggle
 function initInterviewStatus() {

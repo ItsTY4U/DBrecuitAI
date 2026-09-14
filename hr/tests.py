@@ -560,6 +560,130 @@ class CandidateManagementTests(TestCase):
         self.assertNotContains(response, "1 Req")
         self.assertNotContains(response, "Reqs")
 
+    def test_candidates_button_disabled_when_zero_applicants(self):
+        # job_sales_mgr has 0 applicants; job_sales_staff has 10 applicants
+        invalidate_hr_cache()
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+
+        # For job with 0 applicants: disabled button with tooltip
+        self.assertContains(response, '<button type="button" class="btn-job-view" disabled title="No applicants yet for this position">')
+        # For job with applicants: link to candidates
+        expected_active_link = f'href="{reverse("candidates")}?department=Sales&job={self.job_sales_staff.id}" class="btn-job-view"'
+        self.assertContains(response, expected_active_link)
+        # Not linked for job_sales_mgr
+        unexpected_link = f'href="{reverse("candidates")}?department=Sales&job={self.job_sales_mgr.id}"'
+        self.assertNotContains(response, unexpected_link)
+
+    def test_inactive_job_candidates_button_disabled_when_zero_applicants(self):
+        inactive_job_no_apps = Job.objects.create(
+            title="Archived No Apps",
+            department="Sales",
+            job_type="FULL-TIME",
+            status="Inactive"
+        )
+        inactive_job_with_apps = Job.objects.create(
+            title="Archived With Apps",
+            department="Sales",
+            job_type="FULL-TIME",
+            status="Inactive"
+        )
+        Application.objects.create(
+            job=inactive_job_with_apps,
+            first_name="Jane",
+            last_name="Doe",
+            email="jane@example.com",
+            phone="1234567890",
+            ai_score=85,
+            status="Screening",
+        )
+        invalidate_hr_cache()
+
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+
+        # The inactive job with applicants should have a clickable candidates link
+        expected_inactive_link = f'href="{reverse("candidates")}?department=Sales&job={inactive_job_with_apps.id}" class="btn-job-view"'
+        self.assertContains(response, expected_inactive_link)
+
+        # The inactive job without applicants should NOT have a clickable candidates link
+        unexpected_inactive_link = f'href="{reverse("candidates")}?department=Sales&job={inactive_job_no_apps.id}"'
+        self.assertNotContains(response, unexpected_inactive_link)
+
+    def test_sidebar_alert_container_present_above_sidebar_footer(self):
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="sidebar-alert-container"')
+        self.assertContains(response, 'sidebar-alert-container')
+        # Check order: sidebar-alert-container appears before sidebar-footer
+        content = response.content.decode("utf-8")
+        alert_pos = content.find('id="sidebar-alert-container"')
+        footer_pos = content.find('class="sidebar-footer"')
+        self.assertTrue(alert_pos > 0 and footer_pos > 0 and alert_pos < footer_pos)
+
+    def test_manage_job_save_redirect_and_htmx_trigger(self):
+        url = reverse("manage_job", kwargs={"pk": self.job_sales_staff.pk})
+        post_data = {
+            "title": "Senior Sales Staff",
+            "department": "Sales",
+            "job_type": "FULL-TIME",
+            "schedule": "Monday to Friday",
+            "shift": "8:00 AM - 5:00 PM",
+            "description": "Updated description",
+            "requirements": "Updated requirements",
+            "status": "Inactive",
+            "key_qualifications": ["Negotiation"],
+        }
+        # HTMX submission returns closeEditModal trigger
+        hx_response = self.client.post(url, post_data, HTTP_HX_REQUEST="true")
+        self.assertEqual(hx_response.status_code, 200)
+        self.assertEqual(hx_response.headers.get("HX-Trigger"), "closeEditModal")
+
+        # Standard POST submission redirects to job_management with success message
+        post_data["title"] = "Lead Sales Staff"
+        std_response = self.client.post(url, post_data)
+        self.assertEqual(std_response.status_code, 302)
+        follow_response = self.client.get(reverse("job_management"))
+        self.assertContains(follow_response, "Changes saved successfully!")
+
+    def test_create_department_htmx_trigger_and_redirect_message(self):
+        url = reverse("create_department")
+        # HTMX submission triggers closeDeptModal
+        hx_response = self.client.post(url, {"name": "Legal"}, HTTP_HX_REQUEST="true")
+        self.assertEqual(hx_response.status_code, 200)
+        self.assertEqual(hx_response.headers.get("HX-Trigger"), "closeDeptModal")
+
+        # Standard POST redirects with success message
+        std_response = self.client.post(url, {"name": "Operations"})
+        self.assertEqual(std_response.status_code, 302)
+        follow_response = self.client.get(reverse("job_management"))
+        self.assertContains(follow_response, "New department created successfully!")
+
+    def test_create_job_htmx_trigger_and_redirect_message(self):
+        url = reverse("create_job")
+        post_data = {
+            "title": "Accountant",
+            "department": "Finance",
+            "job_type": "FULL-TIME",
+            "schedule": "Monday to Friday",
+            "shift": "9:00 AM - 5:00 PM",
+            "description": "Handle company books",
+            "requirements": "CPA license",
+            "key_qualifications": ["QuickBooks", "Tax Filing"],
+        }
+        # HTMX submission triggers closePostModal
+        hx_response = self.client.post(url, post_data, HTTP_HX_REQUEST="true")
+        self.assertEqual(hx_response.status_code, 200)
+        self.assertEqual(hx_response.headers.get("HX-Trigger"), "closePostModal")
+        self.assertContains(hx_response, "Accountant")
+
+        # Standard POST redirects with success message
+        post_data["title"] = "Junior Accountant"
+        std_response = self.client.post(url, post_data)
+        self.assertEqual(std_response.status_code, 302)
+        follow_response = self.client.get(reverse("job_management"))
+        self.assertContains(follow_response, "New job created successfully!")
+
 
 
 
