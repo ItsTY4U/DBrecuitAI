@@ -1,26 +1,56 @@
+"""
+DBRecruitAI - Multimodal Video Interview Evaluation Engine
+Handles video file processing, Gemini Files API upload, objective question evaluation,
+and executive session synthesis.
+"""
+
 import os
 import json
+import logging
+import re
 import tempfile
 import time
+from typing import Any, Dict, Optional
 from django.conf import settings
 from google import genai
 from google.genai import types
 
-client = None
+logger = logging.getLogger(__name__)
+
+client: Optional[genai.Client] = None
 if getattr(settings, "GEMINI_API_KEY", None):
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    try:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    except Exception as _init_err:
+        logger.warning("Initial Video Interview GenAI client setup deferred: %s", _init_err)
 
 
-def get_genai_client():
+def get_genai_client() -> Optional[genai.Client]:
+    """
+    Returns an initialized Google GenAI client or None if API key is unconfigured.
+    """
     global client
     if client is None and getattr(settings, "GEMINI_API_KEY", None):
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
     return client
 
 
-def analyze_single_response(response, job_title, job_department):
+def _clean_json_text(raw_text: str) -> str:
     """
-    Evaluates a single question video response using Gemini 2.5 Flash.
+    Extracts JSON content inside markdown code blocks or strips outer formatting fences.
+    """
+    text = raw_text.strip()
+    if "```" in text:
+        match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+        if match:
+            return match.group(1).strip()
+        return re.sub(r"^```json\s*|\s*```$", "", text, flags=re.IGNORECASE).strip()
+    return text
+
+
+def analyze_single_response(response: Any, job_title: str, job_department: str) -> Dict[str, Any]:
+    """
+    Evaluates an individual question video recording using Gemini 2.5 Flash.
     Returns dict with keys: score (50-100), transcript, feedback, strengths, improvements.
     """
     if response.skipped or not response.video_clip:
@@ -34,7 +64,6 @@ def analyze_single_response(response, job_title, job_department):
 
     ai_client = get_genai_client()
     if not ai_client:
-        # Fallback if API key is not configured
         return {
             "score": 75,
             "transcript": "Recorded response submitted (Gemini API key not configured for transcription).",
@@ -47,7 +76,7 @@ def analyze_single_response(response, job_title, job_department):
     uploaded_file = None
 
     try:
-        # Read the video clip
+        # Read the video clip or stream from remote storage backend (S3/Cloudflare R2)
         file_to_upload = None
         try:
             path = response.video_clip.path
@@ -57,7 +86,6 @@ def analyze_single_response(response, job_title, job_department):
             pass
 
         if not file_to_upload:
-            # S3/R2 or remote storage backend: download to a temporary file
             suffix = os.path.splitext(response.video_clip.name or "")[-1] or ".webm"
             temp_fd, temp_file_path = tempfile.mkstemp(suffix=suffix)
             with os.fdopen(temp_fd, "wb") as f:
@@ -72,7 +100,7 @@ def analyze_single_response(response, job_title, job_department):
         # Upload to Gemini Files API
         uploaded_file = ai_client.files.upload(file=file_to_upload)
 
-        # Wait for file processing if necessary
+        # Wait for file processing to reach ACTIVE state
         for _ in range(30):
             if uploaded_file.state.name == "ACTIVE":
                 break
@@ -81,45 +109,54 @@ def analyze_single_response(response, job_title, job_department):
             time.sleep(2)
             uploaded_file = ai_client.files.get(name=uploaded_file.name)
 
+        system_instruction = (
+            "You are an expert AI Video Interview Evaluator and Senior HR Talent Specialist. "
+            "Evaluate applicant video answers for prompt relevance, structured thinking "
+            "(e.g. STAR method for behavioral inquiries), articulation, clarity, and professionalism."
+        )
+
         prompt = f"""
-        You are an expert AI Video Interview Evaluator and Senior HR Talent Specialist.
-        Evaluate the applicant's video answer for this question.
+Evaluate the applicant's recorded video answer for this question.
 
-        Job Role: {job_title} ({job_department})
-        Question Type: {response.get_question_type_display()}
-        Question: "{response.question_text}"
+ROLE SPECIFICATION:
+Position: {job_title} ({job_department})
+Question Category: {response.get_question_type_display()}
+Question Prompt: "{response.question_text}"
 
-        Criteria to evaluate:
-        1. Relevance and depth of content in relation to the question.
-        2. Speech clarity, professionalism, articulation, and confidence.
-        3. Structured thinking (e.g. STAR method for behavioral inquiries).
+EVALUATION CRITERIA:
+1. Relevance and depth of content in relation to the question.
+2. Speech clarity, professionalism, articulation, and confidence.
+3. Structured thinking (e.g. STAR method: Situation, Task, Action, Result for behavioral inquiries).
 
-        SCORING MANDATE:
-        - The score MUST be an integer between 50 and 100 inclusive.
-        - 50 to 64: Below expectations or off-topic.
-        - 65 to 79: Solid, satisfactory answer.
-        - 80 to 89: Strong, well-articulated answer.
-        - 90 to 100: Exceptional, articulate, and compelling answer.
+SCORING MANDATE:
+- The score MUST be an integer between 50 and 100 inclusive.
+- 50 to 64: Below expectations, off-topic, or lacking substance.
+- 65 to 79: Solid, satisfactory answer with basic competence demonstrated.
+- 80 to 89: Strong, well-articulated answer with relevant examples.
+- 90 to 100: Exceptional, articulate, compelling answer with measurable impact described.
 
-        Return ONLY a JSON object formatted strictly as:
-        {{
-            "score": 85,
-            "transcript": "Spoken transcript or clear verbatim summary of what the applicant said...",
-            "feedback": "2-3 constructive sentences evaluating their answer.",
-            "strengths": ["strength 1", "strength 2"],
-            "improvements": ["improvement 1"]
-        }}
-        """
+RETURN FORMAT:
+Return strictly a valid JSON object matching:
+{{
+    "score": 85,
+    "transcript": "Spoken transcript or clear verbatim summary of what the applicant said...",
+    "feedback": "2-3 constructive sentences evaluating their answer.",
+    "strengths": ["Key delivery or content strength"],
+    "improvements": ["Actionable improvement recommendation"]
+}}
+"""
 
         gemini_response = ai_client.models.generate_content(
             model="gemini-2.5-flash",
             contents=[uploaded_file, prompt],
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                temperature=0.2,
+            ),
         )
 
-        raw_text = gemini_response.text.strip()
-        if raw_text.startswith("```"):
-            raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-
+        raw_text = _clean_json_text(gemini_response.text)
         data = json.loads(raw_text)
 
         # Clamp score between 50 and 100
@@ -135,7 +172,7 @@ def analyze_single_response(response, job_title, job_department):
         }
 
     except Exception as e:
-        print(f"Error analyzing video response Q{response.question_number}: {e}")
+        logger.error("Error analyzing video response Q%s: %s", response.question_number, e)
         return {
             "score": 70,
             "transcript": "Video recording captured successfully.",
@@ -158,9 +195,9 @@ def analyze_single_response(response, job_title, job_department):
                 pass
 
 
-def analyze_interview_session(session):
+def analyze_interview_session(session: Any) -> None:
     """
-    Analyzes all 5 question responses in an InterviewSession, scores them,
+    Analyzes all question responses in an InterviewSession, scores them,
     calculates the final overall score, and writes feedback back to the database.
     """
     job = session.application.job
@@ -186,54 +223,57 @@ def analyze_interview_session(session):
         total_score += resp.score
         analyzed_count += 1
 
-    # Calculate final score (average of 5 questions, 50 to 100)
+    # Calculate final score (average of questions, 50 to 100)
     final_score = round(total_score / analyzed_count) if analyzed_count > 0 else 50
     final_score = max(50, min(100, final_score))
     session.final_score = final_score
 
-    # Generate overall summary and feedback with Gemini
     ai_client = get_genai_client()
     overall_summary = ""
     overall_feedback = ""
 
     if ai_client:
         try:
-            summary_prompt = f"""
-            You are the Head of Talent Acquisition evaluating an applicant's complete 5-question AI video interview.
-            
-            Applicant: {session.application.first_name} {session.application.last_name}
-            Position: {job_title} ({job_department})
-            Final Average Score: {final_score}/100
-
-            Individual Questions and Evaluated Scores:
-            """ + "\n".join([
+            questions_summary = "\n".join([
                 f"- Q{r.question_number} ({r.question_text}): Score {r.score}/100. Feedback: {r.feedback}"
                 for r in responses
-            ]) + """
+            ])
 
-            Provide an executive synthesis in JSON:
-            {
-                "overall_summary": "A concise executive paragraph highlighting communication proficiency, key themes, and overall fit.",
-                "overall_feedback": "Actionable HR recommendations for subsequent live interviews or next screening steps."
-            }
-            """
+            summary_prompt = f"""
+You are the Head of Talent Acquisition evaluating an applicant's complete AI video interview.
+
+Applicant: {session.application.first_name} {session.application.last_name}
+Position: {job_title} ({job_department})
+Final Average Score: {final_score}/100
+
+Individual Questions and Evaluated Scores:
+{questions_summary}
+
+Provide an executive synthesis in JSON conforming strictly to:
+{{
+    "overall_summary": "A concise executive paragraph highlighting communication proficiency, key themes, and overall fit.",
+    "overall_feedback": "Actionable HR recommendations for subsequent live interviews or next screening steps."
+}}
+"""
 
             sum_resp = ai_client.models.generate_content(
                 model="gemini-2.5-flash",
-                contents=summary_prompt
+                contents=summary_prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.2,
+                ),
             )
-            raw = sum_resp.text.strip()
-            if raw.startswith("```"):
-                raw = raw.replace("```json", "").replace("```", "").strip()
+            raw = _clean_json_text(sum_resp.text)
             sum_data = json.loads(raw)
             overall_summary = sum_data.get("overall_summary", "")
             overall_feedback = sum_data.get("overall_feedback", "")
         except Exception as e:
-            print(f"Error generating overall interview summary: {e}")
-            overall_summary = f"Candidate completed the 5-question video interview with an average score of {final_score}%."
+            logger.error("Error generating overall interview summary: %s", e)
+            overall_summary = f"Candidate completed the video interview with an average score of {final_score}%."
             overall_feedback = "Candidate's individual answers and video clips are available for HR review below."
     else:
-        overall_summary = f"Candidate completed the 5-question video interview with an overall score of {final_score}%."
+        overall_summary = f"Candidate completed the video interview with an overall score of {final_score}%."
         overall_feedback = "Detailed video recordings are available below for HR assessment."
 
     session.overall_summary = overall_summary

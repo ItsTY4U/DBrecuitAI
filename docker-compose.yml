@@ -1,60 +1,48 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: dbrecruitai-web
-
-    command: []
-
+    command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app:delegated
       - media_data:/app/media
       - static_data:/app/staticfiles
-
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD", "python", "manage.py", "check"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-    ports:
-      - "8000:8000"
-
-    env_file:
-      - .env
-
-    depends_on:
-      database:
-        condition: service_healthy
-
+      start_period: 20s
     restart: unless-stopped
 
-  database:
-    image: mysql:8.4
-    container_name: dbrecruitai-database
-    command:
-      - mysqld
-      - --mysql-native-password=ON
-
+  # Optional local PostgreSQL container (for testing without remote Supabase)
+  # Run with: docker compose --profile local-db up
+  postgres:
+    profiles: ["local-db"]
+    image: postgres:16-alpine
+    container_name: dbrecruitai-postgres
     restart: unless-stopped
-
     environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-
+      POSTGRES_DB: ${DB_NAME:-dbrecruitai}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "3307:3306"
-
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-dbrecruitai}"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 5
 
 volumes:
-  mysql_data:
+  postgres_data:
   media_data:
   static_data:

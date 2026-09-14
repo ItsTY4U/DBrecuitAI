@@ -19,13 +19,15 @@ from .forms import (
     ApplicantSignupForm,
     ApplicantLoginForm,
     ApplicantProfileForm,
-    ApplicantUserForm
+    ApplicantUserForm,
+    ApplicantAuthenticationForm,
 )
 
 # Create your views here.
 def signup(request):
 
     if request.user.is_authenticated:
+        return redirect("home")
         return redirect("home")
 
     form = ApplicantSignupForm()
@@ -85,11 +87,7 @@ def signup(request):
                 None
             )
 
-            login(
-                request, 
-                user,
-                backend="django.contrib.auth.backends.ModelBackend"
-                )
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
 
             next_url = request.POST.get("next")
 
@@ -110,9 +108,13 @@ def signup(request):
     
 def applicant_login(request):
     if request.user.is_authenticated:
+        if request.user.is_superuser:
+            return redirect("/admin/")
+        if request.user.groups.filter(name="HR").exists():
+            return redirect("dashboard")
         return redirect("home")
     
-    form = AuthenticationForm(
+    form = ApplicantAuthenticationForm(
         request, 
         data=request.POST or None
     )
@@ -123,7 +125,7 @@ def applicant_login(request):
             
             next_url = request.POST.get("next") or request.GET.get("next")
             
-            if next_url:
+            if next_url and not next_url.startswitch("/superadmin"):
                 return redirect(next_url)
             return redirect("home")
         
@@ -138,15 +140,18 @@ def applicant_logout(request):
 def process_profile_resume(profile):
     
     if not profile.default_resume:
-        return False
+        return False, "No resume file was uploaded."
     
     try:
         resume_text = extract_resume_text(profile.default_resume)
         
+        if not resume_text or len(resume_text.strip()) < 30:
+            return False, "Unable to extract readable text from your resume. Please ensure the PDF contains text and is not a scanned photo or image."
+
         parsed_data = parse_resume(resume_text)
         
         if not parsed_data:
-            return False
+            return False, "Unable to process resume data. Please try again."
         
         profile.resume_text = resume_text
         profile.resume_data = parsed_data
@@ -162,16 +167,17 @@ def process_profile_resume(profile):
             ]
         )
         
-        return True
+        return True, ""
     
     except Exception as e:
-        print("Profile resume processing error:", e)
+        import logging
+        logging.getLogger(__name__).error("Profile resume processing error: %s", e)
         
         profile.resume_processed = False
-        
         profile.save(update_fields=["resume_processed"])
         
-        return False
+        return False, f"An unexpected error occurred while processing your resume: {str(e)}"
+
 
 @login_required
 def profile(request):
@@ -217,7 +223,7 @@ def profile(request):
 
             # Process new resume
             if resume_changed:
-                processed = process_profile_resume(profile)
+                processed, err_msg = process_profile_resume(profile)
                 
                 if processed:
                     messages.success(request,
@@ -225,8 +231,8 @@ def profile(request):
                                     "Job recommendations have been updated.")
                 else:
                     messages.error(request,
-                                    "Your resume was uploaded, but it could not be processed. "
-                                    "Please Try Again.")
+                                    err_msg or ("Your resume was uploaded, but it could not be processed. "
+                                    "Please Try Again."))
                     
             else:
                 messages.success(request, 
@@ -248,9 +254,12 @@ def profile(request):
     # Calculate recommendations AFTER profile is loaded/saved
     recommended_jobs = get_recommended_jobs(profile)
     
-    applications = Application.objects.filter(
-        applicant=request.user
-    ).select_related("job", "video_interview").order_by("-created_at")
+    applications = (
+        Application.objects.filter(applicant=request.user)
+        .select_related("job", "video_interview")
+        .defer("ai_summary", "ai_strengths", "ai_weaknesses")
+        .order_by("-created_at")
+    )
 
     return render(
         request,
@@ -341,3 +350,10 @@ def process_signup_resume(request):
             },
             status=500
         )
+
+
+def forgot_password(request):
+    return render(request, "accounts/forgot_password.html")
+
+def verify_password_otp(request):
+    return render(request, "accounts/verify_otp.html")

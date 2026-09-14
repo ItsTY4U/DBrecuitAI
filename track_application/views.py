@@ -19,9 +19,12 @@ def track_application(request):
         })
 
     application_id = request.GET.get("application_id", "").strip()
-    application = Application.objects.filter(
-        application_id=application_id
-    ).select_related("job").first()
+    application = (
+        Application.objects.filter(application_id=application_id)
+        .select_related("job")
+        .defer("ai_summary", "ai_strengths", "ai_weaknesses")
+        .first()
+    )
     
     return render(request, "applications/partials/tracking_result.html", {
         "application": application,

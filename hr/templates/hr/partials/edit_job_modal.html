@@ -1,0 +1,170 @@
+<!-- Edit Job Details Modal (Loaded via HTMX into #edit-job-modal-container) -->
+<div class="modal-overlay active" id="edit-job-modal">
+    <div class="modal-content post-job-card post-job-card-wide">
+        <button type="button" class="close-modal-btn" id="close-edit-modal" aria-label="Close modal">
+            <i class="fas fa-xmark"></i>
+        </button>
+
+        <div class="modal-header">
+            <div class="modal-icon-badge icon-blue">
+                <i class="fas fa-pen-to-square"></i>
+            </div>
+            <div>
+                <div class="title-with-badge" style="display: flex; align-items: center; gap: 10px;">
+                    <h2 class="modal-title">Edit Job: {{ job.title }}</h2>
+                    {% if job.status == 'Active' %}
+                        <span class="status-pill status-hired">Active</span>
+                    {% else %}
+                        <span class="status-pill status-screening">Inactive</span>
+                    {% endif %}
+                </div>
+                <p class="modal-subtitle">Update job details, status, description, and qualification criteria.</p>
+            </div>
+        </div>
+
+        <form id="manage-job-form"
+              method="POST"
+              action="{% url 'manage_job' job.pk %}"
+              hx-post="{% url 'manage_job' job.pk %}"
+              hx-target="#job-management-content"
+              hx-swap="outerHTML">
+            {% csrf_token %}
+
+            <div class="two-col-form-grid">
+                <!-- LEFT COLUMN: General details, status, description -->
+                <div class="form-col-left">
+                    <div class="form-section-title">
+                        <i class="fas fa-info-circle"></i>
+                        <span>General Information</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="edit-modal-title">Job Title <span class="required-star">*</span></label>
+                        <input type="text" id="edit-modal-title" name="title" value="{{ job.title }}" class="form-input" required>
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="edit-modal-dept">Department <span class="required-star">*</span></label>
+                            <input type="text" id="edit-modal-dept" name="department" value="{{ job.department }}" list="edit-department-list" class="form-input" required>
+                            <datalist id="edit-department-list">
+                                {% for dept in all_departments %}
+                                <option value="{{ dept }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-modal-type">Employment Type</label>
+                            <select id="edit-modal-type" name="job_type" class="form-select">
+                                <option value="FULL-TIME" {% if job.job_type == "FULL-TIME" %}selected{% endif %}>Full-Time</option>
+                                <option value="PART-TIME" {% if job.job_type == "PART-TIME" %}selected{% endif %}>Part-Time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2col">
+                        <div class="form-group">
+                            <label class="form-label" for="edit-modal-schedule">Work Schedule</label>
+                            <input type="text" id="edit-modal-schedule" name="schedule" value="{{ job.schedule|default:'' }}" class="form-input" placeholder="e.g. Monday to Friday">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-modal-shift">Shift Hours</label>
+                            <input type="text" id="edit-modal-shift" name="shift" value="{{ job.shift|default:'' }}" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
+                        </div>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-toggle-on"></i>
+                        <span>Visibility & Status</span>
+                    </div>
+
+                    <div class="form-group status-toggle-group">
+                        <label class="form-label" for="edit-status-toggle">Job Status</label>
+                        <div class="status-toggle-card">
+                            <label class="toggle-switch" for="edit-status-toggle">
+                                <input type="checkbox" id="edit-status-toggle" class="status-toggle-input" {% if job.status == 'Active' %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <div class="status-toggle-info">
+                                <span class="status-toggle-label {% if job.status == 'Active' %}status-active{% else %}status-inactive{% endif %}" id="status-display-badge">
+                                    {% if job.status == 'Active' %}Active{% else %}Inactive{% endif %}
+                                </span>
+                                <span class="status-toggle-desc" id="status-display-desc">
+                                    {% if job.status == 'Active' %}Publicly visible & open for applications{% else %}Archived & closed to applications{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <input type="hidden" name="status" id="edit-status" value="{{ job.status }}" data-initial-status="{{ job.status }}">
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-align-left"></i>
+                        <span>Role Description</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-textarea" rows="6">{{ job.description }}</textarea>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: Requirements & Key Qualifications -->
+                <div class="form-col-right">
+                    <div class="form-section-title">
+                        <i class="fas fa-list-check"></i>
+                        <span>Requirements</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">General Requirements</label>
+                        <textarea name="requirements" class="form-textarea" rows="6" placeholder="Enter the general requirements for this position...">{{ job.requirements }}</textarea>
+                        <small class="form-help">
+                            Free-form requirements shown to applicants (skills, experience, degree, etc).
+                        </small>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 24px;">
+                        <i class="fas fa-star"></i>
+                        <span>Key Qualifications</span>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="req-header-row">
+                            <span class="req-hint">Criteria used by the AI during screening (not shown to applicants):</span>
+                            <button type="button" class="btn-add-req-chip" id="edit-add-key-qualification">
+                                <i class="fas fa-plus"></i> Add Qualification
+                            </button>
+                        </div>
+                        <div id="key-qualifications-container" class="requirements-container">
+                            {% for qualification in key_qualifications %}
+                            <div class="requirement-row">
+                                <input type="text" name="key_qualifications" value="{{ qualification.text }}" class="form-input" required>
+                                <button type="button" class="remove-requirement" title="Remove qualification">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </div>
+                            {% empty %}
+                            <div class="requirement-row">
+                                <input type="text" name="key_qualifications" class="form-input" placeholder="Enter a key qualification..." required>
+                                <button type="button" class="remove-requirement" title="Remove qualification">
+                                    <i class="fas fa-trash-can"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <small class="form-help">
+                            These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer-actions">
+                <button type="button" class="btn-modal-cancel" id="cancel-edit-modal">Cancel</button>
+                <button type="submit" class="btn-modal-submit">
+                    <i class="fas fa-floppy-disk"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

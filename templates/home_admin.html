@@ -32,9 +32,9 @@
 </head>
 <body class="dashboard-body light-bg">
     <div class="bg-container dim"></div>
-    <div class="dashboard-container" id="admin-root" hx-boost="true" hx-select="#admin-root" hx-target="#admin-root" hx-swap="outerHTML show:top">
+    <div class="dashboard-container" id="admin-root">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" hx-boost="true" hx-select="#admin-root" hx-target="#admin-root" hx-swap="outerHTML show:top">
             <div class="sidebar-logo">
                 <a href="{% url 'dashboard' %}">
                     <img src="{% static "images/logo.png" %}" alt="DBRecruitAI" width="140" height="40">

@@ -91,9 +91,8 @@ LOGOUT_REDIRECT_URL = "applicant_login"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
+    "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
 
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -125,6 +124,17 @@ TEMPLATES = [
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "dbrecruitai-locmem-cache",
+        "TIMEOUT": 300,
+        "OPTIONS": {
+            "MAX_ENTRIES": 2000,
+        },
+    }
+}
+
 WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
@@ -132,10 +142,18 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 IS_VERCEL = bool(os.getenv("VERCEL"))
 
+db_engine = os.getenv("DB_ENGINE", "django.db.backends.postgresql")
+if db_engine in ("sqlite", "sqlite3"):
+    db_engine = "django.db.backends.sqlite3"
+
+db_name = os.getenv("DB_NAME")
+if db_engine == "django.db.backends.sqlite3" and not db_name:
+    db_name = str(BASE_DIR / "db.sqlite3")
+
 DATABASES = {
     "default": {
-        "ENGINE": os.getenv("DB_ENGINE", "django.db.backends.postgresql"),
-        "NAME": os.getenv("DB_NAME"),
+        "ENGINE": db_engine,
+        "NAME": db_name,
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
@@ -260,6 +278,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
+# Reverse proxy SSL and host detection (e.g. Vercel, Cloudflare)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 # Production Security Hardening
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True") == "True"
@@ -276,3 +298,26 @@ if not DEBUG:
 
 # Static files cache headers for production CDN / browser caching
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
+WHITENOISE_MANIFEST_STRICT = False
+
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APP": {
+            "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
+            "secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
+            "key": "",
+        },
+        "SCOPE": [
+            "profile",
+            "email",
+        ],
+    }
+}
+
+# Gmail API Configuration
+GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID", "")
+GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
+GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN", "")
+GMAIL_SENDER_EMAIL = os.getenv("GMAIL_SENDER_EMAIL", "DBRecruitAI <noreply@dbrecruitai.com>")
+SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://127.0.0.1:8000")
+

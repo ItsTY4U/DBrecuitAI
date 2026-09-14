@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% block title %}Login | DBRecruitAI{% endblock %} 
 {% load socialaccount %}
 
 {% block content %}
@@ -80,6 +81,12 @@
                     </button>
 
                 </form>
+
+                <p class="login-switch">
+                    <a href="{% url 'forgot_password' %}">
+                        Forgot Password?
+                    </a>
+                </p>
 
                 <p class="login-switch">
                     Don't have an account?

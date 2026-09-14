@@ -1,5 +1,6 @@
 # Environments
 .env
+.env.example
 .venv/
 venv/
 env/
@@ -27,4 +28,3 @@ hr.zip
 .gitignore
 pyrightconfig.json
 .env.example
-.gitignore

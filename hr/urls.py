@@ -4,16 +4,22 @@ from . import views
 urlpatterns = [
     path("login/", views.hr_login, name="hr_login"),
     path("logout/", views.hr_logout, name="hr_logout"),
-    
     path("", views.dashboard, name="dashboard"),
     
     path("jobs/", views.job_management, name="job_management"),
     path("jobs/create/", views.create_job, name="create_job"),
     path("jobs/<int:pk>/", views.manage_job, name="manage_job"),
+    path("departments/create/", views.create_department, name="create_department"),
     
     path("candidates/", 
         views.candidates, 
         name="candidates"),
+
+    path(
+        "candidates/job/<int:job_id>/table/",
+        views.candidate_job_table,
+        name="candidate_job_table",
+    ),
 
     path(
         "candidates/department/<str:department>/",

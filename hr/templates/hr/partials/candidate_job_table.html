@@ -1,0 +1,179 @@
+{% load static %}
+<div class="job-candidate-table-inner">
+    {% if table_data.is_search %}
+    <div class="table-search-active-banner">
+        <div class="search-banner-info">
+            <i class="fas fa-search"></i>
+            <span>Results for <strong>"{{ table_data.search_query }}"</strong> in {{ job.title }} ({{ table_data.total_count }} match{{ table_data.total_count|pluralize:"es" }})</span>
+        </div>
+        <button type="button" 
+                class="btn-clear-search"
+                title="Clear search"
+                hx-get="{% url 'candidate_job_table' job.id %}" 
+                hx-target="#job-table-{{ job.id }}" 
+                hx-select=".job-candidate-table-inner"
+                hx-swap="innerHTML"
+                onclick="const inp = document.getElementById('search-input-{{ job.id }}'); if(inp){ inp.value = ''; }">
+            <i class="fas fa-times"></i> Clear Search
+        </button>
+    </div>
+    {% endif %}
+
+    {% if table_data.candidates %}
+    <div class="table-responsive">
+        <table class="candidate-data-table">
+            <thead>
+                <tr>
+                    <th class="th-rank">Rank</th>
+                    <th class="th-candidate">Candidate</th>
+                    <th class="th-id">Application ID</th>
+                    <th class="th-date">Applied Date</th>
+                    <th class="th-score">AI Score</th>
+                    <th class="th-status">Status</th>
+                    <th class="th-action text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for candidate in table_data.candidates %}
+                <tr class="candidate-row">
+                    <td class="td-rank">
+                        <span class="rank-badge rank-sub">#{{ candidate.table_rank }}</span>
+                    </td>
+                    <td class="td-candidate">
+                        <div class="table-applicant-info">
+                            <div class="table-avatar">
+                                {{ candidate.first_name|first|upper }}{{ candidate.last_name|first|upper }}
+                            </div>
+                            <div class="applicant-meta">
+                                <span class="table-candidate-name">
+                                    {{ candidate.first_name }}
+                                    {% if candidate.middle_initial %}{{ candidate.middle_initial }}.{% endif %}
+                                    {{ candidate.last_name }}
+                                </span>
+                                <span class="table-candidate-sub">
+                                    {{ candidate.email }}{% if candidate.phone %} &bull; {{ candidate.phone }}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="td-id">
+                        <span class="app-id-tag">
+                            <i class="fas fa-hashtag"></i> {{ candidate.application_id }}
+                        </span>
+                    </td>
+                    <td class="td-date">
+                        <span class="applied-date-text">
+                            <i class="far fa-calendar-alt"></i> {{ candidate.created_at|date:"M d, Y" }}
+                        </span>
+                    </td>
+                    <td class="td-score">
+                        <span class="ai-score-pill
+                            {% if candidate.ai_score >= 90 %}
+                                score-high
+                            {% elif candidate.ai_score >= 75 %}
+                                score-mid
+                            {% else %}
+                                score-low
+                            {% endif %}">
+                            <i class="fas fa-bolt"></i> {{ candidate.ai_score }}%
+                        </span>
+                    </td>
+                    <td class="td-status">
+                        <span class="status-pill status-{{ candidate.status|lower }}">
+                            {{ candidate.status }}
+                        </span>
+                    </td>
+                    <td class="td-action text-right">
+                        <a href="{% url 'candidate_detail' candidate.id %}" class="btn-table-review" title="Review candidate profile">
+                            <span>Review</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-table-state">
+        <div class="empty-table-icon">
+            <i class="fas {% if table_data.is_search %}fa-search-minus{% else %}fa-user-check{% endif %}"></i>
+        </div>
+        {% if table_data.is_search %}
+        <h5>No candidates found matching "{{ table_data.search_query }}"</h5>
+        <p>Try searching by a different name, email, or application ID.</p>
+        {% else %}
+        <h5>No additional candidates beyond Top 3</h5>
+        <p>{% if job.applicant_count > 0 %}All {{ job.applicant_count }} applicant{{ job.applicant_count|pluralize }} are displayed in the top candidate cards above.{% else %}No applications have been submitted for this position yet.{% endif %}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Pagination Controls (Always visible, disabled if no candidates / single page) -->
+    <div class="pagination-controls">
+        <div class="pagination-info">
+            {% if table_data.candidates %}
+                Showing <strong>{{ table_data.start_index }}–{{ table_data.end_index }}</strong> of <strong>{{ table_data.total_count }}</strong> candidate{{ table_data.total_count|pluralize }}
+                {% if table_data.is_search %}for search{% endif %}
+            {% elif table_data.is_search %}
+                Showing <strong>0</strong> matching candidates
+            {% elif table_data.total_count > 0 %}
+                Showing <strong>0</strong> additional candidates (Top {{ table_data.total_count }} in cards above)
+            {% else %}
+                Showing <strong>0</strong> of <strong>0</strong> candidates
+            {% endif %}
+        </div>
+        <div class="pagination-nav">
+            {% if table_data.has_previous %}
+            <button type="button" 
+                    class="page-btn page-btn-prev"
+                    hx-get="{% url 'candidate_job_table' job.id %}?page={{ table_data.previous_page }}{% if table_data.search_query %}&search={{ table_data.search_query|urlencode }}{% endif %}"
+                    hx-target="#job-table-{{ job.id }}"
+                    hx-select=".job-candidate-table-inner"
+                    hx-swap="innerHTML">
+                <i class="fas fa-chevron-left"></i> Prev
+            </button>
+            {% else %}
+            <button type="button" class="page-btn page-btn-disabled" disabled aria-disabled="true">
+                <i class="fas fa-chevron-left"></i> Prev
+            </button>
+            {% endif %}
+
+            {% if table_data.candidates and table_data.total_pages > 1 %}
+                {% for p in table_data.page_range %}
+                    {% if p == table_data.current_page %}
+                    <span class="page-num page-num-active">{{ p }}</span>
+                    {% elif p == 1 or p == table_data.total_pages or p >= table_data.current_page|add:"-2" and p <= table_data.current_page|add:"2" %}
+                    <button type="button"
+                            class="page-num"
+                            hx-get="{% url 'candidate_job_table' job.id %}?page={{ p }}{% if table_data.search_query %}&search={{ table_data.search_query|urlencode }}{% endif %}"
+                            hx-target="#job-table-{{ job.id }}"
+                            hx-select=".job-candidate-table-inner"
+                            hx-swap="innerHTML">
+                        {{ p }}
+                    </button>
+                    {% elif p == table_data.current_page|add:"-3" or p == table_data.current_page|add:"3" %}
+                    <span class="page-ellipsis">…</span>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <span class="page-num {% if not table_data.candidates %}page-num-disabled{% else %}page-num-active{% endif %}">1</span>
+            {% endif %}
+
+            {% if table_data.has_next %}
+            <button type="button" 
+                    class="page-btn page-btn-next"
+                    hx-get="{% url 'candidate_job_table' job.id %}?page={{ table_data.next_page }}{% if table_data.search_query %}&search={{ table_data.search_query|urlencode }}{% endif %}"
+                    hx-target="#job-table-{{ job.id }}"
+                    hx-select=".job-candidate-table-inner"
+                    hx-swap="innerHTML">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+            {% else %}
+            <button type="button" class="page-btn page-btn-disabled" disabled aria-disabled="true">
+                Next <i class="fas fa-chevron-right"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>

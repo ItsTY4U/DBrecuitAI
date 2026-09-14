@@ -2,6 +2,7 @@
 .github
 .venv
 venv
+env
 __pycache__
 *.pyc
 *.pyo
@@ -9,5 +10,14 @@ __pycache__
 *.sqlite3
 .env
 media
+staticfiles
+node_modules
+*.sql
+*.zip
 .gitignore
-README.md
+.vscode
+.pytest_cache
+.coverage
+htmlcov
+check_db_schema.py
+pyrightconfig.json
