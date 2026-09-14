@@ -25,3 +25,6 @@ staticfiles/
 jobs/views.txt
 hr.zip
 .gitignore
+pyrightconfig.json
+.env.example
+.gitignore
