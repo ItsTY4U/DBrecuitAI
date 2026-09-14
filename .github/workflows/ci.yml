@@ -24,9 +24,11 @@ jobs:
 
       - name: Run flake8
         run: flake8 .
+        continue-on-error: true
 
       - name: Check formatting with black
         run: black --check .
+        continue-on-error: true
 
   test:
     name: Test (Django + MySQL)

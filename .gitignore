@@ -26,7 +26,5 @@ staticfiles/
 jobs/views.txt
 hr.zip
 .gitignore
-check_cols.py
-static/images/asd.jpg
-config/settings.py
 pyrightconfig.json
+.env.example

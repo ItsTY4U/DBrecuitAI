@@ -40,8 +40,14 @@
            hx-swap="innerHTML">
             <i class="fas fa-pen-to-square"></i> Re-activate / Edit
         </a>
+        {% if job.applicant_count %}
         <a href="{% url 'candidates' %}?department={{ job.department|urlencode }}&job={{ job.id }}" class="btn-job-view">
             <i class="fas fa-users-viewfinder"></i> Candidates
         </a>
+        {% else %}
+        <button type="button" class="btn-job-view" disabled title="No applicants yet for this position">
+            <i class="fas fa-users-viewfinder"></i> Candidates
+        </button>
+        {% endif %}
     </div>
 </div>
