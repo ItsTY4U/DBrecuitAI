@@ -10,12 +10,28 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='job',
-            index=models.Index(fields=['status'], name='jobs_job_status_7d017a_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='job',
-            index=models.Index(fields=['department', 'status'], name='jobs_job_departm_844426_idx'),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddIndex(
+                    model_name='job',
+                    index=models.Index(fields=['status'], name='jobs_job_status_7d017a_idx'),
+                ),
+                migrations.AddIndex(
+                    model_name='job',
+                    index=models.Index(fields=['department', 'status'], name='jobs_job_departm_844426_idx'),
+                ),
+            ],
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                    CREATE INDEX IF NOT EXISTS "jobs_job_status_7d017a_idx" ON "jobs_job" ("status");
+                    CREATE INDEX IF NOT EXISTS "jobs_job_departm_844426_idx" ON "jobs_job" ("department", "status");
+                    """,
+                    reverse_sql="""
+                    DROP INDEX IF EXISTS "jobs_job_status_7d017a_idx";
+                    DROP INDEX IF EXISTS "jobs_job_departm_844426_idx";
+                    """,
+                ),
+            ],
         ),
     ]

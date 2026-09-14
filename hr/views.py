@@ -261,6 +261,7 @@ def create_department(request):
         response["HX-Trigger"] = "closeDeptModal"
         return response
 
+    messages.success(request, "New department created successfully!")
     return redirect("job_management")
 
 @never_cache
@@ -297,6 +298,14 @@ def create_job(request):
                     text=qualification
                 )
         invalidate_hr_cache()
+
+        if request.headers.get("HX-Request"):
+            data = get_job_management_context()
+            response = render(request, "hr/partials/job_management_content.html", data)
+            response["HX-Trigger"] = "closePostModal"
+            return response
+
+        messages.success(request, "New job created successfully!")
     return redirect("job_management")
 
 @never_cache
@@ -348,6 +357,7 @@ def manage_job(request, pk):
             response["HX-Trigger"] = "closeEditModal"
             return response
 
+        messages.success(request, "Changes saved successfully!")
         return redirect("job_management")
         
     requirements = job.requirements_list.all()
