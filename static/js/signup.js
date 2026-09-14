@@ -1,4 +1,77 @@
+/*
+=========================================
+PASSWORD VISIBILITY TOGGLE
+=========================================
+*/
+
+function togglePassword(targetId, btn) {
+    let input = null;
+
+    if (typeof targetId === "string") {
+        input = document.getElementById(targetId);
+    } else if (targetId && targetId.tagName === "INPUT") {
+        input = targetId;
+    }
+
+    if (!input && btn) {
+        const wrapper = btn.closest(".password-wrapper, .reset-password-wrapper");
+        if (wrapper) {
+            input = wrapper.querySelector("input");
+        }
+    }
+
+    if (!input) {
+        console.warn("togglePassword: target input not found", targetId);
+        return;
+    }
+
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+
+    if (btn) {
+        let icon = btn.querySelector("i");
+        if (!icon) {
+            btn.innerHTML = '<i class="fa-regular ' + (isPassword ? 'fa-eye-slash' : 'fa-eye') + '"></i>';
+            icon = btn.querySelector("i");
+        } else {
+            if (isPassword) {
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        }
+
+        const label = isPassword ? "Hide password" : "Show password";
+        btn.setAttribute("aria-label", label);
+        btn.setAttribute("title", label);
+    }
+}
+
+window.togglePassword = togglePassword;
+
 document.addEventListener("DOMContentLoaded", function () {
+
+    /*
+    =========================================
+    PASSWORD TOGGLE EVENT LISTENER
+    =========================================
+    */
+    document.querySelectorAll(".password-toggle").forEach(function (button) {
+        if (!button.querySelector("i")) {
+            button.innerHTML = '<i class="fa-regular fa-eye"></i>';
+        }
+
+        button.addEventListener("click", function (e) {
+            if (button.hasAttribute("onclick")) {
+                return;
+            }
+            e.preventDefault();
+            const targetId = button.getAttribute("data-target");
+            togglePassword(targetId, button);
+        });
+    });
 
 /*
 =========================================

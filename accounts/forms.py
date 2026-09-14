@@ -181,6 +181,16 @@ class ApplicantLoginForm(AuthenticationForm):
             }
         )
     )
+
+    password = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(
+            attrs={
+                "placeholder": "Enter your password",
+                "autocomplete": "current-password",
+            }
+        )
+    )
     
 class ApplicantUserForm(forms.ModelForm):
 
@@ -255,7 +265,7 @@ class ApplicantProfileForm(forms.ModelForm):
                 raise forms.ValidationError("Resume file must not exceed 5MB.")
         return resume
         
-class ApplicantAuthenticationForm(AuthenticationForm):
+class ApplicantAuthenticationForm(ApplicantLoginForm):
     def confirm_login_allowed(self, user):
         
         if user.is_staff or user.is_superuser:

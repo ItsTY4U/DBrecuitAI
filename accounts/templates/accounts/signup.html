@@ -79,20 +79,23 @@
                         <div class="password-wrapper">
                             {{ form.password1 }}
 
-                            {% if form.password1.errors %}
-                                <div class="form-error">
-                                    {{ form.password1.errors }}
-                                </div>
-                            {% endif %}
-
                             <button
                                 type="button"
                                 class="password-toggle"
+                                data-target="id_password1"
                                 onclick="togglePassword('id_password1', this)"
+                                aria-label="Show password"
+                                title="Show password"
                             >
-                                👁
+                                <i class="fa-regular fa-eye"></i>
                             </button>
                         </div>
+
+                        {% if form.password1.errors %}
+                            <div class="form-error">
+                                {{ form.password1.errors }}
+                            </div>
+                        {% endif %}
 
                         <!-- Password Strength Meter -->
                         <div class="strength-meter">
@@ -132,9 +135,12 @@
                             <button
                                 type="button"
                                 class="password-toggle"
+                                data-target="id_password2"
                                 onclick="togglePassword('id_password2', this)"
+                                aria-label="Show password"
+                                title="Show password"
                             >
-                                👁
+                                <i class="fa-regular fa-eye"></i>
                             </button>
                         </div>
 
