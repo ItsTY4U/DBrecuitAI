@@ -15,7 +15,12 @@
             </div>
         </div>
 
-        <form id="post-job-form" method="POST" action="{% url "create_job" %}" hx-boost="false">
+        <form id="post-job-form"
+              method="POST"
+              action="{% url 'create_job' %}"
+              hx-post="{% url 'create_job' %}"
+              hx-target="#job-management-content"
+              hx-swap="outerHTML">
             {% csrf_token %}
 
             <div class="two-col-form-grid">

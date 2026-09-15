@@ -29,6 +29,7 @@
     <noscript>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     </noscript>
+
 </head>
 <body class="dashboard-body light-bg">
     <div class="bg-container dim"></div>
@@ -54,6 +55,19 @@
                     <a href="{% url "interviews" %}" class="nav-link menu-link"><i class="fas fa-calendar-check"></i> <span>Interviews</span></a>
                 </li>
             </ul>
+            <div id="sidebar-alert-container" class="sidebar-alert-container">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="sidebar-alert alertify-banner alertify-{{ message.tags|default:'success' }}">
+                            <div class="alertify-content">
+                                <i class="fas {% if message.tags == 'error' %}fa-circle-xmark{% elif message.tags == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" class="alertify-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
             <div class="sidebar-footer">
                 <ul class="sidebar-footer-menu">
                     <li class="menu-item">

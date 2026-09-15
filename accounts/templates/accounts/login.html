@@ -59,9 +59,12 @@
                             <button
                                 type="button"
                                 class="password-toggle"
+                                data-target="id_password"
                                 onclick="togglePassword('id_password', this)"
+                                aria-label="Show password"
+                                title="Show password"
                             >
-                                👁
+                                <i class="fa-regular fa-eye"></i>
                             </button>
 
                         </div>
@@ -81,6 +84,12 @@
                     </button>
 
                 </form>
+
+                <p class="login-switch">
+                    <a href="{% url 'forgot_password' %}">
+                        Forgot Password?
+                    </a>
+                </p>
 
                 <p class="login-switch">
                     Don't have an account?
