@@ -292,42 +292,6 @@
                     {{ application.ai_summary|default:"The candidate profile and resume have been processed. Review the detailed breakdown below." }}
                 </p>
             </div>
-
-            {% with strengths=application.ai_strengths|splitlines_clean %}
-                {% if strengths %}
-                <div class="ai-breakdown-section">
-                    <h4 class="ai-section-title text-green">
-                        <i class="fas fa-circle-check"></i> Key Strengths & Qualifications
-                    </h4>
-                    <ul class="ai-points-list strengths-list">
-                        {% for item in strengths %}
-                        <li>
-                            <i class="fas fa-check text-green"></i>
-                            <span>{{ item }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            {% endwith %}
-
-            {% with weaknesses=application.ai_weaknesses|splitlines_clean %}
-                {% if weaknesses %}
-                <div class="ai-breakdown-section">
-                    <h4 class="ai-section-title text-amber">
-                        <i class="fas fa-triangle-exclamation"></i> Potential Gaps / Areas to Probe
-                    </h4>
-                    <ul class="ai-points-list gaps-list">
-                        {% for item in weaknesses %}
-                        <li>
-                            <i class="fas fa-exclamation text-amber"></i>
-                            <span>{{ item }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-            {% endwith %}
         </div>
 
         <!-- AI Video Interview Intelligence Card -->

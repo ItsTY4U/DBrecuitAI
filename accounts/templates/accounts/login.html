@@ -103,10 +103,13 @@
                         <span>OR</span>
                     </div>
 
-                    <a href="{% provider_login_url 'google' %}" class="google-login-btn">
-                        <i class="fab fa-google"></i>
-                        Continue with Google
-                    </a>
+                    <form method="post" action="{% provider_login_url 'google' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="google-login-btn">
+                            <i class="fab fa-google"></i>
+                            Continue with Google
+                        </button>
+                    </form>
                 </div>
 
             </div>

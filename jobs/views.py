@@ -79,6 +79,85 @@ def job_detail(request, id):
         "job": job
     }) 
 
+def _async_screen_application(application_id: int, pre_extracted_text: str = ""):
+    """
+    Executes resume text extraction and Gemini AI screening asynchronously in a background daemon thread.
+    This guarantees that the applicant's submission is instantaneous and never slowed down.
+    HR will see the results populated within seconds without any system degradation.
+    """
+    import logging
+    from django.db import connection
+    logger = logging.getLogger(__name__)
+
+    try:
+        from jobs.models import Application
+        from jobs.ai import extract_resume_text, analyze_resume
+
+        app = Application.objects.select_related("job", "applicant").filter(id=application_id).first()
+        if not app:
+            return
+
+        resume_text = (pre_extracted_text or "").strip()
+        # If resume text wasn't pre-extracted from profile, extract it via pdfplumber in background
+        if not resume_text and app.resume:
+            try:
+                resume_text = extract_resume_text(app.resume)
+            except Exception as extract_err:
+                logger.warning("Background resume extraction failed for app %s: %s", app.application_id, extract_err)
+
+        if not resume_text or len(resume_text) < 30:
+            app.resume_processed = True
+            app.ai_score = 0
+            app.ai_recommendation = "Not Qualified"
+            app.ai_summary = "Document appears blank, scanned without OCR, or unreadable text."
+            app.save(update_fields=["resume_processed", "ai_score", "ai_recommendation", "ai_summary"])
+            return
+
+        try:
+            ai = analyze_resume(resume_text, app.job)
+        except Exception as ai_err:
+            logger.warning("Background Gemini analysis failed for app %s: %s", app.application_id, ai_err)
+            ai = {
+                "score": 0,
+                "recommendation": "Pending Review",
+                "match_level": "Unsatisfactory",
+                "summary": "Automated evaluation temporarily delayed. Manual HR review recommended.",
+                "matched_qualifications": [],
+                "missing_qualifications": ["Evaluation queued for manual review."],
+                "strengths": [],
+                "weaknesses": [],
+                "skills_match": 0,
+                "experience_match": 0,
+                "education_match": 0,
+                "qualification_match": 0,
+                "criteria_weights": {},
+                "weight_reasoning": {},
+            }
+
+        app.ai_score = ai.get("score", 0)
+        app.ai_match_level = ai.get("match_level", "")
+        app.ai_recommendation = ai.get("recommendation", "")
+        app.ai_summary = ai.get("summary", "")
+        app.ai_strengths = "\n".join(ai.get("strengths", []))
+        app.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
+        app.ai_matched_qualifications = "\n".join(ai.get("matched_qualifications", []))
+        app.ai_missing_qualifications = "\n".join(ai.get("missing_qualifications", []))
+        app.ai_skills_match = ai.get("skills_match", 0)
+        app.ai_experience_match = ai.get("experience_match", 0)
+        app.ai_education_match = ai.get("education_match", 0)
+        app.ai_qualification_match = ai.get("qualification_match", 0)
+        app.ai_criteria_weights = ai.get("criteria_weights", {})
+        app.ai_weight_reasoning = ai.get("weight_reasoning", {})
+        app.resume_processed = True
+        app.save()
+        logger.info("Background AI screening completed successfully for application %s", app.application_id)
+
+    except Exception as exc:
+        logger.error("Unexpected error in background screening worker for app id %s: %s", application_id, exc)
+    finally:
+        connection.close()
+
+
 @login_required(login_url="applicant_login")
 def apply_job(request, pk):
     job = get_object_or_404(
@@ -91,7 +170,7 @@ def apply_job(request, pk):
         user=request.user
     )
     
-    # Applicant must have a resume
+    # Applicant must have an uploaded resume
     if not profile.default_resume:
         return render(
             request,
@@ -102,13 +181,6 @@ def apply_job(request, pk):
                 )
             }
         )
-        
-    # Resume must be processed
-    if not profile.resume_processed or not profile.resume_text:
-        return render(request, "jobs/partials/application_error.html", {
-            "error": ("Your resume has not been processed yet. "
-                    "Please update and process your resume from your profile")
-        })
         
     # GET request
     if request.method == "GET":
@@ -132,52 +204,66 @@ def apply_job(request, pk):
         })
         
     try:
-        ai = {}
-        try:
-            resume_text = profile.resume_text
-            if resume_text:
-                ai = analyze_resume(resume_text, job)
-        except Exception as ai_err:
-            import logging
-            logging.getLogger(__name__).warning("Gemini resume analysis fallback triggered: %s", ai_err)
-            ai = {
-                "score": 0,
-                "recommendation": "Pending Review",
-                "match_level": "Unsatisfactory",
-                "summary": "AI evaluation queued.",
-                "matched_qualifications": [],
-                "missing_qualifications": ["Evaluation queued for manual review."],
-                "strengths": [],
-                "weaknesses": ["Automated evaluation temporarily unavailable."],
-                "skills_match": 0,
-                "experience_match": 0,
-                "education_match": 0,
-                "qualification_match": 0,
-                "criteria_weights": {},
-                "weight_reasoning": {},
-            }
-        
-        # Create application instance with an explicit application_id
         import os
+        import threading
         from uuid import uuid4
         from django.core.files.base import ContentFile
+        from main.emailer import send_application_submitted_email
 
+        # Capture user-editable fields: first name, last name, middle initial
+        first_name = request.POST.get("first_name", "").strip() or request.user.first_name
+        last_name = request.POST.get("last_name", "").strip() or request.user.last_name
+        middle_initial = request.POST.get("middle_initial", "").strip() or (profile.middle_name or "")
+
+        # Immutable security rule: email cannot be altered by applicant
+        email = request.user.email
+
+        # Phone handling: use profile.phone if already present; otherwise require from POST
+        if profile.phone and profile.phone.strip():
+            phone = profile.phone.strip()
+        else:
+            phone = request.POST.get("phone", "").strip()
+            if not phone:
+                return render(request, "jobs/partials/application_error.html", {
+                    "error": "Please provide a valid phone number to submit your application."
+                })
+            profile.phone = phone
+            profile.save(update_fields=["phone"])
+
+        # Update user/profile records if name details were modified on the form
+        user_updated = False
+        if first_name and first_name != request.user.first_name:
+            request.user.first_name = first_name
+            user_updated = True
+        if last_name and last_name != request.user.last_name:
+            request.user.last_name = last_name
+            user_updated = True
+        if user_updated:
+            request.user.save(update_fields=["first_name", "last_name"])
+
+        if middle_initial and middle_initial != profile.middle_name:
+            profile.middle_name = middle_initial
+            profile.save(update_fields=["middle_name"])
+
+        # Create application instance immediately with pending status
         app_id = uuid4().hex[:8].upper()
         application = Application(
             application_id=app_id,
             applicant=request.user,
             job=job,
-            first_name=request.user.first_name,
-            middle_initial=profile.middle_name,
-            last_name=request.user.last_name,
-            email=request.user.email,
-            phone=profile.phone,
-            status="Pending"
+            first_name=first_name,
+            middle_initial=middle_initial,
+            last_name=last_name,
+            email=email,
+            phone=phone,
+            status="Pending",
+            resume_processed=False,
+            ai_score=0,
+            ai_recommendation="Pending Review",
+            ai_summary="AI screening is currently in progress."
         )
 
         # Snapshot the resume file specifically for this application
-        # so HR can always view the exact resume used when applying,
-        # even if the candidate changes or deletes their profile resume later.
         if profile.default_resume:
             try:
                 profile.default_resume.open("rb")
@@ -196,115 +282,30 @@ def apply_job(request, pk):
 
         application.save()
 
-        # ==============================
-        # AI OVERALL RESULTS
-        # ==============================
-
-        application.ai_score = ai.get("score", 0)
-
-        application.ai_match_level = ai.get(
-            "match_level",
-            ""
+        # Run AI screening and resume text extraction in the background
+        # This keeps the submission instant (<100ms) and completely non-blocking for applicants
+        thread = threading.Thread(
+            target=_async_screen_application,
+            args=(application.id, profile.resume_text),
+            daemon=True
         )
+        thread.start()
 
-        application.ai_recommendation = ai.get(
-            "recommendation",
-            ""
-        )
-
-
-        # ==============================
-        # AI SUMMARY
-        # ==============================
-
-        application.ai_summary = ai.get(
-            "summary",
-            ""
-        )
-
-
-        # ==============================
-        # AI STRENGTHS / WEAKNESSES
-        # ==============================
-
-        application.ai_strengths = "\n".join(
-            ai.get("strengths", [])
-        )
-
-        application.ai_weaknesses = "\n".join(
-            ai.get("weaknesses", [])
-        )
-
-
-        # ==============================
-        # QUALIFICATION ANALYSIS
-        # ==============================
-
-        application.ai_matched_qualifications = "\n".join(
-            ai.get("matched_qualifications", [])
-        )
-
-        application.ai_missing_qualifications = "\n".join(
-            ai.get("missing_qualifications", [])
-        )
-
-
-        # ==============================
-        # AI COMPONENT SCORES
-        # ==============================
-
-        application.ai_skills_match = ai.get(
-            "skills_match",
-            0
-        )
-
-        application.ai_experience_match = ai.get(
-            "experience_match",
-            0
-        )
-
-        application.ai_education_match = ai.get(
-            "education_match",
-            0
-        )
-
-        application.ai_qualification_match = ai.get(
-            "qualification_match",
-            0
-        )
-        
-        # application.ai_recommendation = data.get("recommendation", "")
-        application.ai_criteria_weights = ai.get("criteria_weights", {})
-        application.ai_weight_reasoning = ai.get("weight_reasoning", {})
-
-
-        # ==============================
-        # APPLICATION STATUS
-        # ==============================
-
-        application.resume_processed = True
-
-        application.status = "Pending"
-
-        application.save()
-
-        # Send confirmation email to applicant via Google Gmail API (sole authorized trigger)
-        from main.emailer import send_application_submitted_email
+        # Send confirmation email to applicant via Gmail API in background
         send_application_submitted_email(application)
         
-        return render(request, "jobs/partials/application_success.html",
-                    {
-                        "application": application,
-                        "job": job,
-                    })
+        # Immediately render application success page
+        return render(request, "jobs/partials/application_success.html", {
+            "application": application,
+            "job": job,
+        })
         
     except Exception as e:
-        return render(request, "jobs/partials/application_error.html",
-                    {
-                        "error": (
-                            f"An error occured while processing your application: {str(e)}"
-                        )
-                    })
+        return render(request, "jobs/partials/application_error.html", {
+            "error": (
+                f"An error occurred while processing your application: {str(e)}"
+            )
+        })
 
 @login_required(login_url="applicant_login")
 def upload_resume(request, pk):

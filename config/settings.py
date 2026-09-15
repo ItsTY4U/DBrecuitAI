@@ -300,6 +300,9 @@ if not DEBUG:
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 WHITENOISE_MANIFEST_STRICT = False
 
+# Allauth Social Account Settings - Bypass intermediate confirmation page
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APP": {
