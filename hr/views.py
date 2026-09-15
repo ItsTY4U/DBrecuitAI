@@ -407,7 +407,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
                 Q(email__icontains=search_query)
             )
             .only(*base_fields)
-            .order_by("-ai_score", "-created_at")
+            .order_by("-ai_score", "-created_at", "id")
         )
         total_matching = search_qs.count()
         total_pages = max(1, math.ceil(total_matching / TABLE_PAGE_SIZE)) if total_matching > 0 else 1
@@ -416,8 +416,15 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         offset = (page_number - 1) * TABLE_PAGE_SIZE
         candidates_page = list(search_qs[offset : offset + TABLE_PAGE_SIZE])
 
-        for idx, cand in enumerate(candidates_page):
-            cand.table_rank = offset + idx + 1
+        if candidates_page:
+            all_job_app_ids = list(
+                Application.objects.filter(job=job)
+                .order_by("-ai_score", "-created_at", "id")
+                .values_list("id", flat=True)
+            )
+            rank_map = {app_id: idx + 1 for idx, app_id in enumerate(all_job_app_ids)}
+            for cand in candidates_page:
+                cand.table_rank = rank_map.get(cand.id, 1)
 
         start_idx = offset + 1 if total_matching > 0 else 0
         end_idx = min(offset + TABLE_PAGE_SIZE, total_matching)
@@ -448,7 +455,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         candidates_page = list(
             Application.objects.filter(job=job)
             .only(*base_fields)
-            .order_by("-ai_score", "-created_at")[offset : offset + TABLE_PAGE_SIZE]
+            .order_by("-ai_score", "-created_at", "id")[offset : offset + TABLE_PAGE_SIZE]
         )
 
         for idx, cand in enumerate(candidates_page):
@@ -518,7 +525,7 @@ def candidates(request):
         top_candidates = list(
             Application.objects.filter(job=job)
             .only(*base_candidate_fields)
-            .order_by("-ai_score", "-created_at")[:3]
+            .order_by("-ai_score", "-created_at", "id")[:3]
         )
         for idx, cand in enumerate(top_candidates):
             cand.top_rank = idx + 1

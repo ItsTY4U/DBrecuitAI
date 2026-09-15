@@ -127,6 +127,9 @@ class CandidateManagementTests(TestCase):
         self.assertTrue(table_data["is_search"])
         self.assertEqual(table_data["total_count"], 1)
         self.assertEqual(table_data["candidates"][0].id, target_app.id)
+        # Candidate true rank must be preserved in search results (Applicant6 is rank 6)
+        self.assertEqual(table_data["candidates"][0].table_rank, 6)
+        self.assertContains(response, "#6")
         self.assertContains(response, target_app.first_name)
         self.assertContains(response, target_app.application_id)
 
