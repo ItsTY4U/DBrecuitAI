@@ -26,5 +26,10 @@ staticfiles/
 jobs/views.txt
 hr.zip
 .gitignore
+check_cols.py
+static/images/asd.jpg
+pyrightconfig.json
+CAPSTONE-MANUSCRIPT-Ctrl-Alt-Innovate.pdf
+extracted_manuscript.txt
 pyrightconfig.json
 .env.example

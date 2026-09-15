@@ -7,124 +7,117 @@
         <div class="step-content">
 
             <h2 class="step-title">
-                Review Your Application
+                Review & Confirm Application
             </h2>
 
             <p class="step-subtitle">
-                Please review your information before submitting your application.
+                Please verify your personal details. You can update your name if needed.
             </p>
 
-
-            <div class="form-grid">
-
-                <div class="form-group">
-
-                    <label>First Name</label>
-
-                    <input
-                        type="text"
-                        value="{{ request.user.first_name }}"
-                        readonly
-                    >
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label>Last Name</label>
-
-                    <input
-                        type="text"
-                        value="{{ request.user.last_name }}"
-                        readonly
-                    >
-
-                </div>
-
-
-                <div class="form-group sm">
-
-                    <label>M.I</label>
-
-                    <input
-                        type="text"
-                        value="{{ profile.middle_name }}"
-                        readonly
-                    >
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label>Email Address</label>
-
-                    <input
-                        type="email"
-                        value="{{ request.user.email }}"
-                        readonly
-                    >
-
-                </div>
-
-
-                <div class="form-group">
-
-                    <label>Phone Number</label>
-
-                    <input
-                        type="text"
-                        value="{{ profile.phone }}"
-                        readonly
-                    >
-
-                </div>
-
-            </div>
-
-
-            <!-- Default Resume -->
-
-            <div class="attached-file">
-
-                <i class="fas fa-file-pdf"></i>
-
-                <span class="file-name">
-
-                    {% if profile.default_resume %}
-
-                        {{ profile.default_resume.name|cut:"resumes/" }}
-
-                        ({{ profile.default_resume.size|filesizeformat }})
-
-                    {% else %}
-
-                        No resume uploaded
-
-                    {% endif %}
-
-                </span>
-
-            </div>
-
-
-            <!-- Submit Application -->
-
+            <!-- Submit Application Form -->
             <form
                 method="POST"
                 hx-post="{% url 'apply' job.pk %}"
                 hx-target="#apply-flow"
                 hx-swap="innerHTML"
-                hx-indicator="#application-processing"
+                hx-indicator="#submitting-indicator"
                 hx-disabled-elt="#btn-submit"
             >
-
                 {% csrf_token %}
 
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label for="first_name">First Name</label>
+                        <input
+                            type="text"
+                            id="first_name"
+                            name="first_name"
+                            value="{{ request.user.first_name }}"
+                            placeholder="Enter your first name"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="last_name">Last Name</label>
+                        <input
+                            type="text"
+                            id="last_name"
+                            name="last_name"
+                            value="{{ request.user.last_name }}"
+                            placeholder="Enter your last name"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group sm">
+                        <label for="middle_initial">M.I.</label>
+                        <input
+                            type="text"
+                            id="middle_initial"
+                            name="middle_initial"
+                            value="{{ profile.middle_name|default:'' }}"
+                            maxlength="10"
+                            placeholder="M.I."
+                        >
+                    </div>
+
+                    <div class="form-group col-span-1">
+                        <label for="email">Email Address</label>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            value="{{ request.user.email }}"
+                            readonly
+                            class="input-locked"
+                            tabindex="-1"
+                        >
+                    </div>
+
+                    <div class="form-group col-span-2">
+                        <label for="phone">Phone Number</label>
+                        {% if profile.phone %}
+                            <input
+                                type="text"
+                                id="phone"
+                                name="phone"
+                                value="{{ profile.phone }}"
+                                readonly
+                                class="input-locked"
+                                tabindex="-1"
+                            >
+                        {% else %}
+                            <input
+                                type="tel"
+                                id="phone"
+                                name="phone"
+                                value=""
+                                placeholder="Enter your phone number (e.g. 09123456789)"
+                                required
+                            >
+                        {% endif %}
+                    </div>
+
+                </div>
+
+                <!-- Default Resume Attached -->
+                <div class="attached-file">
+                    <i class="fas fa-file-pdf"></i>
+                    <div class="file-info-col">
+                        <span class="file-label">Attached Resume</span>
+                        <span class="file-name">
+                            {% if profile.default_resume %}
+                                {{ profile.default_resume.name|cut:"resumes/" }} ({{ profile.default_resume.size|filesizeformat }})
+                            {% else %}
+                                No resume uploaded
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
 
                 <div class="form-actions">
-
                     <a
                         class="btn btn-outline-alt"
                         href="{% url 'job_detail' job.pk %}"
@@ -132,29 +125,19 @@
                         Cancel
                     </a>
 
-
                     <button
                         class="btn btn-primary"
                         id="btn-submit"
                         type="submit"
                     >
-                        Submit Application
+                        <span class="btn-text">Submit Application</span>
+                        <span class="btn-spinner htmx-indicator" id="submitting-indicator">
+                            <i class="fas fa-spinner fa-spin"></i> Submitting...
+                        </span>
                     </button>
-
                 </div>
 
             </form>
-
-            <div id="application-processing" class="application-processing htmx-indicator">
-                <div class="processing-content">
-                    <div class="processing-spinner"></div>
-                    <h2>Processing Your Application</h2>
-                    <p>
-                        Our AI is analyzing your resume and matching
-                        your qualifications with this job.
-                    </p>
-                </div>
-            </div>
 
         </div>
 
