@@ -14,6 +14,7 @@
     <div class="login-screen">
         <div class="login-logo-container">
             <a href="{% url "home" %}"><img src="{% static "images/logo.png" %}" alt="DBRecruitAI Logo"></a>
+            <div class="loader" id="hr-loader" role="status" aria-label="Loading"></div>
         </div>
         <div class="login-card">
             <div class="login-header">
@@ -52,5 +53,6 @@
     </div>
 
     <script src="{% static "js/main.js" %}"></script>
+    <script src="{% static "js/hr_loader.js" %}"></script>
 </body>
 </html>
