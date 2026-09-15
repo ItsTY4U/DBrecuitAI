@@ -560,8 +560,8 @@ body {
 /* Form Grid */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr) 80px;
-    gap: 20px;
+    grid-template-columns: repeat(2, 1fr) 90px;
+    gap: 16px 20px;
     margin-bottom: 30px;
 }
 
@@ -574,45 +574,142 @@ body {
 .form-group label {
     font-size: 13px;
     font-weight: 700;
-    color: #555;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.badge-editable {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    background: #eff6ff;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-locked {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .form-group input {
     padding: 12px 15px;
-    border: 1px solid #ddd;
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
     outline: none;
     font-family: inherit;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:not(.input-locked):focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.form-group input.input-locked {
+    background-color: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.field-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: -2px;
 }
 
 .form-group.sm {
     grid-column: span 1;
 }
 
+.form-group.col-span-1 {
+    grid-column: span 1;
+}
+
+.form-group.col-span-2 {
+    grid-column: span 2;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    .form-group.col-span-2,
+    .form-group.sm {
+        grid-column: span 1;
+    }
+}
+
 .attached-file {
     display: flex;
     align-items: center;
-    gap: 12px;
-    background: #e9ecef;
-    padding: 15px 25px;
+    gap: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 16px 22px;
     border-radius: 10px;
-    margin-bottom: 40px;
+    margin-bottom: 32px;
 }
 
 .attached-file i {
     font-size: 24px;
-    color: #666;
+    color: #e11d48;
+}
+
+.file-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.file-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: 0.5px;
 }
 
 .file-name {
     font-weight: 600;
-    color: #444;
+    color: #1e293b;
+    font-size: 14px;
 }
 
 .form-actions {
     display: flex;
     justify-content: flex-end;
     gap: 15px;
+}
+
+.btn-spinner {
+    display: none;
+}
+
+.htmx-request#btn-submit .btn-spinner,
+.htmx-request #submitting-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.htmx-request#btn-submit .btn-text,
+.htmx-request #btn-submit .btn-text {
+    display: none;
 }
 
 /* ── Application Success Page ─────────────────────────── */

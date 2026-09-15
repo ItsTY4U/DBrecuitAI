@@ -451,3 +451,89 @@ class RecommendationLogicTests(unittest.TestCase):
         empty_profile.resume_text = ""
         empty_profile.default_resume = None
         self.assertEqual(get_recommended_jobs(empty_profile), [])
+
+    @patch("main.emailer.send_application_submitted_email")
+    @patch("jobs.views._async_screen_application")
+    def test_apply_job_allows_name_edit_and_locks_email_phone(self, mock_async_screen, mock_send_email):
+        """Applicants can edit names but email and phone remain strictly locked to their account."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Ensure user has a default resume
+        self.profile.default_resume = SimpleUploadedFile("my_resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+        self.profile.phone = "09123456789"
+        self.profile.save()
+
+        self.client.force_login(self.user)
+        post_data = {
+            "first_name": "Alexander",
+            "last_name": "Reyes-Updated",
+            "middle_initial": "M",
+            # Attempt to tamper with email and phone
+            "email": "malicious@tamper.com",
+            "phone": "09999999999",
+        }
+
+        response = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "jobs/partials/application_success.html")
+
+        # Verify application record
+        app = Application.objects.get(applicant=self.user, job=self.job)
+        self.assertEqual(app.first_name, "Alexander")
+        self.assertEqual(app.last_name, "Reyes-Updated")
+        self.assertEqual(app.middle_initial, "M")
+        # Ensure email and phone could NOT be tampered with
+        self.assertEqual(app.email, self.user.email)
+        self.assertEqual(app.phone, "09123456789")
+        # Ensure initial state is non-blocking pending
+        self.assertEqual(app.status, "Pending")
+        self.assertFalse(app.resume_processed)
+
+        # Ensure background worker was spawned
+        mock_async_screen.assert_called_once()
+        mock_send_email.assert_called_once()
+
+    @patch("jobs.ai.analyze_resume")
+    def test_async_screen_application_updates_ai_score(self, mock_analyze):
+        """_async_screen_application processes resume and populates AI rubric fields."""
+        from jobs.views import _async_screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        mock_analyze.return_value = {
+            "score": 88,
+            "match_level": "Proficient",
+            "recommendation": "Recommended",
+            "summary": "Candidate matches coffee brewing role.",
+            "strengths": ["Strong barista background"],
+            "weaknesses": [],
+            "matched_qualifications": ["Customer service"],
+            "missing_qualifications": [],
+            "skills_match": 90,
+            "experience_match": 85,
+            "education_match": 80,
+            "qualification_match": 95,
+            "criteria_weights": {"skills_weight": 25},
+            "weight_reasoning": {},
+        }
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Alex",
+            last_name="Reyes",
+            email=self.user.email,
+            phone="09123456789",
+            resume=SimpleUploadedFile("alex_resume.pdf", b"%PDF-1.4 dummy text", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        _async_screen_application(app.id, pre_extracted_text="Barista with customer service and coffee skills.")
+        app.refresh_from_db()
+
+        self.assertTrue(app.resume_processed)
+        self.assertEqual(app.ai_score, 88)
+        self.assertEqual(app.ai_recommendation, "Recommended")
+        self.assertEqual(app.ai_match_level, "Proficient")
+        self.assertEqual(app.ai_skills_match, 90)
+
