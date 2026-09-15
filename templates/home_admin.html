@@ -40,6 +40,7 @@
                 <a href="{% url 'dashboard' %}">
                     <img src="{% static "images/logo.png" %}" alt="DBRecruitAI" width="140" height="40">
                 </a>
+                <div class="loader" id="hr-loader" role="status" aria-label="Loading"></div>
             </div>
             <ul class="sidebar-menu">
                 <li class="menu-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
@@ -85,5 +86,6 @@
     </div>
     <script src="{% static "js/modal.js" %}"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="{% static "js/hr_loader.js" %}"></script>
 </body>
 </html>
