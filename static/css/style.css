@@ -1163,10 +1163,36 @@ body {
 
 .login-logo-container {
     margin-bottom: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.login-logo-container a {
+    display: inline-block;
 }
 
 .login-logo-container img {
     height: 100px;
+}
+
+.login-logo-container .loader {
+    scale: 0.75;
+    margin: -10px -8px;
+    flex-shrink: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+}
+
+body.hr-loading .login-logo-container .loader,
+.login-logo-container .loader.is-active,
+.login-logo-container .loader.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .login-card {
@@ -1358,20 +1384,76 @@ body {
     z-index: 100;
 }
 
+/* Global Loader */
+/* HTML: <div class="loader"></div> */
+.loader {
+  width: 70px;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(farthest-side,#ffa516 90%,#0000) center/16px 16px,
+    radial-gradient(farthest-side,green   90%,#0000) bottom/12px 12px;
+  background-repeat: no-repeat;
+  animation: l17 1s infinite linear;
+  position: relative;
+}
+.loader::before {    
+  content:"";
+  position: absolute;
+  width: 8px;
+  aspect-ratio: 1;
+  inset: auto 0 16px;
+  margin: auto;
+  background: #ccc;
+  border-radius: 50%;
+  transform-origin: 50% calc(100% + 10px);
+  animation: inherit;
+  animation-duration: 0.5s;
+}
+@keyframes l17 { 
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .sidebar-logo { 
-    padding: 0 24px 28px; 
+    padding: 0 20px 24px; 
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 52px;
 }
 
 .sidebar-logo a {
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .sidebar-logo img { 
     width: 140px; 
     height: auto;
     display: block;
+}
+
+/* Sidebar Loader Integration (Right side of logo) */
+.sidebar-logo .loader {
+    scale: 0.55;
+    margin: -15px -12px;
+    flex-shrink: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+}
+
+body.hr-loading .sidebar-logo .loader,
+.sidebar-logo .loader.is-active,
+.sidebar-logo .loader.active,
+.sidebar-logo .loader.htmx-request,
+.htmx-request .sidebar-logo .loader {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .sidebar-menu { 
