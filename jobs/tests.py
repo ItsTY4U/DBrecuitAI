@@ -537,3 +537,40 @@ class RecommendationLogicTests(unittest.TestCase):
         self.assertEqual(app.ai_match_level, "Proficient")
         self.assertEqual(app.ai_skills_match, 90)
 
+    @patch("main.emailer.send_application_submitted_email")
+    @patch("jobs.views._async_screen_application")
+    def test_apply_job_requires_phone_if_empty_on_profile(self, mock_async_screen, mock_send_email):
+        """If profile phone is empty, applicant must enter phone, and it is saved to profile and application."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.profile.default_resume = SimpleUploadedFile("resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+        self.profile.phone = ""
+        self.profile.save()
+
+        self.client.force_login(self.user)
+
+        # 1. Missing phone submission fails
+        res_fail = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
+            "first_name": "Alex",
+            "last_name": "Reyes",
+            "phone": "",
+        })
+        self.assertEqual(res_fail.status_code, 200)
+        self.assertContains(res_fail, "Please provide a valid phone number")
+
+        # 2. Provided phone submission succeeds and updates profile
+        res_ok = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
+            "first_name": "Alex",
+            "last_name": "Reyes",
+            "phone": "09876543210",
+        })
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertTemplateUsed(res_ok, "jobs/partials/application_success.html")
+
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.phone, "09876543210")
+
+        app = Application.objects.get(applicant=self.user, job=self.job)
+        self.assertEqual(app.phone, "09876543210")
+
+

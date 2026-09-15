@@ -28,10 +28,7 @@
                 <div class="form-grid">
 
                     <div class="form-group">
-                        <label for="first_name">
-                            First Name
-                            <span class="badge-editable"><i class="fas fa-pen"></i> Editable</span>
-                        </label>
+                        <label for="first_name">First Name</label>
                         <input
                             type="text"
                             id="first_name"
@@ -43,10 +40,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="last_name">
-                            Last Name
-                            <span class="badge-editable"><i class="fas fa-pen"></i> Editable</span>
-                        </label>
+                        <label for="last_name">Last Name</label>
                         <input
                             type="text"
                             id="last_name"
@@ -58,10 +52,7 @@
                     </div>
 
                     <div class="form-group sm">
-                        <label for="middle_initial">
-                            M.I.
-                            <span class="badge-editable"><i class="fas fa-pen"></i></span>
-                        </label>
+                        <label for="middle_initial">M.I.</label>
                         <input
                             type="text"
                             id="middle_initial"
@@ -73,10 +64,7 @@
                     </div>
 
                     <div class="form-group col-span-1">
-                        <label for="email">
-                            Email Address
-                            <span class="badge-locked"><i class="fas fa-lock"></i> Locked</span>
-                        </label>
+                        <label for="email">Email Address</label>
                         <input
                             type="email"
                             id="email"
@@ -86,24 +74,30 @@
                             class="input-locked"
                             tabindex="-1"
                         >
-                        <small class="field-hint">Account email cannot be modified.</small>
                     </div>
 
                     <div class="form-group col-span-2">
-                        <label for="phone">
-                            Phone Number
-                            <span class="badge-locked"><i class="fas fa-lock"></i> Locked</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="phone"
-                            name="phone"
-                            value="{{ profile.phone|default:'' }}"
-                            readonly
-                            class="input-locked"
-                            tabindex="-1"
-                        >
-                        <small class="field-hint">Account phone number cannot be modified.</small>
+                        <label for="phone">Phone Number</label>
+                        {% if profile.phone %}
+                            <input
+                                type="text"
+                                id="phone"
+                                name="phone"
+                                value="{{ profile.phone }}"
+                                readonly
+                                class="input-locked"
+                                tabindex="-1"
+                            >
+                        {% else %}
+                            <input
+                                type="tel"
+                                id="phone"
+                                name="phone"
+                                value=""
+                                placeholder="Enter your phone number (e.g. 09123456789)"
+                                required
+                            >
+                        {% endif %}
                     </div>
 
                 </div>

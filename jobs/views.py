@@ -215,9 +215,20 @@ def apply_job(request, pk):
         last_name = request.POST.get("last_name", "").strip() or request.user.last_name
         middle_initial = request.POST.get("middle_initial", "").strip() or (profile.middle_name or "")
 
-        # Immutable security rule: email and phone cannot be altered by applicant
+        # Immutable security rule: email cannot be altered by applicant
         email = request.user.email
-        phone = profile.phone or ""
+
+        # Phone handling: use profile.phone if already present; otherwise require from POST
+        if profile.phone and profile.phone.strip():
+            phone = profile.phone.strip()
+        else:
+            phone = request.POST.get("phone", "").strip()
+            if not phone:
+                return render(request, "jobs/partials/application_error.html", {
+                    "error": "Please provide a valid phone number to submit your application."
+                })
+            profile.phone = phone
+            profile.save(update_fields=["phone"])
 
         # Update user/profile records if name details were modified on the form
         user_updated = False
