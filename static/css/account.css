@@ -953,6 +953,11 @@ body {
     border: 1px solid #fca5a5;
 }
 
+.profile-message.fade-out {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
 @keyframes messageSlideDown {
 
     from {
