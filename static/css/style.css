@@ -2552,7 +2552,8 @@ body.hr-loading .sidebar-logo .loader,
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .dashboard-grid {
+    .dashboard-grid,
+    .candidate-details-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -3543,13 +3544,19 @@ body.hr-loading .sidebar-logo .loader,
 .candidate-details-grid {
     display: grid;
     grid-template-columns: 1fr 380px;
-    /* gap: 24px;*/
+    gap: 24px;
     align-items: start;
+}
+
+.eval-column,
+.info-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .ai-eval-box {
     margin-bottom: 24px;
-    margin-right: 24px;
 }
 
 .ai-score-badge-large {
