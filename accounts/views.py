@@ -279,13 +279,25 @@ def profile(request):
                 messages.error(request, resume_limit_err)
                 return redirect("profile")
 
+        post_data = request.POST.copy()
+        if not post_data.get("email"):
+            post_data["email"] = request.user.email
+        if "first_name" not in post_data:
+            post_data["first_name"] = request.user.first_name
+        if "last_name" not in post_data:
+            post_data["last_name"] = request.user.last_name
+        if "phone" not in post_data:
+            post_data["phone"] = profile.phone or ""
+        if "address" not in post_data:
+            post_data["address"] = profile.address or ""
+
         user_form = ApplicantUserForm(
-            request.POST,
+            post_data,
             instance=request.user
         )
 
         profile_form = ApplicantProfileForm(
-            request.POST,
+            post_data,
             request.FILES,
             instance=profile
         )
