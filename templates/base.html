@@ -40,8 +40,7 @@
                 <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profile</a>
                 <a href="{% url 'applicant_logout' %}" class="nav-link nav-btn-link">Logout</a>
                 {% else %}
-                <a href="{% url 'applicant_login' %}" class="nav-link {% if request.resolver_match.url_name == 'applicant_login' or request.resolver_match.url_name == 'forgot_password' or request.resolver_match.url_name == 'verify_password_otp' or request.resolver_match.url_name == 'reset_password' %}active{% endif %}">Sign In</a>
-                <a href="{% url 'signup' %}" class="nav-link nav-btn-signup {% if request.resolver_match.url_name == 'signup' %}active{% endif %}">Sign Up</a>
+                <a href="{% url 'applicant_login' %}" class="nav-link nav-btn-signup nav-btn-signin {% if request.resolver_match.url_name == 'applicant_login' or request.resolver_match.url_name == 'forgot_password' or request.resolver_match.url_name == 'verify_password_otp' or request.resolver_match.url_name == 'reset_password' %}active{% endif %}">Sign In</a>
                 {% endif %}
             </nav>
         </header>
@@ -60,7 +59,6 @@
         integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" 
         crossorigin="anonymous" defer>
     </script>
-    <script src="{% static 'js/signup.js' %}" defer></script>
     
     <script>
         // Universal Mobile Navbar Toggle

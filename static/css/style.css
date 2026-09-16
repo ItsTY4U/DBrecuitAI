@@ -146,7 +146,8 @@ body {
     background: rgba(192, 57, 43, 0.08) !important;
 }
 
-.nav-btn-signup {
+.nav-btn-signup,
+.nav-btn-signin {
     background: var(--primary);
     color: #ffffff !important;
     padding: 8px 18px;
@@ -154,14 +155,16 @@ body {
     box-shadow: 0 4px 12px rgba(45, 90, 39, 0.25);
 }
 
-.nav-btn-signup:hover {
+.nav-btn-signup:hover,
+.nav-btn-signin:hover {
     background: #1e3d1a !important;
     color: #ffffff !important;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(45, 90, 39, 0.35);
 }
 
-.nav-btn-signup.active::after {
+.nav-btn-signup.active::after,
+.nav-btn-signin.active::after {
     display: none;
 }
 
@@ -224,7 +227,8 @@ body {
         bottom: 6px;
     }
 
-    .nav-btn-signup {
+    .nav-btn-signup,
+    .nav-btn-signin {
         text-align: center;
         margin-top: 4px;
     }
