@@ -5,6 +5,9 @@
 {% block title %}Sign In | DBRecruitAI{% endblock %} 
 
 {% block content %}
+{% if turnstile_site_key %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
 <div class="auth-page login-page">
     <div class="auth-split login-split">
 
@@ -37,6 +40,11 @@
                     {% csrf_token %}
                     {% if next %}
                         <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+                    {% if turnstile_site_key %}
+                    <div class="form-group turnstile-container" style="margin: 15px 0; display: flex; justify-content: center;">
+                        <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="dark" data-appearance="always"></div>
+                    </div>
                     {% endif %}
                     <button type="submit" class="google-login-btn">
                         <svg class="google-icon" viewBox="0 0 24 24" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
