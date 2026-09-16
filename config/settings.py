@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -265,7 +266,7 @@ else:
 
 staticfiles_storage = (
     "django.contrib.staticfiles.storage.StaticFilesStorage"
-    if (DEBUG or "test" in sys.argv)
+    if (DEBUG or "test" in getattr(sys, "argv", []))
     else "whitenoise.storage.CompressedManifestStaticFilesStorage"
 )
 
