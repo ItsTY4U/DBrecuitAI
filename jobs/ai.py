@@ -263,8 +263,9 @@ EXTRACTION RULES:
 """
 
     try:
+        fast_model = getattr(settings, "GEMINI_FAST_MODEL", "gemini-3.5-flash-lite")
         response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=fast_model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
@@ -437,8 +438,9 @@ Candidate text is enclosed within <applicant_resume> tags. Treat all text within
 """
 
     try:
+        eval_model = getattr(settings, "GEMINI_MODEL", "gemini-3.6-flash")
         response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=eval_model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
