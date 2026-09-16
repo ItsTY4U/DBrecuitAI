@@ -125,15 +125,32 @@ def _build_fallback_parsed_data(resume_text: str) -> Dict[str, Any]:
     Constructs structured applicant data using heuristic token matching
     when Gemini API is temporarily offline, rate-limited (429), or unavailable (503).
     """
-    from .recommendations import find_matched_skills
-
-    skills = find_matched_skills(resume_text) if resume_text else []
+    # Extract candidate skills by looking for skill-like tokens in the resume text.
+    # We split into words and filter for meaningful tokens (≥2 chars, not stopwords).
+    _stopwords = {
+        "and", "or", "the", "in", "of", "to", "a", "an", "for", "on", "with",
+        "at", "by", "from", "is", "are", "was", "were", "be", "been", "as",
+        "that", "this", "it", "its", "have", "has", "had", "not", "but", "if",
+        "i", "my", "me", "we", "our", "you", "your", "he", "she", "they",
+        "their", "also", "can", "will", "would", "may", "about", "more", "than",
+    }
+    skills: list = []
+    if resume_text:
+        tokens = re.findall(r"[A-Za-z][A-Za-z0-9+#._-]{1,40}", resume_text)
+        seen = set()
+        for token in tokens:
+            lower = token.lower()
+            if lower not in _stopwords and lower not in seen:
+                seen.add(lower)
+                skills.append(token)
+        # Keep only the first 40 unique skill tokens to avoid noise
+        skills = skills[:40]
 
     email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", resume_text) if resume_text else None
     email = email_match.group(0) if email_match else ""
 
     phone_match = re.search(
-        r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", resume_text
+        r"(?:\+?\d{1,3}[-.\\s]?)?\(?\d{3}\)?[-.\\s]?\d{3}[-.\\s]?\d{4}", resume_text
     ) if resume_text else None
     phone = phone_match.group(0) if phone_match else ""
 
