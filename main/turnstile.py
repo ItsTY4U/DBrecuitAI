@@ -12,6 +12,10 @@ def verify_turnstile(response_token: str, remote_ip: str = None) -> tuple[bool, 
     Verifies a Cloudflare Turnstile response token with Cloudflare's API.
     Returns (is_valid, error_message).
     """
+    # Bypass verification while DEBUG = True to speed up development & testing
+    if getattr(settings, "DEBUG", False):
+        return True, ""
+
     secret_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SECRET_KEY", "")
 
     # If testing dummy secret key is configured and no token provided during offline automated tests

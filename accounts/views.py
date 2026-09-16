@@ -34,7 +34,7 @@ def signup(request):
         return redirect("home")
 
     form = ApplicantSignupForm()
-    turnstile_site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
+    turnstile_site_key = "" if getattr(settings, "DEBUG", False) else getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
 
     if request.method == "POST":
         # 1. Rate limiting & spam prevention (strictly 3 per hour per IP and per email, with debounce)
@@ -161,7 +161,7 @@ def applicant_login(request):
             return redirect("dashboard")
         return redirect("home")
     
-    turnstile_site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
+    turnstile_site_key = "" if getattr(settings, "DEBUG", False) else getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
 
     form = ApplicantAuthenticationForm(
         request, 
@@ -188,7 +188,7 @@ def applicant_login(request):
             
             next_url = request.POST.get("next") or request.GET.get("next")
             
-            if next_url and not next_url.startswitch("/superadmin"):
+            if next_url and not next_url.startswith("/superadmin"):
                 return redirect(next_url)
             return redirect("home")
         

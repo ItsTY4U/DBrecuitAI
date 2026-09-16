@@ -1,4 +1,5 @@
 import time
+from django.conf import settings
 from django.core.cache import cache
 
 
@@ -35,6 +36,10 @@ def check_rate_limit(
     Returns:
         (is_limited: bool, error_message: str)
     """
+    # Bypass all rate limiting and debounce while DEBUG = True to speed up development & testing
+    if getattr(settings, "DEBUG", False):
+        return False, ""
+
     ip = get_client_ip(request)
 
     # Resolve account identifier

@@ -1,4 +1,4 @@
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.db import IntegrityError
@@ -7,6 +7,7 @@ from main.turnstile import verify_turnstile
 from jobs.models import Job, Application
 
 
+@override_settings(DEBUG=False)
 class SecurityRateLimitTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -19,6 +20,21 @@ class SecurityRateLimitTests(TestCase):
 
     def tearDown(self):
         cache.clear()
+
+    @override_settings(DEBUG=True)
+    def test_security_bypassed_when_debug_true(self):
+        """When DEBUG=True, rate limiting and Turnstile are completely bypassed for fast testing."""
+        request = self.factory.post("/test-endpoint/", REMOTE_ADDR="198.51.100.1")
+        # 10 attempts in a row should all be allowed
+        for _ in range(10):
+            is_limited, err = check_rate_limit(request, action_key="test_debug", limit=3)
+            self.assertFalse(is_limited)
+            self.assertEqual(err, "")
+
+        # Turnstile without any token should also pass
+        valid, err = verify_turnstile("", remote_ip="127.0.0.1")
+        self.assertTrue(valid)
+        self.assertEqual(err, "")
 
     def test_rate_limit_allows_3_and_blocks_4th_per_ip(self):
         """Verify that exactly 3 actions per hour are permitted per IP, and the 4th is blocked."""
@@ -113,10 +129,11 @@ class SecurityRateLimitTests(TestCase):
         self.assertFalse(valid)
         self.assertIn("Cloudflare security verification", err)
 
-        # Cloudflare dummy test token passes
-        valid, err = verify_turnstile("XXXX.DUMMY.TOKEN.XXXX", remote_ip="127.0.0.1")
-        self.assertTrue(valid)
-        self.assertEqual(err, "")
+        # Cloudflare dummy test token passes with official test secret key
+        with override_settings(CLOUDFLARE_TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"):
+            valid, err = verify_turnstile("XXXX.DUMMY.TOKEN.XXXX", remote_ip="127.0.0.1")
+            self.assertTrue(valid)
+            self.assertEqual(err, "")
 
     def test_duplicate_job_application_prevention(self):
         """Verify that the same applicant cannot apply to the same job twice (unique constraint)."""
