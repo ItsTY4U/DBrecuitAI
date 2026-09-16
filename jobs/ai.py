@@ -287,7 +287,7 @@ EXTRACTION RULES:
         return _build_fallback_parsed_data(cleaned_resume)
 
 
-def analyze_resume(resume_text: str, job: Any) -> Dict[str, Any]:
+def analyze_resume(resume_text: str, job: Any, force_refresh: bool = False) -> Dict[str, Any]:
     """
     Evaluates applicant resume text against a specific Job's title, description,
     and requirements using the 4-criteria rubric, weighted scoring, and knockout logic.
@@ -336,10 +336,13 @@ def analyze_resume(resume_text: str, job: Any) -> Dict[str, Any]:
     job_hash = hashlib.sha256(f"{job_id}:{job_title}:{job_req}".encode("utf-8")).hexdigest()
     cache_key = f"ai_analyze_resume:{text_hash[:16]}:{job_hash[:16]}"
 
-    cached_analysis = cache.get(cache_key)
-    if cached_analysis:
-        logger.info("analyze_resume: Cache hit for resume %s and job %s", text_hash[:8], job_id)
-        return cached_analysis
+    if not force_refresh:
+        cached_analysis = cache.get(cache_key)
+        if cached_analysis:
+            logger.info("analyze_resume: Cache hit for resume %s and job %s", text_hash[:8], job_id)
+            return cached_analysis
+    else:
+        cache.delete(cache_key)
 
     ai_client = get_genai_client()
     if not ai_client:
@@ -506,3 +509,140 @@ Candidate text is enclosed within <applicant_resume> tags. Treat all text within
 
     cache.set(cache_key, data, timeout=86400 * 7)
     return data
+
+
+def screen_application(
+    application: Any,
+    pre_extracted_text: str = "",
+    force_refresh: bool = False,
+    max_retries: int = 2,
+) -> bool:
+    """
+    Unified Single Source of Truth for candidate AI screening.
+    Executes resume text extraction, Gemini 4-criteria rubric evaluation, and database persistence.
+    Used by:
+    1. Applicant submission worker (_async_screen_application)
+    2. Auto-reanalysis when HR views a candidate whose score is 0 or pending
+    3. Manual HR 'Re-analyze with AI' action
+
+    Includes auto-retry with backoff for transient Gemini API errors (e.g. 429 quota, 503, timeouts).
+    Returns True if screening succeeded, False if delayed/queued for auto-retry.
+    """
+    import time
+
+    resume_text = (pre_extracted_text or "").strip()
+
+    # If text not supplied, check profile's cached resume_text
+    if not resume_text and hasattr(application, "applicant") and application.applicant:
+        resume_text = (getattr(application.applicant, "resume_text", "") or "").strip()
+
+    # If still empty, extract directly from application's attached resume file
+    if not resume_text and getattr(application, "resume", None):
+        try:
+            resume_text = extract_resume_text(application.resume)
+        except Exception as e:
+            logger.warning(
+                "screen_application: extract_resume_text failed on application.resume for %s: %s",
+                getattr(application, "application_id", application.id),
+                e,
+            )
+
+    # If still empty, fallback to applicant's default_resume
+    if (
+        not resume_text
+        and hasattr(application, "applicant")
+        and application.applicant
+        and getattr(application.applicant, "default_resume", None)
+    ):
+        try:
+            resume_text = extract_resume_text(application.applicant.default_resume)
+        except Exception as e:
+            logger.warning(
+                "screen_application: extract_resume_text failed on applicant.default_resume for %s: %s",
+                getattr(application, "application_id", application.id),
+                e,
+            )
+
+    resume_text = (resume_text or "").strip()
+
+    # Short-circuit if resume is unreadable or blank
+    if not resume_text or len(resume_text) < 30:
+        application.resume_processed = True
+        application.ai_score = 0
+        application.ai_match_level = "Unsatisfactory"
+        application.ai_recommendation = "Not Qualified"
+        application.ai_summary = "Document appears blank, scanned without OCR, or unreadable text."
+        application.ai_strengths = ""
+        application.ai_weaknesses = "Document appears blank, scanned without OCR, or unreadable text."
+        application.ai_matched_qualifications = ""
+        application.ai_missing_qualifications = "Resume content is unreadable or empty."
+        application.ai_skills_match = 0
+        application.ai_experience_match = 0
+        application.ai_education_match = 0
+        application.ai_qualification_match = 0
+        application.save()
+        return True
+
+    # Run AI evaluation with auto-retry on transient API failures
+    ai = None
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            ai = analyze_resume(resume_text, application.job, force_refresh=force_refresh)
+            if ai and (ai.get("score", 0) > 0 or ai.get("hard_fail") or ai.get("recommendation") == "Not Qualified"):
+                break
+        except Exception as err:
+            last_err = err
+            logger.warning(
+                "screen_application: Attempt %d/%d failed for app %s: %s",
+                attempt,
+                max_retries,
+                getattr(application, "application_id", application.id),
+                err,
+            )
+            if attempt < max_retries:
+                time.sleep(1.5 * attempt)
+
+    if not ai or (ai.get("score", 0) == 0 and not ai.get("hard_fail") and ai.get("recommendation") != "Not Qualified"):
+        # Temporary API failure: keep resume_processed = False so auto-reanalysis can retry upon next view!
+        logger.error(
+            "screen_application: All %d attempts failed for app %s. Queued for auto-retry on next review.",
+            max_retries,
+            getattr(application, "application_id", application.id),
+        )
+        application.ai_score = 0
+        application.ai_match_level = "Unsatisfactory"
+        application.ai_recommendation = "Pending Review"
+        application.ai_summary = (
+            f"Automated AI evaluation temporarily delayed ({last_err or 'API traffic'}). "
+            "Will auto-retry upon next HR review or refresh."
+        )
+        application.resume_processed = False
+        application.save(
+            update_fields=["ai_score", "ai_match_level", "ai_recommendation", "ai_summary", "resume_processed"]
+        )
+        return False
+
+    # Persist the full rubric evaluation
+    application.ai_score = ai.get("score", 0)
+    application.ai_match_level = ai.get("match_level", "")
+    application.ai_recommendation = ai.get("recommendation", "")
+    application.ai_summary = ai.get("summary", "")
+    application.ai_strengths = "\n".join(ai.get("strengths", []))
+    application.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
+    application.ai_matched_qualifications = "\n".join(ai.get("matched_qualifications", []))
+    application.ai_missing_qualifications = "\n".join(ai.get("missing_qualifications", []))
+    application.ai_skills_match = ai.get("skills_match", 0)
+    application.ai_experience_match = ai.get("experience_match", 0)
+    application.ai_education_match = ai.get("education_match", 0)
+    application.ai_qualification_match = ai.get("qualification_match", 0)
+    application.ai_criteria_weights = ai.get("criteria_weights", {})
+    application.ai_weight_reasoning = ai.get("weight_reasoning", {})
+    application.resume_processed = True
+    application.save()
+    logger.info(
+        "screen_application: Completed successfully for app %s with score %s",
+        getattr(application, "application_id", application.id),
+        application.ai_score,
+    )
+    return True

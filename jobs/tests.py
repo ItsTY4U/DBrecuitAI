@@ -237,6 +237,84 @@ class ApplicantJobPerformanceTests(TestCase):
         self.assertEqual(app.ai_match_level, "Proficient")
         self.assertEqual(app.ai_skills_match, 90)
 
+    @patch("jobs.ai.analyze_resume")
+    def test_screen_application_auto_retries_on_transient_failure(self, mock_analyze):
+        """screen_application automatically retries with backoff if first attempt raises an exception."""
+        from jobs.ai import screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Attempt 1 raises 429 quota exception, Attempt 2 succeeds
+        mock_analyze.side_effect = [
+            Exception("429 Resource Exhausted"),
+            {
+                "score": 85,
+                "match_level": "Proficient",
+                "recommendation": "Recommended",
+                "summary": "Recovered on auto-retry.",
+                "strengths": ["Resilience"],
+                "weaknesses": [],
+                "matched_qualifications": ["Barista"],
+                "missing_qualifications": [],
+                "skills_match": 85,
+                "experience_match": 85,
+                "education_match": 85,
+                "qualification_match": 85,
+                "criteria_weights": {},
+                "weight_reasoning": {},
+            }
+        ]
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Marco",
+            last_name="Diaz",
+            email=self.user.email,
+            phone="09110001111",
+            resume=SimpleUploadedFile("marco.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        success = screen_application(app, pre_extracted_text="Coffee barista with 3 years espresso experience.", max_retries=2)
+        self.assertTrue(success)
+
+        app.refresh_from_db()
+        self.assertTrue(app.resume_processed)
+        self.assertEqual(app.ai_score, 85)
+        self.assertEqual(mock_analyze.call_count, 2)
+
+    @patch("jobs.ai.analyze_resume")
+    def test_screen_application_queues_for_retry_when_all_retries_fail(self, mock_analyze):
+        """When all Gemini retries fail, leaves resume_processed=False and Pending Review so HR auto-reanalyzes."""
+        from jobs.ai import screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        mock_analyze.side_effect = Exception("503 Service Unavailable")
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Nina",
+            last_name="Santos",
+            email=self.user.email,
+            phone="09220002222",
+            resume=SimpleUploadedFile("nina.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        success = screen_application(app, pre_extracted_text="Cashier and barista with high customer satisfaction.", max_retries=2)
+        self.assertFalse(success)
+
+        app.refresh_from_db()
+        # Crucial: resume_processed stays False so HR view will auto-reanalyze!
+        self.assertFalse(app.resume_processed)
+        self.assertEqual(app.ai_score, 0)
+        self.assertEqual(app.ai_recommendation, "Pending Review")
+        self.assertIn("temporarily delayed", app.ai_summary)
+
+
     @patch("main.emailer.send_application_submitted_email")
     @patch("jobs.views._async_screen_application")
     def test_apply_job_requires_phone_if_empty_on_profile(self, mock_async_screen, mock_send_email):
