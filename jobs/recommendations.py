@@ -1,12 +1,12 @@
 import re
-from django.core.cache import cache
 from datetime import datetime
-from django.core.cache import cache
-from .models import Job
-
-
 from functools import lru_cache
+from typing import List, Optional, Tuple
+
+from django.core.cache import cache
+
 from .ai import extract_resume_text, parse_resume
+from .models import Job
 from .rubric import (
     clamp as _clamp,
     match_level as _match_level,
@@ -319,7 +319,7 @@ def build_skill_pattern(skill: str):
     return re.compile(f"{left_boundary}{phrase}{right_boundary}", re.IGNORECASE)
 
 
-def find_matched_skills(applicant_skills, job_text):
+def find_matched_skills(applicant_skills: List[str], job_text: str) -> List[str]:
     """
     Matches a list of applicant skills against job text using normalized,
     token/phrase-aware matching for any industry. Preserves original casing and order.
@@ -341,7 +341,7 @@ def find_matched_skills(applicant_skills, job_text):
     return matched
 
 
-def _match_phrase_in_text(phrase, text):
+def _match_phrase_in_text(phrase: str, text: str) -> bool:
     """
     Check if a word or phrase appears in normalized text with word boundaries,
     preventing false positive substring matches (e.g. 'c' in 'docker').
@@ -356,7 +356,7 @@ def _match_phrase_in_text(phrase, text):
     return bool(re.search(pattern, text, re.IGNORECASE))
 
 
-def _score_skills_match(applicant_skills, job_text, requirements_text):
+def _score_skills_match(applicant_skills: List[str], job_text: str, requirements_text: str) -> Tuple[int, List[str], List[str]]:
     """
     Score Skills (Hard, Soft, & Tools) following the shared rubric:
     90-100 Exceptional: high density (>80%) of core tools & keywords matched

@@ -153,6 +153,7 @@ Return strictly a valid JSON object matching:
                 system_instruction=system_instruction,
                 response_mime_type="application/json",
                 temperature=0.2,
+                max_output_tokens=1500,
             ),
         )
 
@@ -262,6 +263,7 @@ Provide an executive synthesis in JSON conforming strictly to:
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.2,
+                    max_output_tokens=1000,
                 ),
             )
             raw = _clean_json_text(sum_resp.text)

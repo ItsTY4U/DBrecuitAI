@@ -10,9 +10,12 @@ from django.contrib.auth.decorators import login_required
 
 from django.core.cache import cache
 from django.db import IntegrityError
-from .models import Job, Application
 from accounts.models import ApplicantProfile
+import threading
 from main.rate_limit import check_rate_limit
+
+# Throttles concurrent background Gemini screening calls to prevent 429 Resource Exhausted rate limits
+AI_SCREENING_SEMAPHORE = threading.Semaphore(2)
 
 def jobs(request):
     try:
@@ -86,80 +89,81 @@ def _async_screen_application(application_id: int, pre_extracted_text: str = "")
     Executes resume text extraction and Gemini AI screening asynchronously in a background daemon thread.
     This guarantees that the applicant's submission is instantaneous and never slowed down.
     HR will see the results populated within seconds without any system degradation.
+    Throttled by AI_SCREENING_SEMAPHORE to prevent 429 quota exhaustion.
     """
     import logging
     from django.db import connection
     logger = logging.getLogger(__name__)
 
-    try:
-        from jobs.models import Application
-        from jobs.ai import extract_resume_text, analyze_resume
-
-        app = Application.objects.select_related("job", "applicant").filter(id=application_id).first()
-        if not app:
-            return
-
-        resume_text = (pre_extracted_text or "").strip()
-        # If resume text wasn't pre-extracted from profile, extract it via pdfplumber in background
-        if not resume_text and app.resume:
-            try:
-                resume_text = extract_resume_text(app.resume)
-            except Exception as extract_err:
-                logger.warning("Background resume extraction failed for app %s: %s", app.application_id, extract_err)
-
-        if not resume_text or len(resume_text) < 30:
-            app.resume_processed = True
-            app.ai_score = 0
-            app.ai_recommendation = "Not Qualified"
-            app.ai_summary = "Document appears blank, scanned without OCR, or unreadable text."
-            app.save(update_fields=["resume_processed", "ai_score", "ai_recommendation", "ai_summary"])
-            return
-
+    with AI_SCREENING_SEMAPHORE:
         try:
-            ai = analyze_resume(resume_text, app.job)
-        except Exception as ai_err:
-            logger.warning("Background Gemini analysis failed for app %s: %s", app.application_id, ai_err)
-            ai = {
-                "score": 0,
-                "recommendation": "Pending Review",
-                "match_level": "Unsatisfactory",
-                "summary": "Automated evaluation temporarily delayed. Manual HR review recommended.",
-                "matched_qualifications": [],
-                "missing_qualifications": ["Evaluation queued for manual review."],
-                "strengths": [],
-                "weaknesses": [],
-                "skills_match": 0,
-                "experience_match": 0,
-                "education_match": 0,
-                "qualification_match": 0,
-                "criteria_weights": {},
-                "weight_reasoning": {},
-            }
+            from jobs.models import Application
+            from jobs.ai import extract_resume_text, analyze_resume
 
-        app.ai_score = ai.get("score", 0)
-        app.ai_match_level = ai.get("match_level", "")
-        app.ai_recommendation = ai.get("recommendation", "")
-        app.ai_summary = ai.get("summary", "")
-        app.ai_strengths = "\n".join(ai.get("strengths", []))
-        app.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
-        app.ai_matched_qualifications = "\n".join(ai.get("matched_qualifications", []))
-        app.ai_missing_qualifications = "\n".join(ai.get("missing_qualifications", []))
-        app.ai_skills_match = ai.get("skills_match", 0)
-        app.ai_experience_match = ai.get("experience_match", 0)
-        app.ai_education_match = ai.get("education_match", 0)
-        app.ai_qualification_match = ai.get("qualification_match", 0)
-        app.ai_criteria_weights = ai.get("criteria_weights", {})
-        app.ai_weight_reasoning = ai.get("weight_reasoning", {})
-        app.resume_processed = True
-        app.save()
-        logger.info("Background AI screening completed successfully for application %s", app.application_id)
+            app = Application.objects.select_related("job", "applicant").filter(id=application_id).first()
+            if not app:
+                return
 
-    except Exception as exc:
-        logger.error("Unexpected error in background screening worker for app id %s: %s", application_id, exc)
-    finally:
-        import threading
-        if threading.current_thread() is not threading.main_thread():
-            connection.close()
+            resume_text = (pre_extracted_text or "").strip()
+            # If resume text wasn't pre-extracted from profile, extract it via pdfplumber in background
+            if not resume_text and app.resume:
+                try:
+                    resume_text = extract_resume_text(app.resume)
+                except Exception as extract_err:
+                    logger.warning("Background resume extraction failed for app %s: %s", app.application_id, extract_err)
+
+            if not resume_text or len(resume_text) < 30:
+                app.resume_processed = True
+                app.ai_score = 0
+                app.ai_recommendation = "Not Qualified"
+                app.ai_summary = "Document appears blank, scanned without OCR, or unreadable text."
+                app.save(update_fields=["resume_processed", "ai_score", "ai_recommendation", "ai_summary"])
+                return
+
+            try:
+                ai = analyze_resume(resume_text, app.job)
+            except Exception as ai_err:
+                logger.warning("Background Gemini analysis failed for app %s: %s", app.application_id, ai_err)
+                ai = {
+                    "score": 0,
+                    "recommendation": "Pending Review",
+                    "match_level": "Unsatisfactory",
+                    "summary": "Automated evaluation temporarily delayed. Manual HR review recommended.",
+                    "matched_qualifications": [],
+                    "missing_qualifications": ["Evaluation queued for manual review."],
+                    "strengths": [],
+                    "weaknesses": [],
+                    "skills_match": 0,
+                    "experience_match": 0,
+                    "education_match": 0,
+                    "qualification_match": 0,
+                    "criteria_weights": {},
+                    "weight_reasoning": {},
+                }
+
+            app.ai_score = ai.get("score", 0)
+            app.ai_match_level = ai.get("match_level", "")
+            app.ai_recommendation = ai.get("recommendation", "")
+            app.ai_summary = ai.get("summary", "")
+            app.ai_strengths = "\n".join(ai.get("strengths", []))
+            app.ai_weaknesses = "\n".join(ai.get("weaknesses", []))
+            app.ai_matched_qualifications = "\n".join(ai.get("matched_qualifications", []))
+            app.ai_missing_qualifications = "\n".join(ai.get("missing_qualifications", []))
+            app.ai_skills_match = ai.get("skills_match", 0)
+            app.ai_experience_match = ai.get("experience_match", 0)
+            app.ai_education_match = ai.get("education_match", 0)
+            app.ai_qualification_match = ai.get("qualification_match", 0)
+            app.ai_criteria_weights = ai.get("criteria_weights", {})
+            app.ai_weight_reasoning = ai.get("weight_reasoning", {})
+            app.resume_processed = True
+            app.save()
+            logger.info("Background AI screening completed successfully for application %s", app.application_id)
+
+        except Exception as exc:
+            logger.error("Unexpected error in background screening worker for app id %s: %s", application_id, exc)
+        finally:
+            if threading.current_thread() is not threading.main_thread():
+                connection.close()
 
 
 @login_required(login_url="applicant_login")
