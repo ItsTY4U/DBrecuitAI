@@ -278,6 +278,7 @@ class ApplicantJobPerformanceTests(TestCase):
 
 class JobsAIEngineTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.job = Job.objects.create(
             title="Software Engineer",
             department="Engineering",
@@ -287,6 +288,9 @@ class JobsAIEngineTests(TestCase):
         )
         Requirement.objects.create(job=self.job, text="Python and Django expertise")
         Requirement.objects.create(job=self.job, text="PostgreSQL experience")
+
+    def tearDown(self):
+        cache.clear()
 
     def test_parse_resume_short_circuit_empty(self):
         """parse_resume returns None immediately on empty or too-short inputs without calling API."""
@@ -384,6 +388,67 @@ class JobsAIEngineTests(TestCase):
         self.assertEqual(len(result["strengths"]), 2)
         self.assertIn("Extensive Django experience", result["strengths"])
         self.assertFalse(result["hard_fail"])
+
+    @patch("jobs.ai.get_genai_client")
+    def test_parse_resume_sha256_caching(self, mock_get_client):
+        """parse_resume uses SHA-256 caching so repeated parsing skips Gemini API calls completely."""
+        from jobs.ai import parse_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "personal": {"first_name": "Juan", "last_name": "Luna"},
+            "skills": ["Painter", "Artist"]
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Juan Luna, professional artist and painter from Ilocos Norte with 10 years experience."
+
+        # First call hits the mock Gemini API
+        res1 = parse_resume(resume_sample)
+        self.assertEqual(res1["personal"]["first_name"], "Juan")
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+        # Second call with identical resume must return from cache with 0 additional API calls
+        res2 = parse_resume(resume_sample)
+        self.assertEqual(res2["personal"]["first_name"], "Juan")
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+    @patch("jobs.ai.get_genai_client")
+    def test_analyze_resume_sha256_caching(self, mock_get_client):
+        """analyze_resume caches evaluation per candidate resume & job requirements."""
+        from jobs.ai import analyze_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "skills_match": 80,
+            "experience_match": 80,
+            "education_match": 80,
+            "qualification_match": 80,
+            "criteria_weights": {"qualification_weight": 25, "experience_weight": 25, "skills_weight": 25, "education_weight": 25},
+            "weight_reasoning": {},
+            "matched_qualifications": ["Artistic mastery"],
+            "missing_qualifications": [],
+            "strengths": ["Classic visual arts"],
+            "weaknesses": [],
+            "summary": "Fit for the role."
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Juan Luna, master of visual arts with 10 years experience painting large canvases."
+
+        # First call executes Gemini
+        res1 = analyze_resume(resume_sample, self.job)
+        self.assertEqual(res1["score"], 80.0)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+        # Second call with same candidate resume and job hits cache, call_count remains 1
+        res2 = analyze_resume(resume_sample, self.job)
+        self.assertEqual(res2["score"], 80.0)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
 
 
 class RecommendationLogicTests(unittest.TestCase):
