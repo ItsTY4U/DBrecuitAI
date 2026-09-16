@@ -263,12 +263,18 @@ else:
     MEDIA_URL = "/media/"
 
 
+staticfiles_storage = (
+    "django.contrib.staticfiles.storage.StaticFilesStorage"
+    if (DEBUG or "test" in sys.argv)
+    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
+
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": staticfiles_storage,
     },
 }
 
@@ -323,4 +329,9 @@ GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
 GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN", "")
 GMAIL_SENDER_EMAIL = os.getenv("GMAIL_SENDER_EMAIL", "DBRecruitAI <noreply@dbrecruitai.com>")
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://127.0.0.1:8000")
+
+# Cloudflare Turnstile Configuration
+# Default testing keys from Cloudflare documentation (always passes in development)
+CLOUDFLARE_TURNSTILE_SITE_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "1x00000000000000000000AA")
+CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA")
 

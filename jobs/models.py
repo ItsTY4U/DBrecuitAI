@@ -177,8 +177,13 @@ class Application(models.Model):
             models.Index(fields=["applicant", "-created_at"]),        # applicant profile applications list
             models.Index(fields=["applicant", "job"]),                # applicant duplicate application checks
         ]
-    
-        
+        constraints = [
+            models.UniqueConstraint(
+                fields=["applicant", "job"],
+                name="unique_applicant_job_application"
+            )
+        ]
+
     ai_match_level = models.CharField(max_length=30, blank=True)
     ai_recommendation = models.CharField(max_length=30, blank=True)
     ai_matched_qualifications = models.TextField(blank=True)

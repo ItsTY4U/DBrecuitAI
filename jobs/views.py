@@ -9,8 +9,10 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 
 from django.core.cache import cache
+from django.db import IntegrityError
 from .models import Job, Application
 from accounts.models import ApplicantProfile
+from main.rate_limit import check_rate_limit
 
 def jobs(request):
     try:
@@ -155,7 +157,9 @@ def _async_screen_application(application_id: int, pre_extracted_text: str = "")
     except Exception as exc:
         logger.error("Unexpected error in background screening worker for app id %s: %s", application_id, exc)
     finally:
-        connection.close()
+        import threading
+        if threading.current_thread() is not threading.main_thread():
+            connection.close()
 
 
 @login_required(login_url="applicant_login")
@@ -190,7 +194,24 @@ def apply_job(request, pk):
         })
         
     # POST request
-    # Prevent duplicate applications (fast query using index)
+    # 1. Rate limiting & spam prevention (strictly 3 per hour per IP & account, with rapid-fire debounce)
+    is_limited, limit_err = check_rate_limit(
+        request,
+        action_key="apply_job",
+        limit=3,
+        window_seconds=3600,
+        account_identifier=request.user.email,
+        enable_debounce=True,
+        debounce_seconds=3,
+    )
+    if is_limited:
+        return render(request, "jobs/partials/application_error.html", {
+            "job": job,
+            "profile": profile,
+            "error": limit_err,
+        }, status=429)
+
+    # 2. Duplicate submission detection (fast indexed check)
     existing_application = Application.objects.filter(
         applicant=request.user,
         job=job
@@ -200,7 +221,7 @@ def apply_job(request, pk):
         return render(request, "jobs/partials/application_error.html", {
             "job": job,
             "profile": profile,
-            "error": ("You have already applied for this job.")
+            "error": "Duplicate submission detected: You have already applied for this job."
         })
         
     try:
@@ -279,8 +300,14 @@ def apply_job(request, pk):
                     profile.default_resume.close()
                 except Exception:
                     pass
-
-        application.save()
+        try:
+            application.save()
+        except IntegrityError:
+            return render(request, "jobs/partials/application_error.html", {
+                "job": job,
+                "profile": profile,
+                "error": "Duplicate submission detected: You have already applied for this job."
+            })
 
         # Run AI screening and resume text extraction in the background
         # This keeps the submission instant (<100ms) and completely non-blocking for applicants
@@ -316,6 +343,22 @@ def upload_resume(request, pk):
         return render(request, "jobs/apply.html", {
             "job": job
         })
+
+    # Rate limiting & spam prevention (3 per hour per IP & account)
+    is_limited, limit_err = check_rate_limit(
+        request,
+        action_key="upload_resume",
+        limit=3,
+        window_seconds=3600,
+        account_identifier=request.user.email,
+        enable_debounce=True,
+        debounce_seconds=3,
+    )
+    if is_limited:
+        return render(request, "jobs/apply.html", {
+            "job": job,
+            "error": limit_err,
+        }, status=429)
 
     resume = request.FILES.get("resume")
 

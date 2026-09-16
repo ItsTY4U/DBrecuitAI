@@ -15,6 +15,10 @@ from django.contrib import messages
 
 from jobs.ai import extract_resume_text, parse_resume
 
+from django.conf import settings
+from main.rate_limit import check_rate_limit, get_client_ip
+from main.turnstile import verify_turnstile
+
 from .forms import (
     ApplicantSignupForm,
     ApplicantLoginForm,
@@ -28,11 +32,53 @@ def signup(request):
 
     if request.user.is_authenticated:
         return redirect("home")
-        return redirect("home")
 
     form = ApplicantSignupForm()
+    turnstile_site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
 
     if request.method == "POST":
+        # 1. Rate limiting & spam prevention (strictly 3 per hour per IP and per email, with debounce)
+        email_candidate = request.POST.get("email", "").strip().lower()
+        is_limited, limit_err = check_rate_limit(
+            request,
+            action_key="signup",
+            limit=3,
+            window_seconds=3600,
+            account_identifier=email_candidate,
+            enable_debounce=True,
+            debounce_seconds=3,
+        )
+        if is_limited:
+            messages.error(request, limit_err)
+            return render(
+                request,
+                "accounts/signup.html",
+                {
+                    "form": form,
+                    "next": request.GET.get("next", ""),
+                    "turnstile_site_key": turnstile_site_key,
+                },
+                status=429,
+            )
+
+        # 2. Cloudflare Turnstile verification for applicant signup
+        turnstile_token = request.POST.get("cf-turnstile-response", "")
+        turnstile_valid, turnstile_err = verify_turnstile(
+            turnstile_token,
+            remote_ip=get_client_ip(request),
+        )
+        if not turnstile_valid:
+            messages.error(request, turnstile_err)
+            form = ApplicantSignupForm(request.POST, request.FILES)
+            return render(
+                request,
+                "accounts/signup.html",
+                {
+                    "form": form,
+                    "next": request.GET.get("next", ""),
+                    "turnstile_site_key": turnstile_site_key,
+                },
+            )
 
         form = ApplicantSignupForm(
             request.POST,
@@ -102,6 +148,7 @@ def signup(request):
         {
             "form": form,
             "next": request.GET.get("next", ""),
+            "turnstile_site_key": turnstile_site_key,
         }
     )
     
@@ -114,12 +161,28 @@ def applicant_login(request):
             return redirect("dashboard")
         return redirect("home")
     
+    turnstile_site_key = getattr(settings, "CLOUDFLARE_TURNSTILE_SITE_KEY", "")
+
     form = ApplicantAuthenticationForm(
         request, 
         data=request.POST or None
     )
     
     if request.method == "POST":
+        # Cloudflare Turnstile verification for applicant login
+        turnstile_token = request.POST.get("cf-turnstile-response", "")
+        turnstile_valid, turnstile_err = verify_turnstile(
+            turnstile_token,
+            remote_ip=get_client_ip(request),
+        )
+        if not turnstile_valid:
+            messages.error(request, turnstile_err)
+            return render(
+                request,
+                "accounts/login.html",
+                {"form": form, "next": request.GET.get("next", ""), "turnstile_site_key": turnstile_site_key},
+            )
+
         if form.is_valid():
             login(request, form.get_user())
             
@@ -129,7 +192,7 @@ def applicant_login(request):
                 return redirect(next_url)
             return redirect("home")
         
-    return render(request, "accounts/login.html",{"form": form, "next": request.GET.get("next", "")})
+    return render(request, "accounts/login.html", {"form": form, "next": request.GET.get("next", ""), "turnstile_site_key": turnstile_site_key})
 
 def applicant_logout(request):
     
@@ -187,6 +250,34 @@ def profile(request):
     )
 
     if request.method == "POST":
+        # Rate limiting: 3 profile updates per hour per IP & account with debounce
+        is_limited, limit_err = check_rate_limit(
+            request,
+            action_key="profile_update",
+            limit=3,
+            window_seconds=3600,
+            account_identifier=request.user.email,
+            enable_debounce=True,
+            debounce_seconds=3,
+        )
+        if is_limited:
+            messages.error(request, limit_err)
+            return redirect("profile")
+
+        # If resume file is also uploaded, check resume upload rate limit
+        if request.FILES.get("default_resume"):
+            is_resume_limited, resume_limit_err = check_rate_limit(
+                request,
+                action_key="upload_resume",
+                limit=3,
+                window_seconds=3600,
+                account_identifier=request.user.email,
+                enable_debounce=True,
+                debounce_seconds=3,
+            )
+            if is_resume_limited:
+                messages.error(request, resume_limit_err)
+                return redirect("profile")
 
         user_form = ApplicantUserForm(
             request.POST,
@@ -274,17 +365,25 @@ def profile(request):
     )
     
 def process_signup_resume(request):
-    from main.rate_limit import is_rate_limited
-
     if request.method != "POST":
         return JsonResponse(
             {"error": "Invalid request."},
             status=400
         )
 
-    if is_rate_limited(request, "signup_resume", max_requests=5, window_seconds=60):
+    # Rate limiting: 3 per hour per IP & session with debounce
+    is_limited, limit_err = check_rate_limit(
+        request,
+        action_key="upload_resume",
+        limit=3,
+        window_seconds=3600,
+        account_identifier=request.session.session_key,
+        enable_debounce=True,
+        debounce_seconds=3,
+    )
+    if is_limited:
         return JsonResponse(
-            {"error": "Too many requests. Please wait a minute before uploading another resume."},
+            {"error": limit_err},
             status=429
         )
 
@@ -353,7 +452,35 @@ def process_signup_resume(request):
 
 
 def forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip().lower()
+        is_limited, limit_err = check_rate_limit(
+            request,
+            action_key="forgot_password",
+            limit=3,
+            window_seconds=3600,
+            account_identifier=email,
+            enable_debounce=True,
+            debounce_seconds=3,
+        )
+        if is_limited:
+            messages.error(request, limit_err)
+            return render(request, "accounts/forgot_password.html", status=429)
+
     return render(request, "accounts/forgot_password.html")
 
 def verify_password_otp(request):
+    if request.method == "POST":
+        is_limited, limit_err = check_rate_limit(
+            request,
+            action_key="verify_otp",
+            limit=3,
+            window_seconds=3600,
+            enable_debounce=True,
+            debounce_seconds=3,
+        )
+        if is_limited:
+            messages.error(request, limit_err)
+            return render(request, "accounts/verify_otp.html", status=429)
+
     return render(request, "accounts/verify_otp.html")

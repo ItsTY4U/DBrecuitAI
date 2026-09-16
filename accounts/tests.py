@@ -75,16 +75,18 @@ class AccountSecurityTests(TestCase):
         self.assertIn("Resume file must not exceed 5MB.", response.json()["error"])
 
     def test_process_signup_resume_rate_limiting(self):
-        """process_signup_resume throttles after 5 rapid requests."""
+        """process_signup_resume throttles after 3 requests per hour."""
         from django.urls import reverse
         dummy_file = SimpleUploadedFile("resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
-        for _ in range(5):
+        for _ in range(3):
             self.client.post(reverse("process_signup_resume"), {"resume": dummy_file})
         
-        # 6th request should hit 429 rate limit
+        # 4th request should hit 429 rate limit
         response = self.client.post(reverse("process_signup_resume"), {"resume": dummy_file})
         self.assertEqual(response.status_code, 429)
-        self.assertIn("Too many requests", response.json()["error"])
+        self.assertTrue(
+            "Rate limit exceeded" in response.json()["error"] or "too fast" in response.json()["error"]
+        )
 
     def test_profile_resume_update_preserves_application_resume(self):
         """When an applicant updates their profile resume, existing application resumes must not be deleted."""
