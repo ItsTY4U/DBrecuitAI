@@ -1,46 +1,8 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DBRecruitAI | Join the Don Benito's Family</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
-</head>
-<body>
-    <div class="landing-page">
-        <!-- Navigation -->
-        <header class="navbar glass">
-            <div class="nav-logo">
-                <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
-            </div>
-            <nav class="nav-menu">
-                <a href="{% url 'home' %}" class="nav-link">Home</a>
-                <a href="{% url 'jobs' %}" class="nav-link">Jobs</a>
-                <!--<a href="{% url 'track' %}" class="nav-link">Track Application</a>-->
-                {% if user.is_authenticated and not user.is_staff %}
-                <a href="{% url 'profile' %}" class="nav-link">Profile</a>
-                <a href="{% url 'applicant_logout' %}" class="nav-link">Logout</a>
-                {% else %}
-                <a href="{% url 'applicant_login' %}" class="nav-link">Sign In</a>
-                <a href="{% url 'signup' %}" class="nav-link">Sign Up</a>
-                {% endif %}
-            </nav>
-        </header>
-    {% block body%}
-    {% endblock %}
-    <footer class="landing-footer glass">
-            <p>&copy; 2026 DBRecruitAI - Powered by Don Benito's. All Rights Reserved.</p>
-        </footer>
-    <script src="{% static 'js/main.js' %}" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-        integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" 
-        crossorigin="anonymous" defer>
-    </script>
-</body>
-</html>
+
+{% block title %}DBRecruitAI | Join the Don Benito's Family{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/main.js' %}" defer></script>
+{% endblock %}

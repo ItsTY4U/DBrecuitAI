@@ -1,494 +1,91 @@
 /* =========================================
-   DBRecruitAI - Applicant Signup
-   Soft Green Design
+   DBRecruitAI - Accounts Suite Styling
+   Unified Don Benito's Glassmorphism Format
+   Fully Mobile-Responsive
 ========================================= */
+
 :root {
     --primary: #2d5a27;
-    /* Tropical Green */
+    --primary-hover: #1e3d1a;
+    --primary-light: #eef7f0;
+    --primary-border: #cfe2d5;
     --accent: #f4d03f;
-    /* Tropical Gold/Orange */
     --accent-orange: #e67e22;
     --text-dark: #1a1a1a;
+    --text-muted: #64748b;
     --text-light: #ffffff;
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.3);
-    --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-card: rgba(255, 255, 255, 0.94);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 10px 30px rgba(35, 90, 55, 0.10);
+    --shadow-lg: 0 18px 45px rgba(27, 61, 48, 0.14);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 22px;
 }
 
-body {
-    font-family: 'Montserrat', sans-serif;
-    color: var(--text-dark);
-    line-height: 1.6;
-    overflow-x: hidden;
-    min-height: 100%;
-    margin: 0;
+/* =========================================
+   AUTH PAGE LAYOUT
+========================================= */
+
+.auth-page {
+    width: 100%;
+    min-height: calc(100vh - 180px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: clamp(20px, 4vw, 40px) 16px clamp(40px, 6vw, 70px);
+    box-sizing: border-box;
 }
 
 .bg {
-    position: relative;
     width: 100%;
-    min-height: 100vh;
-    background: url('../images/bg.jpg') no-repeat center center/cover;
-    background-size: cover;
-    background-attachment: fixed;
-    filter: brightness(0.9);
-}
-
-.glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow);
-    border-radius: 20px;
+    min-height: 100%;
 }
 
 /* =========================================
-   NAVBAR
+   AUTH SPLIT CARDS (Login, Signup, Forgot, OTP, Reset, Success)
 ========================================= */
 
-/* .navbar {
-    width: 100%;
-    height: 78px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 0 40px;
-
-    box-sizing: border-box;
-
-    background: #ffffff;
-
-    position: relative;
-    z-index: 1000;
-}
-
-.navbar.glass {
-    width: 100%;
-    margin: 0;
-    box-sizing: border-box;
-} */
-
-/* =========================================
-   LOGO
-========================================= */
-
-.nav-logo {
-    display: flex;
-    align-items: center;
-
-    flex-shrink: 0;
-}
-
-.nav-logo img {
-    width: 120px;
-    height: auto;
-
-    display: block;
-}
-
-
-/* =========================================
-   NAVIGATION MENU
-========================================= */
-
-.nav-menu {
-    display: flex;
-    align-items: center;
-
-    gap: 28px;
-
-    flex-shrink: 0;
-}
-
-.nav-link {
-    display: inline-block;
-
-    color: #111111;
-
-    font-size: 14px;
-    font-weight: 600;
-
-    text-decoration: none;
-
-    white-space: nowrap;
-
-    transition: color 0.2s ease;
-}
-
-.nav-link:hover {
-    color: #25864a;
-}
-
-
-/* =========================================
-   MOBILE
-========================================= */
-
-@media (max-width: 700px) {
-
-    .navbar {
-        height: auto;
-
-        padding: 15px 20px;
-
-        flex-direction: column;
-
-        gap: 15px;
-    }
-
-    .nav-menu {
-        width: 100%;
-
-        justify-content: center;
-
-        gap: 20px;
-
-        flex-wrap: wrap;
-    }
-
-    .nav-link {
-        font-size: 13px;
-    }
-}
-
-
-.auth-page {
-    min-height: calc(100vh - 80px);
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 190px 20px 60px;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    /* background:
-        radial-gradient(
-            circle at top left,
-            rgba(76, 175, 104, 0.12),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at bottom right,
-            rgba(76, 175, 104, 0.10),
-            transparent 35%
-        ),
-        #f3faf5; */
-}
-
-
-/* =========================================
-   Card
-========================================= */
-
-.auth-card {
-    width: 100%;
-    max-width: 520px;
-    padding: 40px;
-    background: #ffffff;
-    border: 1px solid #dceee2;
-    border-radius: 22px;
-    box-shadow: 0 18px 45px rgba(35, 90, 55, 0.10);
-}
-
-
-/* =========================================
-   Heading
-========================================= */
-
-.auth-card h1 {
-    margin: 0;
-    text-align: center;
-    color: #205c3b;
-    font-size: 28px;
-    font-weight: 700;
-}
-
-.auth-card > p {
-    margin: 8px 0 30px;
-    text-align: center;
-    color: #71847a;
-    font-size: 14px;
-    line-height: 1.5;
-}
-
-
-/* =========================================
-   Form
-========================================= */
-
-.auth-card form {
-    display: flex;
-    flex-direction: column;
-    gap: 17px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-}
-
-.form-group label {
-    color: #315342;
-    font-size: 13px;
-    font-weight: 600;
-}
-
-
-/* =========================================
-   Inputs
-========================================= */
-
-.form-group input {
-    width: 380px;
-    height: 49px;
-    padding: 0 14px;
-
-    border: 1px solid #cfe2d5;
-    border-radius: 10px;
-
-    background: #fbfefc;
-    color: #18352a;
-
-    font-family: inherit;
-    font-size: 14px;
-
-    outline: none;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        background 0.2s ease;
-}
-
-.form-group input::placeholder {
-    color: #9aaa9f;
-}
-
-.form-group input:focus {
-    border-color: #45a968;
-    background: #ffffff;
-    box-shadow: 0 0 0 4px rgba(69, 169, 104, 0.10);
-}
-
-
-/* =========================================
-   Password
-========================================= */
-
-.password-wrapper {
-    position: relative;
-    width: 400px;
-}
-
-/* .password-wrapper input {
-    padding-right: 48px;
-} */
-
-.password-toggle {
-    position: absolute;
-    top: 50%;
-    right: 13px;
-
-    transform: translateY(-50%);
-
-    width: 32px;
-    height: 32px;
-    padding: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border: none;
-    background: transparent;
-
-    color: #789084;
-    font-size: 16px;
-
-    cursor: pointer;
-    z-index: 2;
-    transition: color 0.2s ease;
-}
-
-.password-toggle:hover {
-    color: #299653;
-}
-
-
-/* =========================================
-   Password Matching
-========================================= */
-
-.password-status {
-    min-height: 18px;
-    margin-top: -2px;
-
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.password-status.neutral {
-    color: #8b9b92;
-}
-
-.password-status.match {
-    color: #299653;
-}
-
-.password-status.no-match {
-    color: #d9534f;
-}
-
-
-/* Matching input */
-
-.password-match {
-    border-color: #45a968 !important;
-    background: #f8fff9 !important;
-}
-
-
-/* Non-matching input */
-
-.password-no-match {
-    border-color: #dc5c57 !important;
-    background: #fffafa !important;
-}
-
-
-/* =========================================
-   Django Errors
-========================================= */
-
-.form-error,
-.form-group ul.errorlist {
-    color: #d9534f;
-    font-size: 12px;
-}
-
-.form-group ul.errorlist {
-    margin: 2px 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.form-error {
-    padding: 11px 13px;
-    border: 1px solid #f0c7c4;
-    border-radius: 9px;
-    background: #fff4f3;
-}
-
-
-/* =========================================
-   Sign Up Button
-========================================= */
-
-.auth-card .btn-primary {
-    width: 420px;
-    height: 51px;
-
-    margin-top: 5px;
-
-    border: none;
-    border-radius: 11px;
-
-    background: #35a45e;
-    color: #ffffff;
-
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 700;
-
-    cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-.auth-card .btn-primary:hover {
-    background: #28894d;
-    transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(53, 164, 94, 0.20);
-}
-
-.auth-card .btn-primary:active {
-    transform: translateY(0);
-}
-
-
-/* Disabled when passwords don't match */
-
-.auth-card .btn-primary:disabled {
-    background: #b8cfc0;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-
-/* =========================================
-   Login Link
-========================================= */
-
-.auth-card > p:last-child {
-    margin-top: 24px;
-    margin-bottom: 0;
-
-    text-align: center;
-
-    color: #71847a;
-    font-size: 14px;
-}
-
-.auth-card > p:last-child a {
-    color: #25864a;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.auth-card > p:last-child a:hover {
-    text-decoration: underline;
-}
-
-/* =========================================
-   Split Layout (Image + Form)
-========================================= */
-
-.auth-split {
+.auth-split,
+.login-card,
+.login-split {
     width: 100%;
     max-width: 980px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* was: 1fr 1fr */
-    background: #ffffff;
-    border-radius: 22px;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    background: var(--glass-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
-    box-shadow: 0 18px 45px rgba(35, 90, 55, 0.10);
+    margin: 0 auto;
+    box-sizing: border-box;
+    min-height: 520px;
 }
 
+/* Specific page wrapper overrides */
+.forgot-password-split,
+.otp-split,
+.reset-password-split,
+.reset-success-split {
+    max-width: 940px;
+}
+
+/* Visual Image Panel */
 .auth-image-panel,
-.auth-split .auth-card {
-    min-width: 0; /* prevents grid children from overflowing their track */
-}
-
-.auth-split .auth-card {
-    width: 440px;
-    box-shadow: none;
-    border: none;
-    border-radius: 0;
-    padding: 42px 44px; /* a bit more breathing room since it's no longer standalone */
-    overflow-x: hidden;
-}
-
-.auth-image-panel {
+.login-visual {
     position: relative;
     min-height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: linear-gradient(to top, rgba(27, 61, 48, 0.94) 0%, rgba(27, 61, 48, 0.35) 60%, rgba(27, 61, 48, 0.1) 100%), url("../images/Signin.png") center/cover no-repeat;
 }
 
 .auth-image-panel img {
@@ -498,362 +95,177 @@ body {
     display: block;
 }
 
+.login-visual {
+    padding: clamp(24px, 4vw, 36px);
+    box-sizing: border-box;
+}
+
 .auth-image-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding: 32px;
-    background: linear-gradient(
-        180deg,
-        rgba(24, 53, 42, 0) 40%,
-        rgba(24, 53, 42, 0.75) 100%
-    );
+    padding: clamp(24px, 4vw, 36px);
+    background: linear-gradient(180deg, rgba(24, 53, 42, 0) 30%, rgba(24, 53, 42, 0.88) 100%);
     color: #ffffff;
-}
-
-.auth-image-overlay h2 {
-    margin: 0 0 8px;
-    font-size: 24px;
-    font-weight: 700;
-}
-
-.auth-image-overlay p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.5;
-    color: #eaf5ee;
-}
-
-/* =========================================
-   Password Strength Meter
-========================================= */
-
-.strength-meter {
-    width: 410px;
-    height: 6px;
-    margin-top: 5px;
-
-    background: #e4efe8;
-    border-radius: 5px;
-
-    overflow: hidden;
-}
-
-.strength-bar {
-    width: 0%;
-    height: 100%;
-    border-radius: 5px;
-    background: #dc5c57;
-    transition:
-        width 0.25s ease,
-        background 0.25s ease;
-}
-
-
-/* Weak */
-
-.strength-bar.weak {
-    width: 25% !important;
-    background: #dc5c57;
-}
-
-
-/* Fair */
-
-.strength-bar.fair {
-    width: 50% !important;
-    background: #e0a83e;
-}
-
-
-/* Good */
-
-.strength-bar.good {
-    width: 75% !important;
-    background: #75ad4c;
-}
-
-
-/* Strong */
-
-.strength-bar.strong {
-    width: 100% !important;
-    background: #45a968;
-}
-
-
-/* =========================================
-   Password Requirements
-========================================= */
-
-.strength-checklist {
-    list-style: none;
-
-    margin: 8px 0 0;
-    padding: 0;
-
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.strength-checklist li {
-    position: relative;
-
-    padding-left: 19px;
-
-    color: #9aaa9f;
-
-    font-size: 12px;
-
-    transition:
-        color 0.2s ease;
-}
-
-.strength-checklist li::before {
-    content: "○";
-
-    position: absolute;
-    left: 0;
-
-    font-size: 12px;
-}
-
-
-/* Requirement passed */
-
-.strength-checklist li.valid {
-    color: #299653;
-}
-
-.strength-checklist li.valid::before {
-    content: "✓";
-}
-
-/* =========================================
-   LOGIN PAGE
-========================================= */
-
-.login-card {
-    max-width: 980px;
-    min-height: 600px;
-
-    display: flex;
-    overflow: hidden;
-
-    padding: 0;
-}
-
-
-/* LEFT - Login Form */
-
-.login-form {
-    width: 50%;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    padding: 45px;
     box-sizing: border-box;
 }
 
+.auth-image-overlay h2,
+.login-visual-content h2 {
+    margin: 0 0 8px;
+    font-size: clamp(20px, 3vw, 26px);
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.auth-image-overlay p,
+.login-visual-content p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.92);
+}
+
+/* Form Card Side */
+.auth-card,
+.login-form {
+    width: 100%;
+    max-width: 100%;
+    padding: clamp(28px, 4.5vw, 44px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: #ffffff;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+}
+
+.auth-card h1,
 .login-form h1 {
     margin: 0;
     text-align: center;
-
-    color: #205c3b;
-    font-size: 28px;
+    color: var(--primary);
+    font-size: clamp(22px, 3.5vw, 28px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
 }
 
+.auth-card > p,
 .login-form > p {
-    margin: 8px 0 28px;
-
+    margin: 8px 0 24px;
     text-align: center;
-
-    color: #71847a;
+    color: var(--text-muted);
     font-size: 14px;
-}
-
-
-/* Login link */
-
-.login-switch {
-    margin-top: 24px !important;
-    margin-bottom: 0;
-
-    text-align: center;
-
-    color: #71847a;
-    font-size: 14px;
-}
-
-.login-switch a {
-    color: #25864a;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.login-switch a:hover {
-    text-decoration: underline;
-}
-
-.social-login {
-    margin-top: 20px;
-}
-
-.social-divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    margin: 20px 0;
-}
-
-.social-divider::before,
-.social-divider::after {
-    content: "";
-    flex: 1;
-    border-bottom: 1px solid #ddd;
-}
-
-.social-divider span {
-    padding: 0 12px;
-    color: #777;
-    font-size: 14px;
-}
-
-.google-login-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-
-    padding: 12px 16px;
-
-    border: 1px solid #ddd;
-    border-radius: 8px;
-
-    background: white;
-    color: #333;
-
-    text-decoration: none;
-    font-weight: 600;
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-
-    transition: 0.2s;
-}
-
-.google-login-btn:hover {
-    background: #f5f5f5;
-}
-
-
-/* RIGHT - Visual */
-
-.login-visual {
-    width: 50%;
-
-    position: relative;
-
-    display: flex;
-    align-items: flex-end;
-
-    padding: 35px;
-
-    box-sizing: border-box;
-
-    background:
-        linear-gradient(
-            to top,
-            rgba(27, 61, 48, 0.92),
-            rgba(27, 61, 48, 0.10)
-        ),
-        url("../images/bg.jpg");
-
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-}
-
-.login-visual-content {
-    position: relative;
-    z-index: 2;
-
-    color: white;
-}
-
-.login-visual-content h2 {
-    margin: 0 0 8px;
-
-    font-size: 25px;
-}
-
-.login-visual-content p {
-    margin: 0;
-
-    max-width: 350px;
-
-    color: rgba(255, 255, 255, 0.9);
-
-    font-size: 13px;
     line-height: 1.5;
 }
 
-
 /* =========================================
-   MOBILE
+   FORMS & INPUTS
 ========================================= */
 
-@media (max-width: 750px) {
+.auth-card form,
+.login-form form,
+.forgot-password-form,
+.otp-form,
+.reset-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    box-sizing: border-box;
+}
 
-    .login-card {
-        min-height: auto;
+.form-group,
+.reset-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
 
-        flex-direction: column;
-    }
+.form-row-names {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 2fr;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
 
-    .login-form {
-        width: 100%;
-        padding: 35px 25px;
-    }
-
-    .login-visual {
-        width: 100%;
-        min-height: 250px;
+@media (max-width: 600px) {
+    .form-row-names {
+        grid-template-columns: 1fr;
+        gap: 0;
     }
 }
 
+.form-group label,
+.reset-form-group label {
+    color: #205c3b;
+    font-size: 13px;
+    font-weight: 600;
+}
 
-/* =========================================
-   Resume Upload
-========================================= */
+.form-group input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.form-group select,
+.form-group textarea,
+.reset-password-wrapper input,
+.forgot-input-wrapper input {
+    width: 100%;
+    max-width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    border: 1.5px solid var(--primary-border);
+    border-radius: 10px;
+    background: #fbfefc;
+    color: #18352a;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
 
+.form-group input:focus,
+.reset-password-wrapper input:focus,
+.forgot-input-wrapper input:focus {
+    border-color: #45a968;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(69, 169, 104, 0.12);
+}
+
+.form-group input::placeholder,
+.reset-password-wrapper input::placeholder,
+.forgot-input-wrapper input::placeholder {
+    color: #9aaa9f;
+}
+
+/* File Upload input */
 .form-group input[type="file"] {
-    width: 380px;
-    height: 49px;
-    padding: 0 14px;
-    border: 1px solid #cfe2d5;
+    width: 100%;
+    max-width: 100%;
+    min-height: 48px;
+    padding: 7px 12px;
+    border: 1.5px solid var(--primary-border);
     border-radius: 10px;
     background: #fbfefc;
     color: #71847a;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     box-sizing: border-box;
-    padding-top: 7px;
 }
-
-/* Choose File button */
 
 .form-group input[type="file"]::file-selector-button {
     height: 32px;
-    margin-right: 10px;
-    padding: 0 12px;
+    margin-right: 12px;
+    padding: 0 14px;
     border: 1px solid #b8d1c0;
     border-radius: 6px;
     background: #eef6f0;
@@ -869,89 +281,717 @@ body {
     background: #dceee1;
 }
 
+/* Password wrapper & eye toggle */
+.password-wrapper,
+.reset-password-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.password-wrapper input,
+.reset-password-wrapper input {
+    padding-right: 48px;
+}
+
+.password-toggle,
+.reset-password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #789084;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 2;
+    border-radius: 8px;
+    transition: color 0.2s ease;
+}
+
+.password-toggle:hover,
+.reset-password-toggle:hover {
+    color: var(--primary);
+}
+
+/* Password Matching & Status */
+.password-status,
+.reset-password-match {
+    min-height: 18px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.password-status.neutral { color: #8b9b92; }
+.password-status.match, .reset-password-match.match { color: #299653; }
+.password-status.no-match, .reset-password-match.no-match { color: #d9534f; }
+
+.password-match {
+    border-color: #45a968 !important;
+    background: #f8fff9 !important;
+}
+
+.password-no-match {
+    border-color: #dc5c57 !important;
+    background: #fffafa !important;
+}
+
+/* Errors */
+.form-error,
+.form-group ul.errorlist,
+.otp-error,
+.reset-password-error {
+    color: #d9534f;
+    font-size: 12.5px;
+    margin: 2px 0 0;
+}
+
+.form-group ul.errorlist {
+    padding: 0;
+    list-style: none;
+}
+
+.form-error {
+    padding: 10px 14px;
+    border: 1px solid #f0c7c4;
+    border-radius: 8px;
+    background: #fff4f3;
+}
+
+.otp-error,
+.reset-password-error {
+    display: none;
+    padding: 10px 14px;
+    border: 1px solid #f0c7c4;
+    border-radius: 8px;
+    background: #fff4f3;
+}
+
+.otp-error.show,
+.reset-password-error.show {
+    display: block;
+}
 
 /* =========================================
-   Process Resume Button
+   BUTTONS
 ========================================= */
 
+.auth-card .btn-primary,
+.login-form .btn-primary,
+.reset-submit-btn,
+.otp-submit-btn,
+.forgot-submit-btn,
+.reset-success-btn {
+    width: 100%;
+    max-width: 100%;
+    height: 48px;
+    margin-top: 4px;
+    border: none;
+    border-radius: 11px;
+    background: var(--primary);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-card .btn-primary:hover,
+.login-form .btn-primary:hover,
+.reset-submit-btn:hover,
+.otp-submit-btn:hover,
+.forgot-submit-btn:hover,
+.reset-success-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(45, 90, 39, 0.25);
+}
+
+.auth-card .btn-primary:disabled {
+    background: #b8cfc0;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .auth-card .btn-secondary {
-    width: 380px;
-    height: 49px;
-    border: 1px solid #35a45e;
+    width: 100%;
+    max-width: 100%;
+    height: 44px;
+    border: 1.5px solid var(--primary);
     border-radius: 10px;
     background: #ffffff;
-    color: #299653;
+    color: var(--primary);
     font-family: inherit;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
-    transition:
-        background 0.2s ease,
-        color 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
 }
 
 .auth-card .btn-secondary:hover {
-    background: #35a45e;
+    background: var(--primary);
     color: #ffffff;
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(53, 164, 94, 0.18);
 }
 
-.auth-card .btn-secondary:active {
+.auth-card .btn-secondary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   LOGIN PAGE EXTRAS
+========================================= */
+
+.login-switch {
+    margin: 12px 0 0 !important;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13.5px;
+}
+
+.login-switch a,
+.auth-card > p:last-child a,
+.forgot-login-text a {
+    color: var(--primary);
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.login-switch a:hover,
+.auth-card > p:last-child a:hover,
+.forgot-login-text a:hover {
+    text-decoration: underline;
+}
+
+.social-login {
+    margin-top: 14px;
+}
+
+.social-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 14px 0;
+}
+
+.social-divider::before,
+.social-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.social-divider span {
+    padding: 0 12px;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.auth-badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 8px;
+    background: rgba(45, 90, 39, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(45, 90, 39, 0.22);
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin: 0 auto 12px auto;
+    width: fit-content;
+}
+
+.google-auth-wrapper {
+    width: 100%;
+    margin: 8px 0 24px;
+}
+
+.google-auth-wrapper form {
+    width: 100%;
+}
+
+.google-login-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #1f2937;
+    text-decoration: none;
+    font-weight: 700;
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    outline: none;
+}
+
+.google-login-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    color: #111827;
+}
+
+.google-login-btn:active {
     transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
+.google-login-btn .google-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+/* Google Auth Perks & Trust Indicators */
+.google-perks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 22px;
+    padding: 20px 0;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    width: 100%;
+}
+
+.google-perk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.google-perk-item .perk-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(45, 90, 39, 0.1);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.google-perk-item .perk-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.google-perk-item .perk-text strong {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.google-perk-item .perk-text span {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.auth-security-note {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #64748b;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 8px;
+}
+
+.auth-security-note i {
+    color: var(--primary);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* Visual Highlights */
+.visual-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+    width: fit-content;
+}
+
+.visual-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.visual-features span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 20px;
+    font-size: 11.5px;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.turnstile-container {
+    margin: 10px 0;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* =========================================
+   PASSWORD STRENGTH METER & CHECKLIST
+========================================= */
+
+.strength-meter,
+.reset-strength-meter {
+    width: 100%;
+    max-width: 100%;
+    height: 6px;
+    margin-top: 6px;
+    background: #e4efe8;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.strength-bar,
+.reset-strength-bar {
+    width: 0%;
+    height: 100%;
+    border-radius: 6px;
+    background: #dc5c57;
+    transition: width 0.25s ease, background 0.25s ease;
+}
+
+.strength-bar.weak { width: 25% !important; background: #dc5c57; }
+.strength-bar.fair { width: 50% !important; background: #e0a83e; }
+.strength-bar.good { width: 75% !important; background: #75ad4c; }
+.strength-bar.strong { width: 100% !important; background: #45a968; }
+
+.strength-checklist,
+.reset-requirements {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.strength-checklist li,
+.reset-requirement {
+    position: relative;
+    padding-left: 20px;
+    color: #9aaa9f;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease;
+}
+
+.strength-checklist li::before {
+    content: "○";
+    position: absolute;
+    left: 0;
+    font-size: 12px;
+}
+
+.strength-checklist li.valid,
+.reset-requirement.valid {
+    color: #299653;
+}
+
+.strength-checklist li.valid::before {
+    content: "✓";
+}
+
+.reset-strength-section {
+    margin: 4px 0 10px;
+}
+
+.reset-strength-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* =========================================
+   FORGOT PASSWORD & RESET PAGE DETAILS
+========================================= */
+
+.forgot-back-link,
+.reset-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: transform 0.2s ease;
+}
+
+.forgot-back-link:hover,
+.reset-back-link:hover {
+    transform: translateX(-3px);
+}
+
+.forgot-icon,
+.reset-icon,
+.otp-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 12px;
+}
+
+.forgot-description,
+.reset-description,
+.otp-description {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin: 0 0 20px;
+}
+
+.forgot-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.forgot-input-wrapper i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+.forgot-input-wrapper input {
+    padding-left: 44px;
+}
+
+.forgot-login-text {
+    margin-top: 18px !important;
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   OTP VERIFICATION
+========================================= */
+
+.otp-inputs {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(6px, 2vw, 12px);
+    width: 100%;
+    margin: 12px 0 16px;
+    box-sizing: border-box;
+}
+
+.otp-input {
+    width: clamp(38px, 11vw, 50px) !important;
+    height: clamp(44px, 12vw, 54px) !important;
+    font-size: clamp(18px, 4.5vw, 24px) !important;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 !important;
+    border: 2px solid var(--primary-border);
+    border-radius: 10px;
+    background: #fbfefc;
+    color: var(--text-dark);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.otp-input:focus,
+.otp-input.filled {
+    border-color: #45a968;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(69, 169, 104, 0.15);
+}
+
+.otp-timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 10px 0;
+}
+
+.otp-timer i {
+    color: var(--primary);
+}
+
+.otp-resend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+
+.otp-resend button {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    padding: 0;
+}
+
+.otp-resend button:disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   PASSWORD RESET SUCCESS
+========================================= */
+
+.reset-success-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #166534;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 16px;
+}
+
+.reset-success-description {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 24px;
+}
+
+.reset-success-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.reset-success-note i {
+    color: var(--primary);
+}
 
 /* =========================================
    PROFILE PAGE
-   Concept A - Layered Identity Card
 ========================================= */
 
 .profile-page {
     width: 100%;
     max-width: 1100px;
     margin: 0 auto;
-    min-height: calc(100vh - 80px);
-    padding: 45px 30px 70px;
+    min-height: calc(100vh - 180px);
+    padding: clamp(20px, 4vw, 36px) 16px clamp(40px, 6vw, 70px);
     box-sizing: border-box;
-
-    background-image:
-        linear-gradient(
-            rgba(243, 250, 245, 0.95),
-            rgba(243, 250, 245, 0.95)
-        ),
-        url('../images/bg.jpg');
-
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
 }
-
-
-/* =========================================
-   PROFILE MESSAGES
-========================================= */
 
 .profile-messages {
     margin-bottom: 18px;
 }
 
 .profile-message {
-    padding: 13px 17px;
-
+    padding: 12px 16px;
     margin-bottom: 8px;
-
-    border-radius: 9px;
-
+    border-radius: 10px;
     font-size: 13px;
-
-    animation: messageSlideDown 0.3s ease;
-
-    transition:
-        opacity 0.3s ease,
-        transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.3s, transform 0.3s;
 }
 
 .profile-message.success {
@@ -966,3869 +1006,648 @@ body {
     border: 1px solid #fca5a5;
 }
 
-.profile-message.fade-out {
-    opacity: 0;
-    transform: translateY(-8px);
-}
-
-@keyframes messageSlideDown {
-
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-}
-
-
-/* =========================================
-   IDENTITY CARD
-========================================= */
-
+/* Identity Card */
 .profile-identity-card {
-
     width: 100%;
-
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    gap: 20px;
-
-    padding: 24px 26px;
-
+    gap: 16px;
+    padding: clamp(18px, 3vw, 24px);
     box-sizing: border-box;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 20px;
-
-    box-shadow:
-        0 8px 24px rgba(35, 90, 55, 0.08);
-
-    margin-bottom: 16px;
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 18px;
 }
 
-
 .profile-identity-left {
-
     display: flex;
     align-items: center;
-
     gap: 16px;
-
     min-width: 0;
 }
 
-
-/* =========================================
-   AVATAR
-========================================= */
-
 .profile-avatar {
-
-    width: 64px;
-    height: 64px;
-
+    width: clamp(52px, 8vw, 64px);
+    height: clamp(52px, 8vw, 64px);
     flex-shrink: 0;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     border-radius: 16px;
-
-    background:
-        linear-gradient(
-            135deg,
-            #2d5a27,
-            #3e7b36
-        );
-
+    background: linear-gradient(135deg, var(--primary), #3e7b36);
     color: #ffffff;
-
-    font-size: 21px;
-    font-weight: 700;
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
 }
-
-
-.profile-identity-info {
-    min-width: 0;
-}
-
 
 .profile-identity-info h1 {
-
     margin: 0;
-
     color: #0f172a;
-
-    font-size: 20px;
-    font-weight: 700;
-
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
     line-height: 1.3;
-
 }
-
 
 .profile-contact {
-
-    margin: 3px 0 0;
-
-    color: #71847a;
-
-    font-size: 12.5px;
-
-    line-height: 1.5;
-}
-
-
-.contact-separator {
-    margin: 0 5px;
-}
-
-
-/* =========================================
-   PROFILE STATUS TAGS
-========================================= */
-
-.profile-status-tags {
-
-    display: flex;
-
-    align-items: center;
-
-    flex-wrap: wrap;
-
-    gap: 8px;
-
-    margin-top: 8px;
-}
-
-
-.profile-status-tag {
-
-    display: inline-flex;
-
-    align-items: center;
-
-    padding: 4px 10px;
-
-    border-radius: 20px;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-    white-space: nowrap;
-}
-
-
-.resume-status {
-
-    background: #e4f5e9;
-
-    color: #25864a;
-}
-
-
-.no-resume-status {
-
-    background: #fff4e5;
-
-    color: #a16207;
-}
-
-
-.application-status {
-
-    background: #f1f5f9;
-
-    color: #475569;
-}
-
-
-/* =========================================
-   IDENTITY EDIT BUTTON
-========================================= */
-
-.identity-edit-btn {
-
-    flex-shrink: 0;
-
-    padding: 10px 18px;
-
-    border: none;
-
-    border-radius: 10px;
-
-    background: #2d5a27;
-
-    color: #ffffff;
-
-    font-family: inherit;
-
-    font-size: 12.5px;
-
-    font-weight: 700;
-
-    cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-
-.identity-edit-btn:hover {
-
-    background: #24491f;
-
-    transform: translateY(-1px);
-
-    box-shadow:
-        0 6px 15px rgba(45, 90, 39, 0.18);
-}
-
-
-/* =========================================
-   COMPLETE PROFILE
-========================================= */
-
-.profile-complete-prompt {
-
-    display: flex;
-    align-items: center;
-
-    padding: 18px 20px;
-
-    margin-bottom: 16px;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(35, 90, 55, 0.05);
-}
-
-
-.profile-complete-content h2 {
-
-    margin: 0 0 4px;
-
-    color: #315342;
-
-    font-size: 15px;
-
-}
-
-
-.profile-complete-content p {
-
-    margin: 0;
-
-    color: #71847a;
-
-    font-size: 12px;
-
-}
-
-
-/* =========================================
-   TWO COLUMN INFORMATION
-========================================= */
-
-.profile-two-column {
-
-    display: grid;
-
-    grid-template-columns: 1fr 1fr;
-
-    gap: 16px;
-
-    margin-bottom: 16px;
-}
-
-
-/* =========================================
-   MINI CARDS
-========================================= */
-
-.profile-mini-card {
-
-    min-width: 0;
-
-    padding: 18px 20px;
-
-    box-sizing: border-box;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(35, 90, 55, 0.04);
-}
-
-
-.mini-card-title {
-
-    margin-bottom: 10px;
-
-    color: #94a3b8;
-
-    font-size: 11px;
-
-    font-weight: 700;
-
-    text-transform: uppercase;
-
-    letter-spacing: 0.5px;
-}
-
-
-/* =========================================
-   PERSONAL INFO
-========================================= */
-
-.mini-info-item {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 2px;
-
-    margin-bottom: 9px;
-}
-
-
-.mini-info-item:last-child {
-    margin-bottom: 0;
-}
-
-
-.mini-info-label {
-
-    color: #84968c;
-
-    font-size: 12px;
-}
-
-
-.mini-info-value {
-
-    color: #254b38;
-
-    font-size: 13.5px;
-
+    margin: 4px 0 6px;
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.4;
     word-break: break-word;
 }
 
+.contact-separator {
+    margin: 0 4px;
+    color: #cbd5e1;
+}
 
-/* =========================================
-   RESUME
-========================================= */
-
-.mini-resume-card {
-
+.profile-status-tags {
     display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
 
-    align-items: center;
+.profile-status-tag {
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
 
-    gap: 10px;
+.resume-status {
+    background: #dcfce7;
+    color: #166534;
+}
 
-    min-width: 0;
+.no-resume-status {
+    background: #fef3c7;
+    color: #92400e;
+}
 
-    padding: 10px 12px;
+.application-status {
+    background: #e0f2fe;
+    color: #0369a1;
+}
 
-    box-sizing: border-box;
-
-    background: #f6fbf8;
-
-    border: 1px solid #dceee2;
-
+.profile-edit-btn {
+    padding: 9px 18px;
     border-radius: 10px;
-}
-
-
-.mini-resume-icon {
-
-    flex-shrink: 0;
-
-    font-size: 18px;
-}
-
-
-.mini-resume-details {
-
-    flex: 1;
-
-    min-width: 0;
-}
-
-
-.mini-resume-name {
-
-    overflow: hidden;
-
-    color: #315342;
-
-    font-size: 12.5px;
-
+    border: 1.5px solid var(--primary);
+    background: #ffffff;
+    color: var(--primary);
+    font-family: inherit;
+    font-size: 13px;
     font-weight: 700;
-
-    text-overflow: ellipsis;
-
+    cursor: pointer;
     white-space: nowrap;
+    transition: all 0.2s ease;
 }
 
-
-.mini-resume-date {
-
-    margin-top: 2px;
-
-    color: #8a9a91;
-
-    font-size: 10.5px;
+.profile-edit-btn:hover {
+    background: var(--primary);
+    color: #ffffff;
 }
 
+/* Complete Profile Prompt */
+.profile-complete-prompt {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
 
-.mini-resume-view {
-
-    flex-shrink: 0;
-
-    color: #25864a;
-
-    font-size: 11.5px;
-
+.profile-complete-content h2 {
+    margin: 0 0 4px;
+    font-size: 15px;
     font-weight: 700;
-
-    text-decoration: none;
+    color: #92400e;
 }
 
-
-.mini-resume-view:hover {
-    text-decoration: underline;
+.profile-complete-content p {
+    margin: 0;
+    font-size: 13px;
+    color: #78350f;
 }
 
+/* Two Column Section */
+.profile-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 24px;
+}
 
-.mini-no-resume {
+.profile-mini-card {
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+}
 
-    padding: 12px;
-
-    background: #f7faf8;
-
-    border-radius: 9px;
-
-    color: #84968c;
-
+.mini-card-title {
     font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--primary);
+    margin-bottom: 12px;
 }
 
-
-/* =========================================
-   PROFILE SECTION
-========================================= */
-
-.profile-section {
-
-    margin-bottom: 16px;
-}
-
-
-.section-header {
-
+.mini-info-item {
     display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 15px;
-
+    flex-direction: column;
+    gap: 2px;
     margin-bottom: 10px;
 }
 
+.mini-info-label {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.mini-info-value {
+    font-size: 13.5px;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.mini-resume-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mini-resume-icon {
+    font-size: 24px;
+}
+
+.mini-resume-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1e293b;
+    word-break: break-all;
+}
+
+.mini-resume-date {
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
+.mini-resume-view {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.mini-resume-view:hover {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.mini-no-resume {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Edit Profile Section */
+.profile-section {
+    margin-bottom: 28px;
+}
+
+.section-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
 
 .section-header h2 {
-
     margin: 0;
-
-    color: #315342;
-
-    font-size: 17px;
-
-    font-weight: 700;
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
+    color: var(--text-dark);
 }
-
 
 .section-header p {
-
-    margin: 4px 0 0;
-
-    color: #71847a;
-
-    font-size: 12px;
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--text-muted);
 }
-
 
 .view-all-btn {
-
-    flex-shrink: 0;
-
-    color: #25864a;
-
-    font-size: 12px;
-
+    color: var(--primary);
+    font-size: 13px;
     font-weight: 700;
-
     text-decoration: none;
+    white-space: nowrap;
 }
-
 
 .view-all-btn:hover {
     text-decoration: underline;
 }
 
-
-/* =========================================
-   RECOMMENDATIONS CONTAINER
-========================================= */
-
-.job-recommendations {
-
-    display: grid;
-
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    gap: 12px;
-
-    padding: 18px 20px;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(35, 90, 55, 0.04);
+.profile-edit-card {
+    background: var(--glass-card) !important;
+    border: 1px solid var(--primary-border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: clamp(18px, 3vw, 28px) !important;
+    box-shadow: var(--shadow-sm) !important;
 }
-
-
-/* =========================================
-   RECOMMENDATION CARD
-========================================= */
-
-.recommendation-card {
-
-    min-width: 0;
-
-    padding: 13px;
-
-    box-sizing: border-box;
-
-    background: #ffffff;
-
-    border: 1px solid #eef2ed;
-
-    border-radius: 12px;
-
-    transition:
-        border-color 0.2s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
-}
-
-
-.recommendation-card:hover {
-
-    border-color: #dceee2;
-
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 7px 18px rgba(35, 90, 55, 0.07);
-}
-
-
-.recommendation-card-header {
-
-    display: flex;
-
-    align-items: flex-start;
-
-    justify-content: space-between;
-
-    gap: 10px;
-}
-
-
-.recommendation-card h3 {
-
-    margin: 0;
-
-    color: #315342;
-
-    font-size: 13.5px;
-
-    font-weight: 700;
-}
-
-
-.job-department {
-
-    display: block;
-
-    margin-top: 3px;
-
-    color: #84968c;
-
-    font-size: 11px;
-}
-
-
-.match-badge {
-
-    flex-shrink: 0;
-
-    padding: 5px 8px;
-
-    border-radius: 7px;
-
-    background: #e4f5e9;
-
-    color: #25864a;
-
-    font-size: 10px;
-
-    font-weight: 700;
-
-    white-space: nowrap;
-}
-
-
-/* =========================================
-   MATCH BAR
-========================================= */
-
-.match-bar {
-
-    height: 5px;
-
-    margin: 11px 0;
-
-    overflow: hidden;
-
-    background: #e5eee8;
-
-    border-radius: 5px;
-}
-
-
-.match-progress {
-
-    height: 100%;
-
-    background: #35a45e;
-
-    border-radius: 5px;
-}
-
-
-/* =========================================
-   MATCHED SKILLS
-========================================= */
-
-.job-tags {
-
-    display: flex;
-
-    flex-wrap: wrap;
-
-    gap: 5px;
-
-    margin-top: 10px;
-
-    margin-bottom: 9px;
-}
-
-
-.job-tags span {
-
-    padding: 4px 7px;
-
-    border-radius: 6px;
-
-    background: #f0f7f2;
-
-    color: #5e7768;
-
-    font-size: 10px;
-}
-
-
-/* =========================================
-   RECOMMENDATION DESCRIPTION
-========================================= */
-
-.recommendation-blurb {
-
-    margin: 10px 0;
-
-    color: #71847a;
-
-    font-size: 11px;
-
-    line-height: 1.5;
-}
-
-
-.view-job-btn {
-
-    display: inline-block;
-
-    margin-top: 2px;
-
-    color: #25864a;
-
-    font-size: 11.5px;
-
-    font-weight: 700;
-
-    text-decoration: none;
-}
-
-
-.view-job-btn:hover {
-    text-decoration: underline;
-}
-
-
-/* =========================================
-   NO RECOMMENDATIONS
-========================================= */
-
-.no-recommendations {
-
-    grid-column: 1 / -1;
-
-    padding: 25px;
-
-    text-align: center;
-
-    background: #f7faf8;
-
-    border-radius: 10px;
-}
-
-
-.no-recommendations h3 {
-
-    margin: 0 0 5px;
-
-    color: #315342;
-
-    font-size: 14px;
-}
-
-
-.no-recommendations p {
-
-    margin: 0;
-
-    color: #84968c;
-
-    font-size: 12px;
-}
-
-
-/* =========================================
-   APPLICATIONS
-========================================= */
-
-.applications-card {
-
-    overflow: hidden;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(35, 90, 55, 0.04);
-}
-
-
-.applications-table-wrapper {
-    overflow-x: auto;
-}
-
-
-.applications-table {
-
-    width: 100%;
-
-    min-width: 650px;
-
-    border-collapse: collapse;
-
-    font-size: 12px;
-}
-
-
-.applications-table th {
-
-    padding: 13px 16px;
-
-    background: #f5faf7;
-
-    color: #71847a;
-
-    font-size: 10px;
-
-    font-weight: 700;
-
-    text-align: left;
-
-    white-space: nowrap;
-}
-
-
-.applications-table td {
-
-    padding: 14px 16px;
-
-    color: #4e6759;
-
-    border-top: 1px solid #edf3ef;
-
-    white-space: nowrap;
-}
-
-
-.applications-table td strong {
-    color: #315342;
-}
-
-
-.no-applications {
-
-    padding: 25px !important;
-
-    text-align: center;
-
-    color: #84968c !important;
-}
-
-
-/* =========================================
-   STATUS
-========================================= */
-
-.status-badge {
-
-    display: inline-block;
-
-    padding: 5px 9px;
-
-    border-radius: 7px;
-
-    background: #eef4ff;
-
-    color: #4b72ad;
-
-    font-size: 10px;
-
-    font-weight: 700;
-}
-
-
-/* =========================================
-   TRACK BUTTON
-========================================= */
-
-.track-btn {
-
-    padding: 6px 11px;
-
-    border: 1px solid #b9ddc4;
-
-    border-radius: 7px;
-
-    background: #f3faf5;
-
-    color: #25864a;
-
-    font-size: 10px;
-
-    font-weight: 700;
-
-    text-decoration: none;
-}
-
-
-.track-btn:hover {
-    background: #e4f5e9;
-}
-
-
-/* =========================================
-   EDIT PROFILE
-========================================= */
-
-.profile-edit-section {
-    margin-top: 0;
-}
-
-
-.profile-info-card {
-
-    padding: 20px;
-
-    background: #ffffff;
-
-    border: 1px solid #dceee2;
-
-    border-radius: 16px;
-
-    box-shadow:
-        0 5px 18px rgba(35, 90, 55, 0.04);
-}
-
 
 .profile-edit-grid {
-
     display: grid;
-
     grid-template-columns: 1fr 1fr;
-
-    gap: 18px 22px;
+    gap: 16px;
 }
-
-
-.profile-edit-grid .form-group {
-    margin: 0;
-}
-
-
-.profile-edit-grid label {
-
-    display: block;
-
-    margin-bottom: 6px;
-
-    color: #315342;
-
-    font-size: 11px;
-
-    font-weight: 600;
-}
-
-
-.profile-edit-grid input,
-.profile-edit-grid textarea {
-
-    width: 100%;
-
-    padding: 11px 12px;
-
-    box-sizing: border-box;
-
-    border: 1px solid #cfe4d6;
-
-    border-radius: 9px;
-
-    background: #fbfdfb;
-
-    color: #315342;
-
-    font-family: inherit;
-
-    font-size: 12px;
-
-    outline: none;
-
-    transition: 0.2s ease;
-}
-
-
-.profile-edit-grid input:focus,
-.profile-edit-grid textarea:focus {
-
-    border-color: #35a45e;
-
-    box-shadow:
-        0 0 0 3px rgba(53, 164, 94, 0.10);
-}
-
-
-.profile-edit-grid textarea {
-
-    min-height: 85px;
-
-    resize: vertical;
-}
-
 
 .profile-full-width {
     grid-column: 1 / -1;
 }
 
-
-/* =========================================
-   EDIT BUTTONS
-========================================= */
-
 .profile-edit-actions {
-
     display: flex;
-
     justify-content: flex-end;
-
-    gap: 9px;
-
-    margin-top: 20px;
-
-    padding-top: 17px;
-
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 16px;
     border-top: 1px solid #e4eee8;
 }
 
-
-.profile-cancel-btn,
-.profile-save-btn {
-
-    padding: 9px 15px;
-
+.profile-cancel-btn {
+    padding: 9px 18px;
     border-radius: 8px;
-
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #64748b;
     font-family: inherit;
-
-    font-size: 12px;
-
+    font-size: 13px;
     font-weight: 700;
-
     cursor: pointer;
 }
 
-
-.profile-cancel-btn {
-
-    border: 1px solid #cfe1d5;
-
-    background: #ffffff;
-
-    color: #71847a;
-}
-
-
-.profile-cancel-btn:hover {
-    background: #f5faf7;
-}
-
-
 .profile-save-btn {
-
-    border: 1px solid #35a45e;
-
-    background: #35a45e;
-
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    background: var(--primary);
     color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
 }
-
 
 .profile-save-btn:hover {
-    background: #2d914f;
+    background: var(--primary-hover);
 }
 
-
-.profile-save-btn:disabled {
-
-    opacity: 0.7;
-
-    cursor: not-allowed;
-}
-
-
-/* =========================================
-   FORM ERRORS
-========================================= */
-
-.profile-edit-card .form-error {
-
-    margin-top: 4px;
-
-    color: #c65353;
-
-    font-size: 10px;
-}
-
-
-/* =========================================
-   RESUME PROCESSING OVERLAY
-========================================= */
-
-.resume-processing-overlay {
-
-    position: fixed;
-
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-
-    background: rgba(0, 0, 0, 0.55);
-
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    z-index: 9999;
-}
-
-
-.resume-processing-box {
-
-    width: calc(100% - 40px);
-
-    max-width: 420px;
-
-    padding: 40px;
-
-    box-sizing: border-box;
-
-    background: #ffffff;
-
-    border-radius: 14px;
-
-    text-align: center;
-
-    box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-
-.resume-processing-box h3 {
-
-    margin: 20px 0 10px;
-
-    color: #315342;
-}
-
-
-.resume-processing-box p {
-
-    margin: 0;
-
-    color: #666;
-
-    line-height: 1.5;
-
-    font-size: 13px;
-}
-
-
-.processing-spinner {
-
-    width: 50px;
-    height: 50px;
-
-    margin: auto;
-
-    border: 5px solid #e5e5e5;
-
-    border-top-color: #35a45e;
-
-    border-radius: 50%;
-
-    animation: resumeSpin 1s linear infinite;
-}
-
-@keyframes resumeSpin {
-
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-
-}
-
-
-/* =========================================
-   FORGOT PASSWORD
-========================================= */
-
-.forgot-password-page {
-    padding-top: 120px;
-    padding-bottom: 80px;
-}
-
-
-/* =========================================
-   Forgot Password Layout
-========================================= */
-
-.forgot-password-split {
-    max-width: 980px;
-    min-height: 590px;
-}
-
-
-/* =========================================
-   Image Panel
-========================================= */
-
-.forgot-image-panel {
-    min-height: 590px;
-}
-
-
-/* =========================================
-   Forgot Password Card
-========================================= */
-
-.forgot-password-card {
-    width: 100% !important;
-    max-width: none;
-
-    box-sizing: border-box;
-
+/* Recommended Jobs */
+.job-recommendations {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-
-    padding: 45px 48px !important;
-}
-
-
-/* =========================================
-   Back To Login
-========================================= */
-
-.forgot-back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    width: fit-content;
-
-    margin-bottom: 25px;
-
-    color: #5f7569;
-
-    font-size: 12px;
-    font-weight: 600;
-
-    text-decoration: none;
-
-    transition:
-        color 0.2s ease,
-        transform 0.2s ease;
-}
-
-.forgot-back-link:hover {
-    color: #25864a;
-    transform: translateX(-2px);
-}
-
-
-/* =========================================
-   Forgot Password Icon
-========================================= */
-
-.forgot-icon {
-    width: 52px;
-    height: 52px;
-
-    margin: 0 auto 18px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #e1f4e8;
-
-    color: #299653;
-
-    font-size: 21px;
-}
-
-
-/* =========================================
-   Heading
-========================================= */
-
-.forgot-password-card h1 {
-    margin: 0;
-
-    text-align: center;
-
-    color: #205c3b;
-
-    font-size: 28px;
-    font-weight: 700;
-}
-
-
-/* =========================================
-   Description
-========================================= */
-
-.forgot-description {
-    max-width: 390px;
-
-    margin: 9px auto 28px !important;
-
-    text-align: center;
-
-    color: #71847a;
-
-    font-size: 13px;
-
-    line-height: 1.6;
-}
-
-
-/* =========================================
-   Form
-========================================= */
-
-.forgot-password-form {
-    width: 100%;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 17px;
-}
-
-
-/* =========================================
-   Email Input
-========================================= */
-
-.forgot-input-wrapper {
-    position: relative;
-
-    width: 100%;
-}
-
-
-.forgot-input-wrapper > i {
-    position: absolute;
-
-    top: 50%;
-    left: 15px;
-
-    transform: translateY(-50%);
-
-    color: #8ca096;
-
-    font-size: 14px;
-
-    pointer-events: none;
-
-    transition: color 0.2s ease;
-}
-
-
-.forgot-input-wrapper input {
-    width: 100%;
-
-    height: 49px;
-
-    box-sizing: border-box;
-
-    padding: 0 14px 0 42px;
-
-    border: 1px solid #cfe2d5;
-
-    border-radius: 10px;
-
-    background: #fbfefc;
-
-    color: #18352a;
-
-    font-family: inherit;
-
-    font-size: 14px;
-
-    outline: none;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        background 0.2s ease;
-}
-
-
-.forgot-input-wrapper input::placeholder {
-    color: #9aaa9f;
-}
-
-
-.forgot-input-wrapper input:focus {
-    border-color: #45a968;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 0 0 4px rgba(69, 169, 104, 0.10);
-}
-
-
-.forgot-input-wrapper:focus-within > i {
-    color: #299653;
-}
-
-
-/* =========================================
-   Submit Button
-========================================= */
-
-.forgot-submit-btn {
-    width: 100% !important;
-
-    height: 51px;
-
-    margin-top: 5px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 10px;
-
-    box-sizing: border-box;
-}
-
-
-.forgot-submit-btn i {
-    font-size: 13px;
-
-    transition:
-        transform 0.2s ease;
-}
-
-
-.forgot-submit-btn:hover i {
-    transform: translateX(3px);
-}
-
-
-/* =========================================
-   Bottom Login Text
-========================================= */
-
-.forgot-login-text {
-    margin: 24px 0 0 !important;
-
-    text-align: center;
-
-    color: #71847a;
-
-    font-size: 13px;
-}
-
-
-.forgot-login-text a {
-    color: #25864a;
-
-    font-weight: 700;
-
-    text-decoration: none;
-}
-
-
-.forgot-login-text a:hover {
-    text-decoration: underline;
-}
-
-
-/* =========================================
-   Messages
-========================================= */
-
-.forgot-messages {
-    margin-bottom: 18px;
-}
-
-
-.forgot-message {
-    padding: 11px 13px;
-
-    border-radius: 9px;
-
-    font-size: 12px;
-
-    line-height: 1.5;
-}
-
-
-.forgot-message.success {
-    color: #166534;
-
-    background: #dcfce7;
-
-    border: 1px solid #86efac;
-}
-
-
-.forgot-message.error {
-    color: #991b1b;
-
-    background: #fee2e2;
-
-    border: 1px solid #fca5a5;
-}
-
-
-/* =========================================
-   Responsive
-========================================= */
-
-@media (max-width: 750px) {
-
-    .forgot-password-page {
-        padding-top: 40px;
-        padding-bottom: 40px;
-    }
-
-
-    .forgot-password-split {
-        min-height: auto;
-
-        grid-template-columns: 1fr;
-    }
-
-
-    .forgot-image-panel {
-        min-height: 250px;
-
-        order: 2;
-    }
-
-
-    .forgot-password-card {
-        padding: 35px 25px !important;
-
-        order: 1;
-    }
-
-
-    .forgot-password-card h1 {
-        font-size: 25px;
-    }
-
-
-    .forgot-description {
-        font-size: 13px;
-    }
-
-}
-
-
-@media (max-width: 450px) {
-
-    .forgot-password-card {
-        padding: 30px 20px !important;
-    }
-
-
-    .forgot-back-link {
-        margin-bottom: 20px;
-    }
-
-
-    .forgot-icon {
-        width: 48px;
-        height: 48px;
-
-        font-size: 19px;
-    }
-
-
-    .forgot-password-card h1 {
-        font-size: 23px;
-    }
-
-}
-
-
-
-/* =========================================
-   OTP VERIFICATION
-========================================= */
-
-.otp-page {
-    padding-top: 120px;
-    padding-bottom: 80px;
-}
-
-
-/* =========================================
-   Layout
-========================================= */
-
-.otp-split {
-    max-width: 980px;
-    min-height: 590px;
-}
-
-
-/* =========================================
-   Image
-========================================= */
-
-.otp-image-panel {
-    min-height: 590px;
-}
-
-
-/* =========================================
-   OTP Card
-========================================= */
-
-.otp-card {
-    width: 100% !important;
-    max-width: none;
-
-    box-sizing: border-box;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    padding: 45px 48px !important;
-}
-
-
-/* =========================================
-   Back Button
-========================================= */
-
-.otp-back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    width: fit-content;
-
-    margin-bottom: 25px;
-
-    color: #5f7569;
-
-    font-size: 12px;
-    font-weight: 600;
-
-    text-decoration: none;
-
-    transition:
-        color 0.2s ease,
-        transform 0.2s ease;
-}
-
-
-.otp-back-link:hover {
-    color: #25864a;
-
-    transform: translateX(-2px);
-}
-
-
-/* =========================================
-   Icon
-========================================= */
-
-.otp-icon {
-    width: 52px;
-    height: 52px;
-
-    margin: 0 auto 18px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #e1f4e8;
-
-    color: #299653;
-
-    font-size: 21px;
-}
-
-
-/* =========================================
-   Heading
-========================================= */
-
-.otp-card h1 {
-    margin: 0;
-
-    text-align: center;
-
-    color: #205c3b;
-
-    font-size: 28px;
-    font-weight: 700;
-}
-
-
-/* =========================================
-   Description
-========================================= */
-
-.otp-description {
-    max-width: 390px;
-
-    margin: 9px auto 30px !important;
-
-    text-align: center;
-
-    color: #71847a;
-
-    font-size: 13px;
-
-    line-height: 1.6;
-}
-
-
-/* =========================================
-   OTP Form
-========================================= */
-
-.otp-form {
-    width: 100%;
-
-    display: flex;
-    flex-direction: column;
-}
-
-
-/* =========================================
-   OTP INPUTS
-========================================= */
-
-.otp-inputs {
-    display: flex;
-
-    justify-content: center;
-
-    gap: 10px;
-
-    margin-bottom: 20px;
-}
-
-
-.otp-input {
-    width: 48px;
-    height: 54px;
-
-    box-sizing: border-box;
-
-    border: 1px solid #cfe2d5;
-
-    border-radius: 10px;
-
-    background: #fbfefc;
-
-    color: #205c3b;
-
-    font-family: inherit;
-
-    font-size: 21px;
-    font-weight: 700;
-
-    text-align: center;
-
-    outline: none;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        background 0.2s ease,
-        transform 0.15s ease;
-}
-
-
-.otp-input:hover {
-    border-color: #9fc9ad;
-}
-
-
-.otp-input:focus {
-    border-color: #45a968;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 0 0 4px rgba(69, 169, 104, 0.10);
-
-    transform: translateY(-1px);
-}
-
-
-.otp-input.filled {
-    border-color: #45a968;
-
-    background: #f4fbf6;
-}
-
-
-/* =========================================
-   TIMER
-========================================= */
-
-.otp-timer {
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    gap: 7px;
-
-    margin-bottom: 22px;
-
-    color: #71847a;
-
-    font-size: 12px;
-}
-
-
-.otp-timer i {
-    color: #6e877a;
-}
-
-
-.otp-timer strong {
-    color: #25864a;
-
-    font-weight: 700;
-}
-
-
-.otp-timer.expired strong {
-    color: #dc2626;
-}
-
-
-/* =========================================
-   RESEND
-========================================= */
-
-.otp-resend {
-    display: flex;
-
-    justify-content: center;
-    align-items: center;
-
-    gap: 5px;
-
-    margin-bottom: 20px;
-
-    color: #71847a;
-
-    font-size: 12px;
-}
-
-
-.otp-resend button {
-    padding: 0;
-
-    border: none;
-
-    background: transparent;
-
-    color: #25864a;
-
-    font-family: inherit;
-
-    font-size: 12px;
-    font-weight: 700;
-
-    cursor: pointer;
-}
-
-
-.otp-resend button:hover:not(:disabled) {
-    text-decoration: underline;
-}
-
-
-.otp-resend button:disabled {
-    color: #a5b3ab;
-
-    cursor: not-allowed;
-}
-
-
-/* =========================================
-   ERROR
-========================================= */
-
-.otp-error {
-    display: none;
-
-    margin-bottom: 15px;
-
-    padding: 10px 12px;
-
-    border: 1px solid #fca5a5;
-
-    border-radius: 9px;
-
-    background: #fee2e2;
-
-    color: #991b1b;
-
-    font-size: 12px;
-
-    line-height: 1.5;
-
-    text-align: center;
-}
-
-
-.otp-error.show {
-    display: block;
-}
-
-
-/* =========================================
-   VERIFY BUTTON
-========================================= */
-
-.otp-submit-btn {
-    width: 100% !important;
-
-    height: 51px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 10px;
-
-    box-sizing: border-box;
-}
-
-
-.otp-submit-btn i {
-    font-size: 13px;
-
-    transition:
-        transform 0.2s ease;
-}
-
-
-.otp-submit-btn:hover i {
-    transform: translateX(3px);
-}
-
-
-/* =========================================
-   Responsive
-========================================= */
-
-@media (max-width: 750px) {
-
-    .otp-page {
-        padding-top: 40px;
-        padding-bottom: 40px;
-    }
-
-
-    .otp-split {
-        min-height: auto;
-
-        grid-template-columns: 1fr;
-    }
-
-
-    .otp-image-panel {
-        min-height: 250px;
-
-        order: 2;
-    }
-
-
-    .otp-card {
-        padding: 35px 25px !important;
-
-        order: 1;
-    }
-
-
-    .otp-card h1 {
-        font-size: 25px;
-    }
-
-}
-
-
-@media (max-width: 500px) {
-
-    .otp-inputs {
-        gap: 7px;
-    }
-
-
-    .otp-input {
-        width: 43px;
-        height: 50px;
-
-        font-size: 19px;
-    }
-
-}
-
-
-@media (max-width: 380px) {
-
-    .otp-inputs {
-        gap: 5px;
-    }
-
-
-    .otp-input {
-        width: 40px;
-        height: 47px;
-    }
-
-}
-
-
-/* =========================================
-   RESET PASSWORD
-========================================= */
-
-.reset-password-page {
-    padding-top: 100px;
-    padding-bottom: 70px;
-}
-
-
-/* =========================================
-   Layout
-========================================= */
-
-.reset-password-split {
-    max-width: 980px;
-    min-height: 650px;
-}
-
-
-/* =========================================
-   Image Panel
-========================================= */
-
-.reset-image-panel {
-    min-height: 650px;
-}
-
-
-/* =========================================
-   Reset Card
-========================================= */
-
-.reset-password-card {
-    width: 100% !important;
-    max-width: none;
-
-    box-sizing: border-box;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    padding: 38px 48px !important;
-}
-
-
-/* =========================================
-   Back Link
-========================================= */
-
-.reset-back-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    width: fit-content;
-
-    margin-bottom: 18px;
-
-    color: #5f7569;
-
-    font-size: 12px;
-    font-weight: 600;
-
-    text-decoration: none;
-
-    transition:
-        color 0.2s ease,
-        transform 0.2s ease;
-}
-
-
-.reset-back-link:hover {
-    color: #25864a;
-
-    transform: translateX(-2px);
-}
-
-
-/* =========================================
-   Icon
-========================================= */
-
-.reset-icon {
-    width: 50px;
-    height: 50px;
-
-    margin: 0 auto 14px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #e1f4e8;
-
-    color: #299653;
-
-    font-size: 20px;
-}
-
-
-/* =========================================
-   Heading
-========================================= */
-
-.reset-password-card h1 {
-    margin: 0;
-
-    text-align: center;
-
-    color: #205c3b;
-
-    font-size: 27px;
-    font-weight: 700;
-}
-
-
-/* =========================================
-   Description
-========================================= */
-
-.reset-description {
-    max-width: 410px;
-
-    margin: 8px auto 22px !important;
-
-    text-align: center;
-
-    color: #71847a;
-
-    font-size: 12.5px;
-
-    line-height: 1.55;
-}
-
-
-/* =========================================
-   Form
-========================================= */
-
-.reset-password-form {
-    width: 100%;
-
-    display: flex;
-    flex-direction: column;
-
-    gap: 13px;
-}
-
-
-/* =========================================
-   Form Groups
-========================================= */
-
-.reset-form-group {
-    width: 100%;
-}
-
-
-.reset-form-group label {
-    display: block;
-
-    margin-bottom: 7px;
-
-    color: #365448;
-
-    font-size: 12px;
-    font-weight: 600;
-}
-
-
-/* =========================================
-   Password Input
-========================================= */
-
-.reset-password-wrapper {
-    position: relative;
-
-    width: 100%;
-}
-
-
-.reset-input-icon {
-    position: absolute;
-
-    top: 50%;
-    left: 15px;
-
-    transform: translateY(-50%);
-
-    color: #8ca096;
-
-    font-size: 13px;
-
-    pointer-events: none;
-
-    transition: color 0.2s ease;
-}
-
-
-.reset-password-wrapper input {
-    width: 100%;
-
-    height: 47px;
-
-    box-sizing: border-box;
-
-    padding: 0 45px 0 41px;
-
-    border: 1px solid #cfe2d5;
-
-    border-radius: 10px;
-
-    background: #fbfefc;
-
-    color: #18352a;
-
-    font-family: inherit;
-
-    font-size: 13px;
-
-    outline: none;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease,
-        background 0.2s ease;
-}
-
-
-.reset-password-wrapper input::placeholder {
-    color: #9aaa9f;
-}
-
-
-.reset-password-wrapper input:focus {
-    border-color: #45a968;
-
-    background: #ffffff;
-
-    box-shadow:
-        0 0 0 4px rgba(69, 169, 104, 0.10);
-}
-
-
-.reset-password-wrapper:focus-within .reset-input-icon {
-    color: #299653;
-}
-
-
-/* =========================================
-   Show / Hide Password
-========================================= */
-
-.reset-password-toggle {
-    position: absolute;
-
-    top: 50%;
-    right: 14px;
-
-    width: 25px;
-    height: 25px;
-
-    padding: 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    transform: translateY(-50%);
-
-    border: none;
-
-    background: transparent;
-
-    color: #8ca096;
-
-    cursor: pointer;
-
-    font-size: 13px;
-}
-
-
-.reset-password-toggle:hover {
-    color: #25864a;
-}
-
-
-/* =========================================
-   PASSWORD STRENGTH
-========================================= */
-
-.reset-strength-section {
-    margin-top: -2px;
-}
-
-
-.reset-strength-header {
-    display: flex;
-
-    justify-content: space-between;
-
-    margin-bottom: 6px;
-
-    color: #71847a;
-
-    font-size: 10.5px;
-}
-
-
-#reset-strength-text {
-    font-weight: 600;
-}
-
-
-.reset-strength-meter {
-    width: 100%;
-    height: 5px;
-
-    overflow: hidden;
-
-    border-radius: 10px;
-
-    background: #e4ece7;
-}
-
-
-.reset-strength-bar {
-    width: 0;
-    height: 100%;
-
-    border-radius: 10px;
-
-    background: #e4ece7;
-
-    transition:
-        width 0.25s ease,
-        background 0.25s ease;
-}
-
-
-/* =========================================
-   PASSWORD REQUIREMENTS
-========================================= */
-
-.reset-requirements {
-    margin-top: -2px;
-
-    padding: 11px 13px;
-
-    border: 1px solid #e0ebe3;
-
-    border-radius: 9px;
-
-    background: #f8fcf9;
-}
-
-
-.reset-requirements > p {
-    margin: 0 0 7px !important;
-
-    color: #365448;
-
-    font-size: 11px;
-    font-weight: 700;
-}
-
-
-.reset-requirement {
-    display: flex;
-
-    align-items: center;
-
-    gap: 7px;
-
-    margin-top: 5px;
-
-    color: #84948b;
-
-    font-size: 10.5px;
-
-    transition: color 0.2s ease;
-}
-
-
-.reset-requirement i {
-    color: #b5c2ba;
-
-    font-size: 6px;
-
-    transition: color 0.2s ease;
-}
-
-
-.reset-requirement.valid {
-    color: #25864a;
-}
-
-
-.reset-requirement.valid i {
-    color: #299653;
-}
-
-
-/* =========================================
-   PASSWORD MATCH
-========================================= */
-
-.reset-password-match {
-    min-height: 16px;
-
-    margin-top: 5px;
-
-    font-size: 10.5px;
-    font-weight: 600;
-}
-
-
-.reset-password-match.match {
-    color: #299653;
-}
-
-
-.reset-password-match.no-match {
-    color: #dc2626;
-}
-
-
-/* =========================================
-   ERROR
-========================================= */
-
-.reset-password-error {
-    display: none;
-
-    padding: 9px 12px;
-
-    border: 1px solid #fca5a5;
-
-    border-radius: 8px;
-
-    background: #fee2e2;
-
-    color: #991b1b;
-
-    font-size: 11px;
-
-    line-height: 1.5;
-
-    text-align: center;
-}
-
-
-.reset-password-error.show {
-    display: block;
-}
-
-
-/* =========================================
-   SUBMIT BUTTON
-========================================= */
-
-.reset-submit-btn {
-    width: 100% !important;
-
-    height: 49px;
-
-    margin-top: 1px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 9px;
-
-    box-sizing: border-box;
-}
-
-
-.reset-submit-btn i {
-    font-size: 12px;
-
-    transition:
-        transform 0.2s ease;
-}
-
-
-.reset-submit-btn:hover i {
-    transform: translateX(3px);
-}
-
-
-/* =========================================
-   RESPONSIVE
-========================================= */
-
-@media (max-width: 750px) {
-
-    .reset-password-page {
-        padding-top: 40px;
-        padding-bottom: 40px;
-    }
-
-
-    .reset-password-split {
-        min-height: auto;
-
-        grid-template-columns: 1fr;
-    }
-
-
-    .reset-image-panel {
-        min-height: 250px;
-
-        order: 2;
-    }
-
-
-    .reset-password-card {
-        padding: 35px 25px !important;
-
-        order: 1;
-    }
-
-
-    .reset-password-card h1 {
-        font-size: 25px;
-    }
-
-}
-
-
-@media (max-width: 450px) {
-
-    .reset-password-card {
-        padding: 30px 20px !important;
-    }
-
-
-    .reset-password-card h1 {
-        font-size: 23px;
-    }
-
-}
-
-
-
-
-/* =========================================
-   PASSWORD RESET SUCCESS
-========================================= */
-
-.reset-success-page {
-    padding-top: 120px;
-    padding-bottom: 80px;
-}
-
-
-/* =========================================
-   Layout
-========================================= */
-
-.reset-success-split {
-    max-width: 980px;
-    min-height: 590px;
-}
-
-
-/* =========================================
-   Image Panel
-========================================= */
-
-.reset-success-image-panel {
-    min-height: 590px;
-}
-
-
-/* =========================================
-   Success Card
-========================================= */
-
-.reset-success-card {
-    width: 100% !important;
-    max-width: none;
-
-    box-sizing: border-box;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    padding: 45px 48px !important;
-
-    text-align: center;
-}
-
-
-/* =========================================
-   Success Icon
-========================================= */
-
-.reset-success-icon {
-    width: 70px;
-    height: 70px;
-
-    margin-bottom: 22px;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    border-radius: 50%;
-
-    background: #dcfce7;
-
-    color: #299653;
-
-    font-size: 30px;
-
-    box-shadow:
-        0 8px 20px rgba(41, 150, 83, 0.10);
-}
-
-
-/* =========================================
-   Heading
-========================================= */
-
-.reset-success-card h1 {
-    max-width: 400px;
-
-    margin: 0;
-
-    color: #205c3b;
-
-    font-size: 27px;
-    font-weight: 700;
-
-    line-height: 1.3;
-}
-
-
-/* =========================================
-   Description
-========================================= */
-
-.reset-success-description {
-    max-width: 390px;
-
-    margin: 13px auto 30px !important;
-
-    color: #71847a;
-
-    font-size: 13px;
-
-    line-height: 1.7;
-}
-
-
-/* =========================================
-   Login Button
-========================================= */
-
-.reset-success-btn {
-    width: 100% !important;
-    max-width: 420px;
-
-    height: 51px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 10px;
-
-    box-sizing: border-box;
-
-    text-decoration: none;
-}
-
-
-.reset-success-btn i {
-    font-size: 13px;
-
-    transition: transform 0.2s ease;
-}
-
-
-.reset-success-btn:hover i {
-    transform: translateX(3px);
-}
-
-
-/* =========================================
-   Security Note
-========================================= */
-
-.reset-success-note {
-    max-width: 360px;
-
-    margin-top: 24px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    gap: 8px;
-
-    color: #829189;
-
-    font-size: 11px;
-
-    line-height: 1.5;
-}
-
-
-.reset-success-note i {
-    color: #299653;
-
-    font-size: 13px;
-
-    flex-shrink: 0;
-}
-
-
-/* =========================================
-   Responsive
-========================================= */
-
-@media (max-width: 750px) {
-
-    .reset-success-page {
-        padding-top: 40px;
-        padding-bottom: 40px;
-    }
-
-
-    .reset-success-split {
-        min-height: auto;
-
-        grid-template-columns: 1fr;
-    }
-
-
-    .reset-success-image-panel {
-        min-height: 250px;
-
-        order: 2;
-    }
-
-
-    .reset-success-card {
-        padding: 40px 25px !important;
-
-        order: 1;
-    }
-
-
-    .reset-success-card h1 {
-        font-size: 25px;
-    }
-
-}
-
-
-@media (max-width: 450px) {
-
-    .reset-success-card {
-        padding: 35px 20px !important;
-    }
-
-
-    .reset-success-icon {
-        width: 60px;
-        height: 60px;
-
-        font-size: 26px;
-    }
-
-
-    .reset-success-card h1 {
-        font-size: 23px;
-    }
-
-
-    .reset-success-description {
-        font-size: 12px;
-    }
-
-}
-
-
-
-/* =========================================
-   PROFILE RESPONSIVE
-========================================= */
-
-@media (max-width: 800px) {
-
-    .profile-page {
-        padding: 25px 18px 50px;
-    }
-
-
-    .profile-two-column {
-        grid-template-columns: 1fr;
-    }
-
-
-    .job-recommendations {
-        grid-template-columns: 1fr;
-    }
-
-
-    .recommendation-card {
-        width: 100%;
-    }
-
-}
-
-
-@media (max-width: 600px) {
-
-    .profile-page {
-        padding: 20px 14px 40px;
-    }
-
-
-    /* Identity card */
-
-    .profile-identity-card {
-
-        align-items: flex-start;
-
-        flex-direction: column;
-
-        padding: 20px;
-
-    }
-
-
-    .profile-identity-left {
-
-        width: 100%;
-    }
-
-
-    .profile-avatar {
-
-        width: 55px;
-        height: 55px;
-
-        border-radius: 14px;
-
-        font-size: 18px;
-    }
-
-
-    .profile-identity-info h1 {
-        font-size: 18px;
-    }
-
-
-    .profile-contact {
-        font-size: 11px;
-
-        word-break: break-word;
-    }
-
-
-    .identity-edit-btn {
-
-        width: 100%;
-    }
-
-
-    /* Section headers */
-
-    .section-header {
-
-        align-items: flex-start;
-
-        flex-direction: column;
-
-    }
-
-
-    .view-all-btn {
-        margin-top: -3px;
-    }
-
-
-    /* Cards */
-
-    .profile-mini-card {
-        padding: 16px;
-    }
-
-
-    .job-recommendations {
-        padding: 14px;
-    }
-
-
-    /* Edit form */
-
-    .profile-edit-grid {
-        grid-template-columns: 1fr;
-    }
-
-
-    .profile-full-width {
-        grid-column: auto;
-    }
-
-
-    .profile-edit-actions {
-        justify-content: stretch;
-    }
-
-
-    .profile-cancel-btn,
-    .profile-save-btn {
-
-        flex: 1;
-
-    }
-
-
-    /* Resume */
-
-    .mini-resume-card {
-        align-items: flex-start;
-    }
-
-
-    .mini-resume-view {
-        margin-left: auto;
-    }
-
-
-    /* Complete profile */
-
-    .profile-complete-prompt {
-        padding: 16px;
-    }
-
-}
-
-
-@media (max-width: 420px) {
-
-    .profile-page {
-        padding-left: 10px;
-        padding-right: 10px;
-    }
-
-
-    .profile-identity-card {
-        padding: 17px;
-    }
-
-
-    .profile-identity-left {
-        gap: 11px;
-    }
-
-
-    .profile-avatar {
-        width: 48px;
-        height: 48px;
-
-        font-size: 16px;
-    }
-
-
-    .profile-identity-info h1 {
-        font-size: 16px;
-    }
-
-
-    .profile-status-tags {
-        gap: 5px;
-    }
-
-
-    .profile-status-tag {
-        font-size: 9px;
-        padding: 4px 8px;
-    }
-
-
-    .mini-resume-card {
-        flex-wrap: wrap;
-    }
-
-
-    .mini-resume-details {
-        width: calc(100% - 40px);
-    }
-
-
-    .mini-resume-view {
-        width: 100%;
-
-        margin-left: 28px;
-        margin-top: 3px;
-    }
-
-}
-
-
-
-
-/* =========================================================
-MOBILE RESPONSIVE - SIGNUP + LOGIN
-Add this at the VERY BOTTOM of account.css
-========================================================= */
-
-/* =========================================================
-TABLET
-========================================================= */
-
-@media (max-width: 900px) {
-
-
-.auth-page {
-    padding: 100px 20px 50px;
-}
-
-/* Signup split card */
-
-.auth-split {
-    max-width: 700px;
-    grid-template-columns: 1fr;
-}
-
-.auth-image-panel {
-    min-height: 260px;
-    height: 260px;
-}
-
-.auth-split .auth-card {
-    width: 100%;
-    padding: 35px 35px;
-    box-sizing: border-box;
-}
-
-/* Signup inputs */
-
-.auth-split .form-group input,
-.auth-split .password-wrapper,
-.auth-split .strength-meter,
-.auth-split .btn-primary,
-.auth-split .btn-secondary {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-}
-
-/* Login */
-
-.login-card {
-    width: 100%;
-    max-width: 700px;
-}
-
-.login-form {
-    width: 50%;
-    padding: 35px;
-}
-
-.login-visual {
-    width: 50%;
-}
-
-
-}
-
-/* =========================================================
-MOBILE
-========================================================= */
-
-@media (max-width: 700px) {
-
-body {
-    overflow-x: hidden;
-}
-
-
-/* -----------------------------------------------------
-   NAVBAR
------------------------------------------------------ */
-
-.navbar {
-    height: auto;
-    min-height: 70px;
-
-    padding: 14px 18px;
-
-    flex-direction: column;
-
-    gap: 12px;
-}
-
-.nav-logo img {
-    width: 105px;
-}
-
-.nav-menu {
-    width: 100%;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
     gap: 14px;
-
-    flex-wrap: wrap;
 }
 
-.nav-link {
-    font-size: 12px;
+.recommendation-card {
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: clamp(16px, 3vw, 22px);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-
-/* -----------------------------------------------------
-   AUTH PAGE
------------------------------------------------------ */
-
-.auth-page {
-    min-height: calc(100vh - 70px);
-
-    width: 100%;
-
-    padding: 30px 12px 40px;
-
-    align-items: flex-start;
-
-    box-sizing: border-box;
+.recommendation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
-
-/* -----------------------------------------------------
-   SIGNUP CARD
------------------------------------------------------ */
-
-.auth-split {
-    width: 100%;
-
-    max-width: 500px;
-
+.recommendation-card-header {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
 
-    flex-direction: column;
+.recommendation-card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+}
 
-    border-radius: 16px;
+.job-department {
+    font-size: 12px;
+    color: var(--text-muted);
+}
 
+.match-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.job-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.job-tags span {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.recommendation-blurb {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+    margin: 0 0 14px;
+}
+
+.view-job-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.view-job-btn:hover {
+    background: var(--primary-hover);
+}
+
+.no-recommendations {
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: 32px 20px;
+    text-align: center;
+}
+
+.no-recommendations h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    color: #1e293b;
+}
+
+.no-recommendations p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Applications Table */
+.applications-card {
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
 }
 
-
-/* Signup image */
-
-.auth-image-panel {
+.applications-table-wrapper {
     width: 100%;
-
-    height: 190px;
-    min-height: 190px;
-
-    order: 1;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.auth-image-panel img {
+.applications-table {
     width: 100%;
-    height: 100%;
-
-    object-fit: cover;
+    border-collapse: collapse;
+    min-width: 600px;
 }
 
-.auth-image-overlay {
+.applications-table th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.applications-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #334155;
+    border-top: 1px solid #f1f5f9;
+    white-space: nowrap;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.no-applications {
+    padding: 32px !important;
+    text-align: center;
+    color: var(--text-muted) !important;
+}
+
+/* Resume Processing Overlay */
+.resume-processing-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
     padding: 20px;
 }
 
-.auth-image-overlay h2 {
-    font-size: 19px;
-    margin-bottom: 5px;
-}
-
-.auth-image-overlay p {
-    font-size: 11px;
-    line-height: 1.4;
-}
-
-
-/* Signup form */
-
-.auth-split .auth-card {
-    order: 2;
-
-    width: 100%;
-
-    max-width: 100%;
-
-    padding: 28px 20px;
-
-    box-sizing: border-box;
-
-    border-radius: 0;
-}
-
-
-/* -----------------------------------------------------
-   AUTH HEADINGS
------------------------------------------------------ */
-
-.auth-card h1 {
-    font-size: 22px;
-
-    line-height: 1.3;
-}
-
-.auth-card > p {
-    margin: 7px 0 22px;
-
-    font-size: 12px;
-}
-
-
-/* -----------------------------------------------------
-   FORM
------------------------------------------------------ */
-
-.auth-card form {
-    width: 100%;
-
-    gap: 15px;
-}
-
-.form-group {
-    width: 100%;
-
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 12px;
-}
-
-
-/* -----------------------------------------------------
-   INPUTS
------------------------------------------------------ */
-
-.form-group input,
-.auth-split .form-group input {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 46px;
-
-    padding: 0 12px;
-
-    box-sizing: border-box;
-
-    font-size: 13px;
-}
-
-
-/* -----------------------------------------------------
-   PASSWORD
------------------------------------------------------ */
-
-.password-wrapper,
-.auth-split .password-wrapper {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    box-sizing: border-box;
-}
-
-.password-wrapper input {
-
-    width: 100%;
-
-    padding-right: 45px;
-}
-
-.password-toggle {
-
-    right: 9px;
-
-    width: 30px;
-    height: 30px;
-
-    font-size: 15px;
-}
-
-
-/* -----------------------------------------------------
-   PASSWORD STRENGTH
------------------------------------------------------ */
-
-.strength-meter,
-.auth-split .strength-meter {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 6px;
-
-    box-sizing: border-box;
-}
-
-.strength-checklist {
-    gap: 3px;
-
-    margin-top: 7px;
-}
-
-.strength-checklist li {
-    font-size: 11px;
-
-    padding-left: 17px;
-}
-
-
-/* -----------------------------------------------------
-   RESUME UPLOAD
------------------------------------------------------ */
-
-.form-group input[type="file"] {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: auto;
-
-    min-height: 46px;
-
-    padding: 7px 10px;
-
-    box-sizing: border-box;
-
-    font-size: 12px;
-}
-
-.form-group input[type="file"]::file-selector-button {
-
-    height: 30px;
-
-    margin-right: 7px;
-
-    padding: 0 8px;
-
-    font-size: 11px;
-}
-
-
-/* -----------------------------------------------------
-   PROCESS RESUME BUTTON
------------------------------------------------------ */
-
-.auth-card .btn-secondary {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 46px;
-
-    font-size: 13px;
-}
-
-
-/* -----------------------------------------------------
-   SIGN UP BUTTON
------------------------------------------------------ */
-
-.auth-card .btn-primary {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 48px;
-
-    margin-top: 3px;
-
-    font-size: 14px;
-}
-
-
-/* -----------------------------------------------------
-   FORM ERRORS
------------------------------------------------------ */
-
-.form-error,
-.form-group ul.errorlist {
-
-    font-size: 11px;
-
-    word-break: break-word;
-}
-
-.form-error {
-    padding: 9px 10px;
-}
-
-
-/* -----------------------------------------------------
-   LOGIN CARD
------------------------------------------------------ */
-
-.login-card {
-
-    width: 100%;
-
-    max-width: 500px;
-
-    min-height: auto;
-
-    display: flex;
-
-    flex-direction: column;
-
-    border-radius: 16px;
-}
-
-
-/* Login form */
-
-.login-form {
-
-    width: 100%;
-
-    padding: 30px 20px;
-
-    box-sizing: border-box;
-
-    order: 1;
-}
-
-.login-form h1 {
-    font-size: 23px;
-}
-
-.login-form > p {
-    margin: 7px 0 22px;
-
-    font-size: 12px;
-}
-
-
-/* Login inputs */
-
-.login-form .form-group input {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 46px;
-
-    box-sizing: border-box;
-}
-
-.login-form .password-wrapper {
-
-    width: 100%;
-
-    max-width: 100%;
-}
-
-
-/* Login button */
-
-.login-form .btn-primary {
-
-    width: 100%;
-
-    max-width: 100%;
-
-    height: 48px;
-}
-
-
-/* Login switch */
-
-.login-switch {
-
-    font-size: 12px;
-
-    line-height: 1.5;
-}
-
-
-/* Google login */
-
-.social-login {
-    margin-top: 17px;
-}
-
-.social-divider {
-    margin: 16px 0;
-}
-
-.social-divider span {
-    font-size: 11px;
-
-    padding: 0 9px;
-}
-
-.google-login-btn {
-
-    width: 100%;
-
-    min-height: 46px;
-
-    padding: 10px;
-
-    box-sizing: border-box;
-
-    font-size: 12px;
-}
-
-
-/* -----------------------------------------------------
-   LOGIN VISUAL
------------------------------------------------------ */
-
-.login-visual {
-
-    width: 100%;
-
-    min-height: 190px;
-
-    height: 190px;
-
-    padding: 22px;
-
-    box-sizing: border-box;
-
-    order: 2;
-}
-
-.login-visual-content h2 {
-
-    font-size: 19px;
-
-    margin-bottom: 5px;
-}
-
-.login-visual-content p {
-
-    max-width: 100%;
-
-    font-size: 11px;
-
-    line-height: 1.4;
-}
-
-}
-
-/* =========================================================
-SMALL PHONES
-========================================================= */
-
-@media (max-width: 420px) {
-
-
-.navbar {
-    padding: 12px 12px;
-}
-
-.nav-logo img {
-    width: 95px;
-}
-
-.nav-menu {
-    gap: 10px;
-}
-
-.nav-link {
-    font-size: 11px;
-}
-
-
-/* Auth */
-
-.auth-page {
-    padding: 20px 8px 30px;
-}
-
-
-.auth-split,
-.login-card {
-    border-radius: 14px;
-}
-
-
-/* Signup */
-
-.auth-image-panel {
-    height: 160px;
-    min-height: 160px;
-}
-
-.auth-image-overlay {
-    padding: 16px;
-}
-
-.auth-image-overlay h2 {
-    font-size: 17px;
-}
-
-.auth-image-overlay p {
-    font-size: 10px;
-}
-
-
-.auth-split .auth-card {
-    padding: 24px 16px;
-}
-
-
-/* Login */
-
-.login-form {
-    padding: 24px 16px;
-}
-
-.login-visual {
-    height: 160px;
-    min-height: 160px;
-
-    padding: 18px;
-}
-
-.login-visual-content h2 {
-    font-size: 17px;
-}
-
-
-/* Heading */
-
-.auth-card h1 {
-    font-size: 20px;
-}
-
-
-.auth-card > p {
-    font-size: 11px;
-}
-
-
-/* Inputs */
-
-.form-group input,
-.form-group input[type="file"],
-.auth-card .btn-primary,
-.auth-card .btn-secondary {
-
-    width: 100%;
-
-    max-width: 100%;
-}
-
-
-/* Password requirements */
-
-.strength-checklist li {
-    font-size: 10px;
-}
-
-
-/* Google */
-
-.google-login-btn {
-    font-size: 11px;
-}
-
-
-}
-
-/* =========================================================
-VERY SMALL PHONES
-========================================================= */
-
-@media (max-width: 350px) {
-
-
-.nav-menu {
-    gap: 7px;
-}
-
-.nav-link {
-    font-size: 10px;
-}
-
-.auth-page {
-    padding-left: 5px;
-    padding-right: 5px;
-}
-
-.auth-split .auth-card,
-.login-form {
-    padding-left: 13px;
-    padding-right: 13px;
-}
-
-.auth-card h1 {
-    font-size: 19px;
-}
-
-
-}
-
-/* Navbar */
-.bg-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: url('../images/bg.jpg') no-repeat center center/cover;
-    z-index: -1;
-    filter: brightness(0.9);
-}
-
-.glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow);
-    border-radius: 20px;
-}
-
-.navbar {
-    margin: 10px auto;
-    width: 100%;
-    padding: 10px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: relative;
-    z-index: 10;
-}
-
-.nav-logo img {
-    height: 50px;
-    width: auto;
-}
-
-.nav-menu {
-    display: flex;
-    align-items: center;
-    gap: 30px;
-}
-
-.nav-link {
-    text-decoration: none;
-    color: var(--text-dark);
-    font-weight: 600;
-    font-size: 15px;
-    transition: color 0.3s;
-}
-
-.nav-link:hover {
-    color: var(--primary);
-}
-
-.landing-page {
-    width: 90%;
-    max-width: 1200px;
-    margin: 0 auto;
-    min-height: 80vh;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Footer Content */
-.landing-footer {
-    width: 100%;
-    margin-bottom: 0px;
-    margin: 20px auto;
-    padding: 30px 20px;
+.resume-processing-box {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 36px 30px;
     text-align: center;
-    font-size: 14px;
-    color: #666;
-    font-weight: 500;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    max-width: 420px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+}
+
+.processing-spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.resume-processing-box h3 {
+    margin: 0 0 6px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.resume-processing-box p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   MEDIA QUERIES FOR MOBILE RESPONSIVENESS
+========================================= */
+
+@media (max-width: 768px) {
+    .auth-split,
+    .login-card,
+    .login-split {
+        grid-template-columns: 1fr !important;
+        border-radius: var(--radius-lg);
+        min-height: auto;
+    }
+
+    .auth-image-panel,
+    .login-visual {
+        min-height: 140px;
+        max-height: 160px;
+        order: -1;
+    }
+
+    .visual-features {
+        display: none;
+    }
+
+    .auth-image-overlay,
+    .login-visual {
+        padding: 20px;
+    }
+
+    .auth-image-overlay h2,
+    .login-visual-content h2 {
+        font-size: 19px;
+        margin-bottom: 4px;
+    }
+
+    .auth-image-overlay p,
+    .login-visual-content p {
+        font-size: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .auth-card,
+    .login-form {
+        padding: 24px 18px;
+    }
+
+    .profile-identity-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .profile-edit-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .profile-two-column {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .profile-edit-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .profile-edit-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .profile-cancel-btn,
+    .profile-save-btn {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-page,
+    .profile-page {
+        padding: 16px 10px 40px;
+    }
+
+    .auth-card,
+    .login-form {
+        padding: 20px 14px;
+    }
+
+    .otp-inputs {
+        gap: 4px;
+    }
+
+    .otp-input {
+        width: clamp(34px, 10vw, 42px) !important;
+        height: 44px !important;
+        font-size: 18px !important;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .view-all-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .recommendation-card-header {
+        flex-direction: column;
+        gap: 6px;
+    }
 }
