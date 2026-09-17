@@ -146,13 +146,15 @@ Return strictly a valid JSON object matching:
 }}
 """
 
+        eval_model = getattr(settings, "GEMINI_MODEL", "gemini-3.6-flash")
         gemini_response = ai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=eval_model,
             contents=[uploaded_file, prompt],
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 response_mime_type="application/json",
                 temperature=0.2,
+                max_output_tokens=1500,
             ),
         )
 
@@ -256,12 +258,14 @@ Provide an executive synthesis in JSON conforming strictly to:
 }}
 """
 
+            eval_model = getattr(settings, "GEMINI_MODEL", "gemini-3.6-flash")
             sum_resp = ai_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=eval_model,
                 contents=summary_prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     temperature=0.2,
+                    max_output_tokens=1000,
                 ),
             )
             raw = _clean_json_text(sum_resp.text)

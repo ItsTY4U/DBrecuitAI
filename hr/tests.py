@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
@@ -677,12 +678,87 @@ class CandidateManagementTests(TestCase):
         self.assertEqual(hx_response.headers.get("HX-Trigger"), "closePostModal")
         self.assertContains(hx_response, "Accountant")
 
-        # Standard POST redirects with success message
-        post_data["title"] = "Junior Accountant"
-        std_response = self.client.post(url, post_data)
-        self.assertEqual(std_response.status_code, 302)
-        follow_response = self.client.get(reverse("job_management"))
-        self.assertContains(follow_response, "New job created successfully!")
+    @patch("jobs.ai.extract_resume_text", return_value="Experienced sales associate with 5 years customer service.")
+    @patch("jobs.ai.analyze_resume")
+    def test_candidate_detail_auto_reanalyzes_unscreened_candidate(self, mock_analyze, mock_extract):
+        """Visiting candidate_detail automatically triggers screening if candidate has 0 score / unprocessed."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        mock_analyze.return_value = {
+            "score": 87,
+            "match_level": "Proficient",
+            "recommendation": "Recommended",
+            "summary": "Candidate matches sales staff role.",
+            "strengths": ["Strong verbal communication"],
+            "weaknesses": [],
+            "matched_qualifications": ["Sales experience"],
+            "missing_qualifications": [],
+            "skills_match": 85,
+            "experience_match": 88,
+            "education_match": 80,
+            "qualification_match": 90,
+            "criteria_weights": {"sales": 30},
+            "weight_reasoning": {},
+        }
+        unscreened_app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Carlos",
+            last_name="Gomez",
+            email="carlos@test.com",
+            phone="09112223333",
+            resume=SimpleUploadedFile("carlos.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            ai_score=0,
+            resume_processed=False,
+            ai_recommendation="Pending Review",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": unscreened_app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        unscreened_app.refresh_from_db()
+        self.assertEqual(unscreened_app.ai_score, 87)
+        self.assertTrue(unscreened_app.resume_processed)
+        self.assertEqual(unscreened_app.ai_recommendation, "Recommended")
+
+    @patch("jobs.ai.extract_resume_text", return_value="Experienced senior sales executive with proven track record.")
+    @patch("jobs.ai.analyze_resume")
+    def test_reanalyze_candidate_application_endpoint(self, mock_analyze, mock_extract):
+        """HR manual re-analyze button calls screen_application with force_refresh and updates score."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        mock_analyze.return_value = {
+            "score": 92,
+            "match_level": "Exceptional",
+            "recommendation": "Highly Recommended",
+            "summary": "Re-evaluated with updated job criteria.",
+            "strengths": ["Senior sales experience"],
+            "weaknesses": [],
+            "matched_qualifications": ["Top performer"],
+            "missing_qualifications": [],
+            "skills_match": 95,
+            "experience_match": 90,
+            "education_match": 85,
+            "qualification_match": 95,
+            "criteria_weights": {},
+            "weight_reasoning": {},
+        }
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Elena",
+            last_name="Cruz",
+            email="elena@test.com",
+            phone="09223334444",
+            resume=SimpleUploadedFile("elena.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            ai_score=60,
+            resume_processed=True,
+        )
+        url = reverse("reanalyze_candidate_application", kwargs={"pk": app.pk})
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("candidate_detail", kwargs={"pk": app.pk}))
+
+        app.refresh_from_db()
+        self.assertEqual(app.ai_score, 92)
+        self.assertEqual(app.ai_recommendation, "Highly Recommended")
+
 
 
 

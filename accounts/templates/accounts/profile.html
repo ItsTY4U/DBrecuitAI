@@ -139,47 +139,72 @@
         </div>
 
 
-        <!-- DEFAULT RESUME -->
-        <div class="profile-mini-card">
+        <!-- RESUME -->
+        <div class="profile-mini-card resume-mini-card">
 
-            <div class="mini-card-title">
-                Default resume
+            <div class="resume-card-header">
+                <div class="mini-card-title">
+                    Resume
+                </div>
+                {% if profile.default_resume %}
+                    <span class="resume-status-badge">
+                        <i class="fa-solid fa-circle-check"></i> On file
+                    </span>
+                {% else %}
+                    <span class="resume-status-badge badge-missing">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Missing
+                    </span>
+                {% endif %}
             </div>
 
             {% if profile.default_resume %}
 
-                <div class="mini-resume-card">
-
-                    <span class="mini-resume-icon">
-                        📄
-                    </span>
-
-                    <div class="mini-resume-details">
-
-                        <div class="mini-resume-name">
-                            {{ profile.default_resume.name|cut:"resumes/" }}
+                <div class="resume-card-body">
+                    <div class="resume-meta-box">
+                        <div class="resume-doc-icon">
+                            <i class="fa-solid fa-file-pdf"></i>
                         </div>
-
-                        <div class="mini-resume-date">
-                            Your current default resume
+                        <div class="resume-doc-details">
+                            <div class="resume-doc-name" title="{{ profile.default_resume.name|cut:'resumes/' }}">
+                                {{ profile.default_resume.name|cut:"resumes/" }}
+                            </div>
+                            <div class="resume-doc-sub">
+                                Current active resume &bull; PDF
+                            </div>
                         </div>
-
                     </div>
 
+                    <div class="resume-action-buttons">
+                        <a
+                            href="{{ profile.default_resume.url }}"
+                            target="_blank"
+                            class="resume-btn-view"
+                        >
+                            <i class="fa-regular fa-eye"></i> View
+                        </a>
+                        <button
+                            type="button"
+                            class="resume-btn-change"
+                            id="open-change-resume-btn"
+                        >
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i> Change Resume
+                        </button>
+                    </div>
                 </div>
-
-                <a
-                    href="{{ profile.default_resume.url }}"
-                    target="_blank"
-                    class="mini-resume-view"
-                >
-                    View
-                </a>
 
             {% else %}
 
-                <div class="mini-no-resume">
-                    No resume uploaded yet.
+                <div class="resume-empty-card">
+                    <p class="resume-empty-desc">
+                        No resume uploaded yet. Upload your resume to receive personalized job recommendations.
+                    </p>
+                    <button
+                        type="button"
+                        class="resume-btn-upload-new"
+                        id="open-change-resume-btn"
+                    >
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Resume
+                    </button>
                 </div>
 
             {% endif %}
@@ -332,10 +357,10 @@
 
                     <!-- Resume -->
 
-                    <div class="form-group profile-full-width">
+                    <!-- <div class="form-group profile-full-width">
 
                         <label for="{{ profile_form.default_resume.id_for_label }}">
-                            Default Resume
+                            Resume
                         </label>
 
                         {{ profile_form.default_resume }}
@@ -346,7 +371,7 @@
                         </div>
                         {% endif %}
 
-                    </div>
+                    </div> -->
 
                 </div>
 
@@ -553,8 +578,7 @@
                                     style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
                                     <i class="fas fa-circle-check"></i> Completed
                                 </button>
-                                {% elif application.video_interview.status == "ABANDONED" and not
-                                application.video_interview.can_retake %}
+                                {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
                                 <button type="button" class="track-btn" disabled
                                     style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
                                     <i class="fas fa-lock"></i> Attempted
@@ -597,6 +621,72 @@
 
     </section>
 
+
+    <!-- =========================================
+         CHANGE RESUME MODAL
+    ========================================== -->
+    <div id="change-resume-modal" class="change-resume-backdrop" style="display: none;">
+        <div class="change-resume-modal-dialog">
+            <div class="change-resume-modal-header">
+                <div>
+                    <h3>Update Resume</h3>
+                    <p>Upload a new PDF to update your skills, qualifications, and match scores.</p>
+                </div>
+                <button type="button" class="change-resume-close-btn" id="close-resume-modal-btn" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="change-resume-form" action="{% url 'profile' %}">
+                {% csrf_token %}
+                <input type="hidden" name="first_name" value="{{ request.user.first_name }}">
+                <input type="hidden" name="last_name" value="{{ request.user.last_name }}">
+                <input type="hidden" name="email" value="{{ request.user.email }}">
+                <input type="hidden" name="phone" value="{{ profile.phone|default:'' }}">
+                <input type="hidden" name="address" value="{{ profile.address|default:'' }}">
+
+                <div class="resume-upload-dropzone" id="resume-modal-dropzone">
+                    <input type="file" name="default_resume" id="modal-resume-file" accept=".pdf" class="hidden-file-input">
+                    
+                    <div class="dropzone-idle-state" id="dropzone-idle">
+                        <div class="dropzone-icon-circle">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div class="dropzone-text-main">
+                            <strong>Click to browse</strong> or drag & drop your resume
+                        </div>
+                        <div class="dropzone-text-sub">
+                            PDF format only (Max 5MB)
+                        </div>
+                    </div>
+
+                    <div class="dropzone-selected-state" id="dropzone-selected" style="display: none;">
+                        <div class="selected-file-badge">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <div class="selected-file-info">
+                                <span class="selected-file-title" id="selected-file-name">filename.pdf</span>
+                                <span class="selected-file-size" id="selected-file-size">0 KB</span>
+                            </div>
+                            <button type="button" class="btn-clear-selected" id="clear-selected-resume-btn" title="Choose different file">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modal-resume-error" class="form-error" style="display: none; margin-top: 12px;"></div>
+
+                <div class="change-resume-modal-actions">
+                    <button type="button" class="change-resume-cancel-btn" id="cancel-resume-modal-btn">
+                        Cancel
+                    </button>
+                    <button type="submit" class="change-resume-submit-btn" id="submit-resume-modal-btn" disabled>
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i> Save & Process Resume
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- =========================================
          RESUME PROCESSING OVERLAY

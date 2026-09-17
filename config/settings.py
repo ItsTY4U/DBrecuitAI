@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -25,7 +26,7 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-local-dev-only-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+DEBUG = os.getenv("DJANGO_DEBUG", "False").strip().lower() in ("true", "1", "t", "yes")
 
 DEFAULT_ALLOWED_HOSTS = [
     "dbrecruit.up.railway.app",
@@ -263,16 +264,24 @@ else:
     MEDIA_URL = "/media/"
 
 
+staticfiles_storage = (
+    "django.contrib.staticfiles.storage.StaticFilesStorage"
+    if (DEBUG or "test" in getattr(sys, "argv", []))
+    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+)
+
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": staticfiles_storage,
     },
 }
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+GEMINI_FAST_MODEL = os.getenv("GEMINI_FAST_MODEL", "gemini-3.5-flash-lite")
 
 # Supabase Realtime Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://flgmpffshbmfpgonggyu.supabase.co")
@@ -323,4 +332,9 @@ GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
 GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN", "")
 GMAIL_SENDER_EMAIL = os.getenv("GMAIL_SENDER_EMAIL", "DBRecruitAI <noreply@dbrecruitai.com>")
 SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://127.0.0.1:8000")
+
+# Cloudflare Turnstile Configuration
+# Default testing keys from Cloudflare documentation (always passes in development)
+CLOUDFLARE_TURNSTILE_SITE_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SITE_KEY", "1x00000000000000000000AA")
+CLOUDFLARE_TURNSTILE_SECRET_KEY = os.getenv("CLOUDFLARE_TURNSTILE_SECRET_KEY", "1x0000000000000000000000000000000AA")
 

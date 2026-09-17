@@ -25,13 +25,13 @@
                     Search
                 </button>
             </div>
-            <select class="status-select" name="department" hx-get="{% url 'jobs' %}" hx-trigger="change"
+            {% comment %} <select class="status-select" name="department" hx-get="{% url 'jobs' %}" hx-trigger="change"
                 hx-target="#jobs-list" hx-swap="innerHTML" hx-include="#search-input">
                 <option value="">All Department</option>
                 <option value="Administrative">Administrative</option>
                 <option value="Sales">Sales</option>
                 <option value="Warehouse">Warehouse</option>
-            </select>
+            </select> {% endcomment %}
             <div class="jobs-list" id="jobs-list">
                 {% include "jobs/partials/jobs_list.html" %}
             </div>
