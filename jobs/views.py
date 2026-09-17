@@ -270,8 +270,23 @@ def apply_job(request, pk):
         )
         thread.start()
 
-        # Send confirmation email to applicant via Gmail API in background
-        send_application_submitted_email(application)
+        # Send confirmation email to applicant via Gmail API synchronously so serverless runtimes (Vercel) cannot terminate it
+        try:
+            email_sent = send_application_submitted_email(application, async_send=False)
+            if not email_sent:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Submission confirmation email could not be dispatched to %s for application %s",
+                    application.email,
+                    application.application_id,
+                )
+        except Exception as email_err:
+            import logging
+            logging.getLogger(__name__).error(
+                "Unexpected error sending confirmation email to %s: %s",
+                application.email,
+                email_err,
+            )
         
         # Immediately render application success page
         return render(request, "jobs/partials/application_success.html", {
