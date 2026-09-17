@@ -160,7 +160,8 @@ def send_application_submitted_email(application, async_send: bool = False) -> b
     )
 
     site_domain = getattr(settings, "SITE_DOMAIN", "http://127.0.0.1:8000").rstrip("/")
-    tracking_url = f"{site_domain}/track/?application_id={application.application_id}"
+    profile_url = f"{site_domain}/accounts/profile/"
+    tracking_url = profile_url
 
     submission_dt = application.created_at or timezone.now()
     submitted_at_str = submission_dt.strftime("%B %d, %Y at %I:%M %p")
@@ -170,6 +171,7 @@ def send_application_submitted_email(application, async_send: bool = False) -> b
         "job": application.job,
         "applicant_name": applicant_name,
         "tracking_url": tracking_url,
+        "profile_url": profile_url,
         "submitted_at": submitted_at_str,
     }
 
