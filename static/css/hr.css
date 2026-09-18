@@ -6726,3 +6726,14 @@ table .btn-review-applicant {
     }
 
 }
+
+/* Global Action Disabled State */
+.btn-action-disabled,
+button[disabled].btn-action-disabled,
+input[disabled].btn-action-disabled {
+    pointer-events: none !important;
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    filter: grayscale(20%) !important;
+    transition: opacity 0.2s ease, filter 0.2s ease !important;
+}

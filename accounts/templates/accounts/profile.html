@@ -221,7 +221,7 @@
     <section
         class="profile-section profile-edit-section"
         id="profile-edit"
-        style="display: none;"
+        {% if not user_form.errors and not profile_form.errors %}style="display: none;"{% endif %}
     >
 
         <div class="section-header">
@@ -298,15 +298,22 @@
                     </div>
 
 
-                    <!-- Email -->
+                    <!-- Email (Read-only sign-in email) -->
 
                     <div class="form-group">
 
-                        <label for="{{ user_form.email.id_for_label }}">
-                            Email Address
+                        <label for="{{ user_form.email.id_for_label }}" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>Email Address</span>
+                            <span class="readonly-pill" style="font-size: 11px; font-weight: 600; color: #71847a; background: #eef2ed; padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fa-solid fa-lock"></i> Read-only
+                            </span>
                         </label>
 
                         {{ user_form.email }}
+
+                        <small style="display: block; margin-top: 5px; font-size: 11.5px; color: #84968c;">
+                            <i class="fa-solid fa-circle-info"></i> Sign-in email address cannot be changed.
+                        </small>
 
                         {% if user_form.email.errors %}
                         <div class="form-error">
@@ -424,7 +431,11 @@
 
                 {% for recommendation in recommended_jobs %}
 
-                    <div class="recommendation-card">
+                    <a
+                        href="{% url 'job_detail' recommendation.job.id %}"
+                        class="recommendation-card recommendation-card-link"
+                        title="View details for {{ recommendation.job.title }}"
+                    >
 
                         <div class="recommendation-card-header">
 
@@ -469,14 +480,11 @@
                         </p>
 
 
-                        <a
-                            href="{% url 'job_detail' recommendation.job.id %}"
-                            class="view-job-btn"
-                        >
-                            View Job
-                        </a>
+                        <span class="view-job-btn">
+                            View Job <i class="fa-solid fa-arrow-right" style="font-size: 10px; margin-left: 3px;"></i>
+                        </span>
 
-                    </div>
+                    </a>
 
                 {% endfor %}
 
@@ -716,4 +724,8 @@
 
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/profile.js' %}"></script>
 {% endblock %}

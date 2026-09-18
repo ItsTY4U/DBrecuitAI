@@ -7,6 +7,7 @@ from accounts.forms import ApplicantProfileForm
 
 
 @override_settings(
+    SECURE_SSL_REDIRECT=False,
     STATICFILES_STORAGE="django.contrib.staticfiles.storage.StaticFilesStorage",
     STORAGES={
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
@@ -161,3 +162,107 @@ class AccountSecurityTests(TestCase):
 
         # Clean up
         default_storage.delete(self.profile.default_resume.name)
+
+    def test_applicant_user_form_email_readonly(self):
+        """ApplicantUserForm has email marked readonly and ignores email changes."""
+        from accounts.forms import ApplicantUserForm
+        form = ApplicantUserForm(
+            data={"first_name": "NewFirst", "last_name": "NewLast", "email": "changed@example.com"},
+            instance=self.user,
+        )
+        self.assertEqual(form.fields["email"].widget.attrs.get("readonly"), "readonly")
+        self.assertTrue(form.is_valid())
+        # clean_email must preserve the original email
+        self.assertEqual(form.cleaned_data["email"], self.user.email)
+
+    def test_profile_update_allows_editing_name_and_info_but_keeps_email(self):
+        """Applicants can edit their first_name, last_name, phone, address, but cannot alter sign-in email."""
+        from django.urls import reverse
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("profile"),
+            {
+                "first_name": "UpdatedFirst",
+                "last_name": "UpdatedLast",
+                "email": "hacked@example.com",
+                "phone": "09991234567",
+                "address": "456 Updated St",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Refresh from database
+        self.user.refresh_from_db()
+        self.profile.refresh_from_db()
+
+        # Name and profile details must be updated
+        self.assertEqual(self.user.first_name, "UpdatedFirst")
+        self.assertEqual(self.user.last_name, "UpdatedLast")
+        self.assertEqual(self.profile.phone, "09991234567")
+        self.assertEqual(self.profile.address, "456 Updated St")
+
+        # Email must remain the original sign-in email
+        self.assertEqual(self.user.email, "testuser@example.com")
+        self.assertEqual(self.user.username, "testuser@example.com")
+
+    def test_google_verify_token_flow(self):
+        """Google verification token enables 1-click approval login and prevents replay."""
+        from accounts.adapters import create_google_verification_token
+        from django.urls import reverse
+
+        token = create_google_verification_token(self.user, self.user.email)
+        verify_url = reverse("google_verify_approve", kwargs={"token": token})
+
+        # 1. First approval request succeeds and logs in user
+        response = self.client.get(verify_url, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("profile"))
+
+        # Check session user
+        self.assertEqual(int(self.client.session["_auth_user_id"]), self.user.pk)
+
+        # 2. Second request with same token must fail (replay protection)
+        self.client.logout()
+        second_response = self.client.get(verify_url, follow=True)
+        self.assertContains(second_response, "already been used or has expired")
+
+    def test_google_verify_rejects_invalid_token(self):
+        """Invalid Google verification tokens are rejected."""
+        from django.urls import reverse
+        invalid_url = reverse("google_verify_approve", kwargs={"token": "invalid:bad:token"})
+        response = self.client.get(invalid_url, follow=True)
+        self.assertContains(response, "The verification link is invalid")
+
+    def test_pre_social_login_redirects_and_sends_email(self):
+        """pre_social_login halts immediate login, sends verification email, and redirects to verify_sent."""
+        from unittest.mock import patch, MagicMock
+        from accounts.adapters import CustomSocialAccountAdapter
+        from allauth.core.exceptions import ImmediateHttpResponse
+        from django.test import RequestFactory
+        from django.contrib.sessions.middleware import SessionMiddleware
+
+        factory = RequestFactory()
+        request = factory.get("/accounts/google/login/callback/")
+        middleware = SessionMiddleware(lambda r: None)
+        middleware.process_request(request)
+        request.session.save()
+
+        adapter = CustomSocialAccountAdapter()
+        sociallogin = MagicMock()
+        sociallogin.is_existing = True
+        sociallogin.user = self.user
+        sociallogin.account.extra_data = {"email": self.user.email}
+
+        with patch("accounts.adapters.send_gmail_message") as mock_send:
+            mock_send.return_value = {"success": True, "message_id": "msg_123"}
+            with self.assertRaises(ImmediateHttpResponse) as cm:
+                adapter.pre_social_login(request, sociallogin)
+
+            # Check that it redirected to google_verify_sent
+            self.assertEqual(cm.exception.response.status_code, 302)
+            self.assertIn("google/verify-sent/", cm.exception.response.url)
+            self.assertTrue(mock_send.called)
+            self.assertEqual(mock_send.call_args[1]["to_email"], self.user.email)
+

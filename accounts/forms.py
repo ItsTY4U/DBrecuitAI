@@ -215,21 +215,20 @@ class ApplicantUserForm(forms.ModelForm):
             ),
             "email": forms.EmailInput(
                 attrs={
-                    "placeholder": "Email Address"
+                    "placeholder": "Email Address",
+                    "readonly": "readonly",
+                    "class": "form-control-readonly",
+                    "tabindex": "-1",
+                    "aria-readonly": "true",
                 }
             ),
         }
 
     def clean_email(self):
-        email = self.cleaned_data["email"].strip().lower()
-        current_email = (self.instance.email or "").strip().lower() if self.instance.pk else ""
-
-        if email == current_email:
-            return email  # keeping your own email is always fine
-
-        if User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("An account with this email already exists.")
-        return email
+        # Sign-in email address is read-only and cannot be changed by applicants
+        if self.instance and self.instance.pk and self.instance.email:
+            return self.instance.email
+        return self.cleaned_data.get("email", "").strip().lower()
         
 
 class ApplicantProfileForm(forms.ModelForm):

@@ -12,4 +12,7 @@ urlpatterns = [
 ),
     path("forgot-password/", views.forgot_password, name="forgot_password"),
     path("verify-otp/", views.verify_password_otp, name="verify_password_otp"),
+    path("google/verify-sent/", views.google_verify_sent, name="google_verify_sent"),
+    path("google/verify/<str:token>/", views.google_verify_approve, name="google_verify_approve"),
+    path("google/resend-verify/", views.resend_google_verify, name="resend_google_verify"),
 ]
