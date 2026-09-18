@@ -293,3 +293,276 @@ function initInterviewStatus() {
 
 document.addEventListener("DOMContentLoaded", initInterviewStatus);
 document.addEventListener("htmx:afterSwap", initInterviewStatus);
+
+function toggleInterviewComment(button) {
+
+    const card = button.closest(".interview-applicant-card");
+
+    if (!card) {
+        return;
+    }
+
+    const commentBox = card.querySelector(".interview-comment-box");
+    const toggleText = button.querySelector(".comment-toggle-text");
+
+    if (!commentBox) {
+        return;
+    }
+
+    const isVisible = commentBox.classList.toggle("is-visible");
+
+    if (toggleText) {
+        toggleText.textContent = isVisible
+            ? "Hide Comment"
+            : "Add Comment";
+    }
+
+    if (isVisible) {
+        const textarea = commentBox.querySelector(
+            ".interview-comment-input"
+        );
+
+        if (textarea) {
+            setTimeout(function () {
+                textarea.focus();
+            }, 100);
+        }
+    }
+}
+
+
+function cancelInterviewComment(button) {
+
+    const card = button.closest(".interview-applicant-card");
+
+    if (!card) {
+        return;
+    }
+
+    const commentBox = card.querySelector(".interview-comment-box");
+    const toggleButton = card.querySelector(
+        ".interview-comment-toggle"
+    );
+    const toggleText = toggleButton
+        ? toggleButton.querySelector(".comment-toggle-text")
+        : null;
+
+    const textarea = card.querySelector(
+        ".interview-comment-input"
+    );
+
+    if (textarea) {
+        textarea.value = "";
+    }
+
+    if (commentBox) {
+        commentBox.classList.remove("is-visible");
+    }
+
+    if (toggleText) {
+        toggleText.textContent = "Add Comment";
+    }
+}
+
+
+function handleStatusChange(value) {
+    const rescheduleContainer = document.getElementById('reschedule-container');
+    const reasonContainer = document.querySelector('.interview-status-reason-group');
+
+    // Reschedule date and time
+    if (rescheduleContainer) {
+        if (value === 'Rescheduled') {
+            rescheduleContainer.style.display = 'block';
+        } else {
+            rescheduleContainer.style.display = 'none';
+        }
+    }
+
+    // Reschedule / cancellation reason
+    if (reasonContainer) {
+        if (value === 'Rescheduled' || value === 'Cancelled') {
+            reasonContainer.classList.add('is-visible');
+        } else {
+            reasonContainer.classList.remove('is-visible');
+        }
+    }
+}
+
+// Run when the page loads
+document.addEventListener('DOMContentLoaded', function () {
+    const statusSelect = document.getElementById('interview-status-select');
+
+    if (statusSelect) {
+        handleStatusChange(statusSelect.value);
+    }
+});
+
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const selectAllCheckbox =
+        document.getElementById('select-all');
+
+    const applicantCheckboxes =
+        document.querySelectorAll('.applicant-check');
+
+
+    /*
+     * Select All
+     */
+
+    if (selectAllCheckbox) {
+
+        selectAllCheckbox.addEventListener(
+            'change',
+            function () {
+
+                applicantCheckboxes.forEach(function (checkbox) {
+
+                    checkbox.checked =
+                        selectAllCheckbox.checked;
+
+                    updateApplicantTimeField(checkbox);
+
+                });
+
+            }
+        );
+
+    }
+
+
+    /*
+     * Individual Applicant Selection
+     */
+
+    applicantCheckboxes.forEach(function (checkbox) {
+
+        checkbox.addEventListener(
+            'change',
+            function () {
+
+                updateApplicantTimeField(this);
+                updateSelectAllState();
+
+            }
+        );
+
+    });
+
+
+    /*
+     * Update the time field
+     */
+
+    function updateApplicantTimeField(checkbox) {
+
+        const applicantId =
+            checkbox.value;
+
+        const timeContainer =
+            document.getElementById(
+                'time-container-' + applicantId
+            );
+
+        const timeInput =
+            document.getElementById(
+                'time-' + applicantId
+            );
+
+        const card =
+            checkbox.closest(
+                '.candidate-schedule-card'
+            );
+
+
+        if (
+            !timeContainer ||
+            !timeInput
+        ) {
+            return;
+        }
+
+
+        if (checkbox.checked) {
+
+            timeContainer.classList.add(
+                'is-visible'
+            );
+
+            timeInput.disabled = false;
+
+            timeInput.required = true;
+
+            if (card) {
+                card.classList.add(
+                    'is-selected'
+                );
+            }
+
+        } else {
+
+            timeContainer.classList.remove(
+                'is-visible'
+            );
+
+            timeInput.disabled = true;
+
+            timeInput.required = false;
+
+            timeInput.value = '';
+
+            if (card) {
+                card.classList.remove(
+                    'is-selected'
+                );
+            }
+
+        }
+
+    }
+
+
+    /*
+     * Keep Select All checkbox updated
+     */
+
+    function updateSelectAllState() {
+
+        if (!selectAllCheckbox) {
+            return;
+        }
+
+        const total =
+            applicantCheckboxes.length;
+
+        const checked =
+            document.querySelectorAll(
+                '.applicant-check:checked'
+            ).length;
+
+
+        selectAllCheckbox.checked =
+            total > 0 &&
+            checked === total;
+
+        selectAllCheckbox.indeterminate =
+            checked > 0 &&
+            checked < total;
+
+    }
+
+
+    /*
+     * Initial state
+     */
+
+    applicantCheckboxes.forEach(function (checkbox) {
+
+        updateApplicantTimeField(
+            checkbox
+        );
+
+    });
+
+});

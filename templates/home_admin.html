@@ -70,6 +70,26 @@
                 {% endif %}
             </div>
             <div class="sidebar-footer">
+
+                <!--HR identity-->
+                <div class="hr-user-profile">
+                    <div class="hr-user-avatar">
+                        {% if user.first_name %}
+                            {{ user.first_name|first|upper }}
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+
+                    <div class="hr-user-info">
+                        <span class="hr-user-label">HR STAFF</span>
+                        <span class="hr-user-name">
+                            {{ user.username }}
+                        </span>
+                    </div>
+
+                </div>
+
                 <ul class="sidebar-footer-menu">
                     <li class="menu-item">
                         <a href="{% url "hr_logout" %}" class="menu-link-logout" hx-boost="false">

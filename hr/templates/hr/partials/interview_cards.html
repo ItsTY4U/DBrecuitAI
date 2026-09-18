@@ -1,88 +1,253 @@
 {% for item in job_interviews %}
     {% for interview in item.interviews %}
-    <section class="content-box" style="margin-top: 24px;">
-        <div class="box-header">
+
+    <section class="content-box interview-session-box">
+
+        <!-- Session Header -->
+
+        <div class="box-header interview-session-header">
+
             <div class="box-header-title">
+
                 <i class="fas fa-briefcase header-icon text-green"></i>
+
                 <div>
                     <h3>{{ item.job.title }}</h3>
-                    <p class="box-subtitle">{{ interview.interview_type }} &bull; {{ interview.applicants.count }} Candidate{{ interview.applicants.count|pluralize }}</p>
+
+                    <p class="box-subtitle">
+                        {{ interview.interview_type }}
+                        <span class="header-separator">&bull;</span>
+                        {{ interview.applicants.count }}
+                        Candidate{{ interview.applicants.count|pluralize }}
+                    </p>
                 </div>
+
             </div>
-            <a href="{% url 'interview_detail' interview.id %}" class="btn-job-edit">
-                <i class="fas fa-sliders"></i> Manage Session
+
+            <a
+                href="{% url 'interview_detail' interview.id %}"
+                class="btn-job-edit interview-manage-btn"
+            >
+                <i class="fas fa-sliders"></i>
+                <span>Manage Session</span>
             </a>
+
         </div>
 
-        <div class="table-responsive">
-            <table class="recent-table">
+
+        <!-- Applicant Table -->
+
+        <div class="table-responsive interview-table-wrapper">
+
+            <table class="recent-table interview-applicant-table">
+
                 <thead>
                     <tr>
-                        <th>Candidate</th>
-                        <th>Interview Type</th>
-                        <th>Scheduled Date</th>
-                        <th>Time</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th class="candidate-column">
+                            Candidate
+                        </th>
+
+                        <th class="type-column">
+                            Interview Type
+                        </th>
+
+                        <th class="date-column">
+                            Scheduled Date
+                        </th>
+
+                        <th class="time-column">
+                            Time
+                        </th>
+
+                        <th class="location-column">
+                            Location
+                        </th>
+
+                        <th class="status-column">
+                            Status
+                        </th>
+
+                        <th class="action-column">
+                            Action
+                        </th>
                     </tr>
                 </thead>
+
+
                 <tbody>
+
                     {% for applicant in interview.applicants.all %}
-                    {% if applicant.job == item.job %}
-                    <tr>
-                        <td>
-                            <div class="applicant-cell">
-                                <div class="avatar">
-                                    {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
-                                </div>
-                                <div>
-                                    <div class="applicant-name">
-                                        {{ applicant.first_name }}
-                                        {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
-                                        {{ applicant.last_name }}
+
+                        {% if applicant.job == item.job %}
+
+                        <tr class="interview-applicant-row">
+
+                            <!-- Candidate -->
+
+                            <td class="candidate-column">
+
+                                <div class="interview-candidate-cell">
+
+                                    <div class="avatar interview-candidate-avatar">
+                                        {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
                                     </div>
-                                    <span class="mini-score
-                                        {% if applicant.ai_score >= 90 %}
-                                            score-high
-                                        {% elif applicant.ai_score >= 75 %}
-                                            score-mid
-                                        {% else %}
-                                            score-low
-                                        {% endif %}">
-                                        AI Score: {{ applicant.ai_score }}%
-                                    </span>
+
+                                    <div class="interview-candidate-info">
+
+                                        <div class="applicant-name">
+                                            {{ applicant.first_name }}
+
+                                            {% if applicant.middle_initial %}
+                                                {{ applicant.middle_initial }}.
+                                            {% endif %}
+
+                                            {{ applicant.last_name }}
+                                        </div>
+
+                                        <span class="applicant-email-sub">
+                                            {{ applicant.email }}
+                                        </span>
+
+                                        <span class="mini-score
+                                            {% if applicant.ai_score >= 90 %}
+                                                score-high
+                                            {% elif applicant.ai_score >= 75 %}
+                                                score-mid
+                                            {% else %}
+                                                score-low
+                                            {% endif %}
+                                        ">
+                                            <i class="fas fa-robot"></i>
+                                            AI Score: {{ applicant.ai_score }}%
+                                        </span>
+
+                                    </div>
+
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="interview-type-pill">{{ interview.interview_type }}</span>
-                        </td>
-                        <td>
-                            <span class="date-cell"><i class="fas fa-calendar"></i> {{ interview.date|date:"M d, Y" }}</span>
-                        </td>
-                        <td>
-                            <span class="time-cell"><i class="fas fa-clock"></i> {{ interview.time|time:"g:i A" }}</span>
-                        </td>
-                        <td>
-                            <span class="location-cell"><i class="fas fa-location-dot text-amber"></i> {{ interview.location|default:"HR Office" }}</span>
-                        </td>
-                        <td>
-                            <span class="status-pill status-{{ interview.status|lower }}">
-                                {{ interview.status }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{% url 'candidate_detail' applicant.id %}" class="btn-review-applicant" style="padding: 6px 12px; font-size: 11.5px; width: auto; display: inline-flex;">
-                                Candidate Profile
-                            </a>
-                        </td>
-                    </tr>
-                    {% endif %}
+
+                            </td>
+
+
+                            <!-- Interview Type -->
+
+                            <td class="type-column">
+
+                                <span class="interview-type-pill">
+                                    {{ interview.interview_type }}
+                                </span>
+
+                            </td>
+
+
+                            <!-- Date -->
+
+                            <td class="date-column">
+
+                                <div class="interview-date-display">
+
+                                    <i class="fas fa-calendar"></i>
+
+                                    <span>
+                                        {{ interview.date|date:"M d, Y" }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Individual Applicant Time -->
+
+                            <td class="time-column">
+
+                                <div class="interview-time-display">
+
+                                    <i class="fas fa-clock"></i>
+
+                                    <span>
+                                        {% comment %} {% with applicant_time=interview.applicant_times|get_item:applicant.id %}
+                                            {% if applicant_time %}
+                                                {{ applicant_time|time:"g:i A" }}
+                                            {% else %}
+                                                {{ interview.time|time:"g:i A" }}
+                                            {% endif %}
+                                        {% endwith %} {% endcomment %}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Location -->
+
+                            <td class="location-column">
+
+                                <div class="interview-location-display">
+
+                                    <i class="fas fa-location-dot"></i>
+
+                                    <span>
+                                        {{ interview.location|default:"HR Office" }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Status -->
+
+                            <td class="status-column">
+
+                                <span class="status-pill status-{{ interview.status|lower }}">
+                                    {{ interview.status }}
+                                </span>
+
+                            </td>
+
+
+                            <!-- Action -->
+
+                            <td class="action-column">
+
+                                <a
+                                    href="{% url 'candidate_detail' applicant.id %}"
+                                    class="btn-review-applicant interview-candidate-profile-btn"
+                                >
+                                    <span>Candidate Profile</span>
+                                    <i class="fas fa-arrow-right"></i>
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% endif %}
+
+                    {% empty %}
+
+                        <tr>
+                            <td colspan="7">
+
+                                <div class="empty-state-box">
+                                    <p>
+                                        No applicants assigned to this session.
+                                    </p>
+                                </div>
+
+                            </td>
+                        </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
+
         </div>
+
     </section>
+
     {% endfor %}
 {% endfor %}

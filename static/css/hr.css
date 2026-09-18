@@ -3284,27 +3284,283 @@ table .btn-review-applicant {
     gap: 10px;
 }
 
+/* =========================================================
+   INTERVIEW APPLICANT CARD
+   ========================================================= */
+
 .interview-applicant-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    transition: all 0.2s ease;
+
+    gap: 16px;
+
+    padding: 14px 16px;
+
+    border: 1px solid #e1e6ea;
+    border-radius: 10px;
+
+    background: #f8fafb;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
 }
 
 .interview-applicant-card:hover {
+    border-color: rgba(45, 90, 39, 0.25);
+
     background: #ffffff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+
+    box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.04);
 }
+
+
+/* Applicant */
+
+.interview-applicant-main {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    min-width: 0;
+}
+
+.interview-applicant-info {
+    min-width: 0;
+}
+
+.interview-applicant-info .applicant-name {
+    margin-bottom: 3px;
+}
+
+.interview-applicant-info .applicant-email-sub {
+    display: block;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* Right Side */
 
 .applicant-card-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
 }
+
+
+/* Match Score */
+
+.interview-applicant-card .mini-score {
+    white-space: nowrap;
+}
+
+
+/* Comment Button */
+
+.interview-applicant-card .interview-comment-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    padding: 7px 9px;
+
+    border: none;
+    border-radius: 7px;
+
+    background: transparent;
+
+    color: var(--primary);
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.interview-applicant-card .interview-comment-toggle:hover {
+    background: rgba(45, 90, 39, 0.08);
+}
+
+.interview-applicant-card .interview-comment-toggle i {
+    font-size: 11px;
+}
+
+
+/* Profile Button */
+
+.interview-profile-btn {
+    width: auto !important;
+
+    padding: 7px 12px !important;
+
+    font-size: 11px !important;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   APPLICANT COMMENT
+   ========================================================= */
+
+.interview-applicant-comment {
+    grid-column: 1 / -1;
+
+    width: 100%;
+}
+
+.interview-comment-box {
+    display: none;
+
+    width: 100%;
+
+    padding-top: 13px;
+
+    border-top: 1px solid #e3e7ea;
+
+    box-sizing: border-box;
+}
+
+.interview-comment-box.is-visible {
+    display: block;
+}
+
+
+/* Comment Header */
+
+.interview-comment-header {
+    display: flex;
+    align-items: center;
+
+    margin-bottom: 8px;
+}
+
+.interview-comment-header > div {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    color: #45515c;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.interview-comment-header i {
+    color: var(--primary);
+}
+
+
+/* Textarea */
+
+.interview-comment-input {
+    display: block;
+
+    width: 100%;
+    min-height: 78px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d8dee3;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    color: #263238;
+
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1.5;
+
+    resize: vertical;
+
+    outline: none;
+
+    box-sizing: border-box;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.interview-comment-input:focus {
+    border-color: var(--primary);
+
+    box-shadow:
+        0 0 0 2px rgba(45, 90, 39, 0.08);
+}
+
+.interview-comment-input::placeholder {
+    color: #9aa3aa;
+}
+
+
+/* Comment Buttons */
+
+.interview-comment-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 7px;
+
+    margin-top: 8px;
+}
+
+.interview-comment-cancel,
+.interview-comment-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    padding: 7px 11px;
+
+    border: none;
+    border-radius: 6px;
+
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.interview-comment-cancel {
+    background: #edf0f2;
+    color: #5c6872;
+}
+
+.interview-comment-save {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.interview-comment-cancel:hover,
+.interview-comment-save:hover {
+    opacity: 0.85;
+}
+
 
 /* Status Banners in Management Column */
 .status-banner {
@@ -5729,4 +5985,744 @@ table .btn-review-applicant {
     margin: 4px 0 0;
     font-size: 12px;
     line-height: 1.5;
+}
+
+/* =========================================================
+   HR USER IDENTITY
+   ========================================================= */
+
+.hr-user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-sizing: border-box;
+}
+
+.hr-user-avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--primary);
+    color: #ffffff;
+
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.hr-user-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hr-user-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: 0.65;
+}
+
+.hr-user-name {
+    max-width: 170px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+
+/* =========================================================
+   INTERVIEW APPLICANT COMMENTS
+   ========================================================= */
+
+.interview-applicant-comment {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 22px;
+}
+
+.interview-comment-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    border: none;
+    background: transparent;
+
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.interview-comment-toggle:hover {
+    opacity: 0.75;
+}
+
+.interview-comment-box {
+    display: none;
+    margin-top: 10px;
+}
+
+.interview-comment-box.is-visible {
+    display: block;
+}
+
+.interview-comment-input {
+    width: 100%;
+    min-height: 80px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    font-family: inherit;
+    font-size: 13px;
+
+    resize: vertical;
+    box-sizing: border-box;
+
+    outline: none;
+}
+
+.interview-comment-input:focus {
+    border-color: var(--primary);
+}
+
+.interview-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+
+    margin-top: 8px;
+}
+
+.interview-comment-cancel,
+.interview-comment-save {
+    border: none;
+    border-radius: 7px;
+
+    padding: 7px 12px;
+
+    font-size: 11px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.interview-comment-cancel {
+    background: #eeeeee;
+    color: #555555;
+}
+
+.interview-comment-save {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.interview-comment-save:hover,
+.interview-comment-cancel:hover {
+    opacity: 0.85;
+}
+
+
+/* =========================================================
+   INTERVIEW STATUS REASON
+   ========================================================= */
+
+.interview-status-reason-group {
+    display: none;
+    margin-top: 14px;
+}
+
+.interview-status-reason-group.is-visible {
+    display: block;
+}
+
+.interview-status-reason-group label {
+    display: block;
+    margin-bottom: 6px;
+
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.interview-status-reason {
+    width: 100%;
+    min-height: 80px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+
+    background: #ffffff;
+
+    font-family: inherit;
+    font-size: 13px;
+
+    resize: vertical;
+    box-sizing: border-box;
+
+    outline: none;
+}
+
+.interview-status-reason:focus {
+    border-color: var(--primary);
+}
+
+/* =========================================================
+   INDIVIDUAL APPLICANT INTERVIEW SCHEDULING
+   ========================================================= */
+
+.candidate-schedule-card {
+    width: 100%;
+    margin-bottom: 10px;
+
+    border: 1px solid #e1e6ea;
+    border-radius: 10px;
+
+    background: #ffffff;
+
+    overflow: hidden;
+
+    box-sizing: border-box;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.candidate-schedule-card:hover {
+    border-color: rgba(45, 90, 39, 0.25);
+}
+
+
+/* Candidate Card */
+
+.candidate-schedule-card .candidate-check-card {
+    margin: 0;
+
+    border: none;
+    border-radius: 0;
+
+    background: #f8fafb;
+}
+
+
+/* Selected Candidate */
+
+.candidate-schedule-card.is-selected {
+    border-color: rgba(45, 90, 39, 0.35);
+
+    box-shadow:
+        0 3px 12px rgba(45, 90, 39, 0.06);
+}
+
+.candidate-schedule-card.is-selected
+.candidate-check-card {
+    background: rgba(45, 90, 39, 0.04);
+}
+
+
+/* =========================================================
+   INDIVIDUAL TIME
+   ========================================================= */
+
+.candidate-time-container {
+    display: none;
+
+    padding: 12px 14px;
+
+    border-top: 1px solid #e5e9ed;
+
+    background: #ffffff;
+}
+
+.candidate-time-container.is-visible {
+    display: block;
+}
+
+.candidate-time-header {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    margin-bottom: 8px;
+
+    color: var(--primary);
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.candidate-time-header i {
+    font-size: 11px;
+}
+
+.candidate-time-input-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+}
+
+.candidate-time-label {
+    color: #788594;
+
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.applicant-time-input {
+    width: 145px;
+
+    padding: 8px 10px;
+
+    font-size: 11px;
+
+    box-sizing: border-box;
+}
+
+.applicant-time-input:disabled {
+    background: #f1f3f5;
+
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   SELECTED STATE
+   ========================================================= */
+
+.candidate-schedule-card
+.applicant-check:checked
+~ .mini-avatar {
+    border-color: var(--primary);
+}
+
+
+/* =========================================================
+   EMPTY STATE ICON
+   ========================================================= */
+
+.schedule-empty-icon {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: #d69e2e;
+
+    font-size: 28px;
+}
+
+
+/* =========================================================
+   INTERVIEW SESSION APPLICANT TABLE
+   ========================================================= */
+
+.interview-session-box {
+    margin-top: 24px;
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   SESSION HEADER
+   ========================================================= */
+
+.interview-session-header {
+    margin-bottom: 4px;
+}
+
+.interview-session-header .box-header-title {
+    min-width: 0;
+}
+
+.interview-session-header h3 {
+    margin-bottom: 4px;
+}
+
+.header-separator {
+    margin: 0 4px;
+    color: #a0a8af;
+}
+
+
+/* Manage Session */
+
+.interview-manage-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    min-width: 145px;
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.interview-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+
+    padding-bottom: 2px;
+}
+
+.interview-applicant-table {
+    width: 100%;
+
+    table-layout: fixed;
+
+    border-collapse: separate;
+    border-spacing: 0;
+
+    min-width: 1080px;
+}
+
+
+/* =========================================================
+   COLUMN WIDTHS
+   ========================================================= */
+
+.interview-applicant-table .candidate-column {
+    width: 25%;
+}
+
+.interview-applicant-table .type-column {
+    width: 14%;
+}
+
+.interview-applicant-table .date-column {
+    width: 13%;
+}
+
+.interview-applicant-table .time-column {
+    width: 11%;
+}
+
+.interview-applicant-table .location-column {
+    width: 14%;
+}
+
+.interview-applicant-table .status-column {
+    width: 10%;
+}
+
+.interview-applicant-table .action-column {
+    width: 13%;
+}
+
+
+/* =========================================================
+   TABLE HEADER
+   ========================================================= */
+
+.interview-applicant-table thead th {
+    padding: 12px 10px;
+
+    white-space: nowrap;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    color: #293342;
+
+    text-align: left;
+}
+
+.interview-applicant-table thead th:first-child {
+    padding-left: 0;
+}
+
+
+/* =========================================================
+   TABLE ROW
+   ========================================================= */
+
+.interview-applicant-row {
+    transition:
+        background 0.2s ease;
+}
+
+.interview-applicant-row:hover {
+    background: rgba(45, 90, 39, 0.025);
+}
+
+.interview-applicant-row td {
+    padding: 13px 10px;
+
+    vertical-align: middle;
+
+    font-size: 11px;
+}
+
+.interview-applicant-row td:first-child {
+    padding-left: 0;
+}
+
+
+/* =========================================================
+   CANDIDATE
+   ========================================================= */
+
+.interview-candidate-cell {
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 0;
+}
+
+.interview-candidate-avatar {
+    flex: 0 0 auto;
+}
+
+.interview-candidate-info {
+    display: flex;
+    flex-direction: column;
+
+    min-width: 0;
+
+    gap: 3px;
+}
+
+.interview-candidate-info .applicant-name {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-weight: 600;
+}
+
+.interview-candidate-info .applicant-email-sub {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    font-size: 9.5px;
+}
+
+.interview-candidate-info .mini-score {
+    width: fit-content;
+
+    margin-top: 1px;
+
+    font-size: 9px;
+}
+
+
+/* =========================================================
+   INTERVIEW TYPE
+   ========================================================= */
+
+.interview-applicant-table .interview-type-pill {
+    display: inline-flex;
+    align-items: center;
+
+    max-width: 100%;
+
+    padding: 5px 8px;
+
+    border-radius: 6px;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    font-size: 9.5px;
+}
+
+
+/* =========================================================
+   DATE
+   ========================================================= */
+
+.interview-date-display,
+.interview-time-display,
+.interview-location-display {
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    line-height: 1.4;
+}
+
+.interview-date-display i,
+.interview-time-display i,
+.interview-location-display i {
+    flex: 0 0 auto;
+
+    font-size: 10px;
+}
+
+.interview-date-display i {
+    color: #374151;
+}
+
+.interview-time-display i {
+    color: #374151;
+}
+
+.interview-location-display i {
+    color: #e59b1a;
+}
+
+.interview-date-display span,
+.interview-time-display span,
+.interview-location-display span {
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   TIME
+   ========================================================= */
+
+.interview-time-display {
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.interview-applicant-table .status-pill {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    white-space: nowrap;
+
+    font-size: 9px;
+}
+
+
+/* =========================================================
+   PROFILE BUTTON
+   ========================================================= */
+
+.interview-candidate-profile-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+
+    gap: 6px;
+
+    width: auto !important;
+
+    padding: 7px 10px !important;
+
+    font-size: 10px !important;
+
+    white-space: nowrap;
+}
+
+.interview-candidate-profile-btn i {
+    font-size: 9px;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1200px) {
+
+    .interview-applicant-table {
+        min-width: 1000px;
+    }
+
+    .interview-applicant-table .candidate-column {
+        width: 24%;
+    }
+
+    .interview-applicant-table .type-column {
+        width: 13%;
+    }
+
+    .interview-applicant-table .date-column {
+        width: 13%;
+    }
+
+    .interview-applicant-table .time-column {
+        width: 11%;
+    }
+
+    .interview-applicant-table .location-column {
+        width: 14%;
+    }
+
+    .interview-applicant-table .status-column {
+        width: 10%;
+    }
+
+    .interview-applicant-table .action-column {
+        width: 15%;
+    }
+
+}
+
+
+@media (max-width: 700px) {
+
+    .interview-session-header {
+        align-items: flex-start;
+    }
+
+    .interview-manage-btn {
+        min-width: auto;
+
+        padding: 8px 10px;
+
+        font-size: 10px;
+    }
+
+    .interview-manage-btn span {
+        display: none;
+    }
+
 }
