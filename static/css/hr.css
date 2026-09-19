@@ -6727,6 +6727,290 @@ table .btn-review-applicant {
 
 }
 
+
+
+/* =========================================================
+   JOB POSTING - CRITERIA
+   ========================================================= */
+
+.criteria-form-group {
+    width: 100%;
+    margin-top: 32px;
+}
+
+
+/* Header */
+
+.criteria-header-row {
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.criteria-title {
+    display: block;
+    margin-bottom: 3px;
+}
+
+.criteria-description {
+    margin: 0;
+
+    color: #7b8794;
+
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+
+/* Add Button */
+
+.criteria-add-btn {
+    flex: 0 0 auto;
+}
+
+
+/* Criteria Container */
+
+.criteria-container {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    width: 100%;
+}
+
+
+/* Individual Criterion */
+
+.criteria-row {
+    display: grid;
+
+    grid-template-columns: minmax(0, 1fr) 85px 34px;
+
+    align-items: center;
+
+    gap: 8px;
+
+    width: 100%;
+
+    padding: 7px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #e2e7eb;
+    border-radius: 8px;
+
+    background: #fafbfc;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease;
+}
+
+.criteria-row:focus-within {
+    border-color: rgba(45, 90, 39, 0.35);
+
+    background: #ffffff;
+}
+
+
+/* Criterion Name */
+
+.criteria-name-wrapper {
+    min-width: 0;
+}
+
+.criteria-name-input {
+    width: 100%;
+
+    box-sizing: border-box;
+}
+
+
+/* Weight */
+
+.criteria-weight-wrapper {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+
+    width: 100%;
+}
+
+.criteria-weight-input {
+    width: 100%;
+
+    padding-right: 23px;
+
+    box-sizing: border-box;
+
+    text-align: center;
+}
+
+.criteria-percent {
+    position: absolute;
+
+    right: 9px;
+
+    color: #7b8794;
+
+    font-size: 10px;
+
+    pointer-events: none;
+}
+
+
+/* Remove */
+
+.remove-criteria {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 6px;
+
+    background: transparent;
+
+    color: #a0a8b0;
+
+    cursor: pointer;
+
+    transition:
+        color 0.2s ease,
+        background 0.2s ease;
+}
+
+.remove-criteria:hover {
+    color: #d64545;
+
+    background: rgba(214, 69, 69, 0.08);
+}
+
+
+/* Total */
+
+.criteria-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    margin-top: 10px;
+
+    padding-top: 10px;
+
+    border-top: 1px solid #e7ebee;
+}
+
+.criteria-total-label {
+    color: #66717d;
+
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.criteria-total {
+    min-width: 52px;
+
+    padding: 5px 9px;
+
+    border-radius: 6px;
+
+    background: #f1f3f5;
+
+    color: #59636d;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    text-align: center;
+}
+
+
+/* Valid */
+
+.criteria-total.is-valid {
+    background: rgba(45, 90, 39, 0.1);
+
+    color: #2d5a27;
+}
+
+
+/* Invalid */
+
+.criteria-total.is-invalid {
+    background: rgba(214, 69, 69, 0.1);
+
+    color: #c43d3d;
+}
+
+
+/* Validation */
+
+.criteria-validation {
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    margin-top: 7px;
+
+    color: #c43d3d;
+
+    font-size: 9.5px;
+}
+
+.criteria-validation.is-valid {
+    color: #2d5a27;
+}
+
+.criteria-validation i {
+    font-size: 10px;
+}
+
+
+/* Help */
+
+.criteria-help {
+    display: block;
+
+    margin-top: 6px;
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+
+    .criteria-header-row {
+        flex-direction: column;
+
+        gap: 10px;
+    }
+
+    .criteria-add-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .criteria-row {
+        grid-template-columns: minmax(0, 1fr) 75px 32px;
+    }
+
+}
+
+
+
+
+
 /* Global Action Disabled State */
 .btn-action-disabled,
 button[disabled].btn-action-disabled,
@@ -6736,4 +7020,6 @@ input[disabled].btn-action-disabled {
     cursor: not-allowed !important;
     filter: grayscale(20%) !important;
     transition: opacity 0.2s ease, filter 0.2s ease !important;
-}
+}
+
+

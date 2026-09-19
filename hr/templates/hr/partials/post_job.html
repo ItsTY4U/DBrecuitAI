@@ -111,9 +111,68 @@
 
             </div>
 
+            <!--Criteria-->
+            <div class="form-group criteria-form-group">
+                <div class="req-header-row criteria-header-row">
+                    <div>
+                        <label class="form-label criteria-title">Criteria</label>
+
+                        <p class="criteria-description">
+                            Define the factors used tp evalute applicant during AI screening.
+                        </p>
+                    </div>
+                    <button type="button"
+                            class="btn-add-req-chip criteria-add-btn"
+                            id="add-criteria">
+                            <i class="fas fa-plus"></i>
+                            Add Criterion
+                    </button>
+                </div>
+
+                <div id="criteria-container" class="criteria-container">
+                    <div class="criteria-row">
+                        <div class="criteria-name-wrapper">
+                            <input type="text"
+                                    name="criteria_name"
+                                    class="form-input criteria-name-input"
+                                    placeholder="Enter criteria">
+                        </div>
+                        <div class="criteria-weight-wrapper">
+                            <input
+                                type="number"
+                                name="criteria_weight"
+                                class="form-input criteria-weight-input"
+                                min="0"
+                                max="100"
+                                step="1"
+                                placeholder="0">
+                            <span class="criteria-percent">%</span>
+                        </div>
+                        <button type="button" class="remove-criteria" title="Remove criterion">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="criteria-total-row">
+                    <span class="criteria-total-label">Total Weight</span>
+                    <span id="criteria-total" class="criteria-total">0%</span>
+                </div>
+
+                <div class="criteria-calidation" id="criteria-validation">
+                    <i class="fas fa-circle-info"></i>
+                    <span>Criretira weights must total 100%</span>
+                </div>
+
+                <small class="form-help criteria-help">
+                    Assign weight to each criteria. The total weight must equal 100%
+                </small>
+
+            </div>
+
             <div class="modal-footer-actions">
                 <button type="button" class="btn-modal-cancel" id="cancel-modal">Cancel</button>
-                <button type="submit" class="btn-modal-submit">
+                <button type="submit" class="btn-modal-submit" id="post-job-submit" disabled>
                     <i class="fas fa-check"></i> Post & Publish Job
                 </button>
             </div>
