@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Profile edit:", profileEdit);
 
     if (editButton && profileEdit) {
+        if (window.getComputedStyle(profileEdit).display !== "none") {
+            editButton.textContent = "Cancel";
+        }
 
         editButton.addEventListener("click", function () {
 

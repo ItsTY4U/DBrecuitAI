@@ -1417,6 +1417,22 @@
     background: var(--primary-hover);
 }
 
+.form-control-readonly,
+input[readonly].form-control-readonly {
+    background-color: #f4f7f5 !important;
+    border-color: #d8e2dc !important;
+    color: #586b61 !important;
+    cursor: not-allowed !important;
+    user-select: none;
+}
+
+.form-control-readonly:focus,
+input[readonly].form-control-readonly:focus {
+    outline: none !important;
+    border-color: #d8e2dc !important;
+    box-shadow: none !important;
+}
+
 /* Recommended Jobs */
 .job-recommendations {
     display: grid;
@@ -1430,6 +1446,11 @@
 }
 
 .recommendation-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
     min-width: 0;
     padding: 14px;
     box-sizing: border-box;
@@ -1440,9 +1461,14 @@
 }
 
 .recommendation-card:hover {
-    border-color: #dceee2;
-    transform: translateY(-2px);
-    box-shadow: 0 7px 18px rgba(35, 90, 55, 0.07);
+    border-color: #358d58;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(35, 90, 55, 0.12);
+}
+
+.recommendation-card:hover .view-job-btn {
+    color: #1a6237;
+    text-decoration: underline;
 }
 
 .recommendation-card-header {

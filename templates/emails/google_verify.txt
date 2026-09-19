@@ -1,0 +1,17 @@
+Approve Your DBRecruitAI Sign-In Request
+
+Hello {{ applicant_name }},
+
+A sign-in request was initiated for your DBRecruitAI applicant account using Google ({{ user_email }}).
+
+To approve this request and sign in to your applicant portal, please click the link below or copy and paste it into your browser:
+
+{{ verify_url }}
+
+This link will expire in {{ expires_in_minutes }} minutes.
+
+If you did not initiate this request, please ignore this email. No access will be granted without clicking the approval link.
+
+---
+DBRecruitAI - Powered by Don Benito's
+https://dbrecruit-ai.vercel.app

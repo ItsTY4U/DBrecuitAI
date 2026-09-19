@@ -11,6 +11,8 @@ from jobs.recommendations import get_recommended_jobs
 from .models import ApplicantProfile
 from jobs.models import Application
 from django.contrib import messages
+from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+from django.core.cache import cache
 
 
 from jobs.ai import extract_resume_text, parse_resume
@@ -313,12 +315,12 @@ def profile(request):
                 request.FILES.get("default_resume")
             )
 
-            # Save user information
+            # Save user information (allow editing first_name, last_name, but keep sign-in email immutable)
             user = user_form.save(commit=False)
-
-            user.email = user_form.cleaned_data["email"]
-            user.username = user.email
-
+            user.first_name = user_form.cleaned_data.get("first_name", user.first_name)
+            user.last_name = user_form.cleaned_data.get("last_name", user.last_name)
+            user.email = request.user.email
+            user.username = request.user.username
             user.save()
 
             # Save applicant profile
@@ -496,3 +498,130 @@ def verify_password_otp(request):
             return render(request, "accounts/verify_otp.html", status=429)
 
     return render(request, "accounts/verify_otp.html")
+
+
+def google_verify_sent(request):
+    """
+    Renders confirmation that a verification link was sent to the applicant's Gmail.
+    """
+    if request.user.is_authenticated:
+        return redirect("profile")
+
+    email = request.session.get("pending_google_email", "")
+    dev_verify_url = request.session.get("pending_google_dev_verify_url", "")
+
+    return render(
+        request,
+        "accounts/google_verify_sent.html",
+        {
+            "email": email,
+            "dev_verify_url": dev_verify_url,
+        },
+    )
+
+
+def google_verify_approve(request, token):
+    """
+    Validates the secure approval link sent to the applicant's Gmail.
+    On successful verification, completes authentication and redirects to profile.
+    """
+    if request.user.is_authenticated:
+        return redirect("profile")
+
+    signer = TimestampSigner(salt="google-auth-verify")
+    try:
+        # Link expires in 15 minutes (900 seconds)
+        raw_token = signer.unsign(token, max_age=900)
+        user_id_str, email, nonce = raw_token.split(":", 2)
+    except SignatureExpired:
+        messages.error(request, "Your verification link has expired (15-minute limit). Please sign in with Google again.")
+        return redirect("applicant_login")
+    except (BadSignature, ValueError):
+        messages.error(request, "The verification link is invalid. Please sign in with Google again.")
+        return redirect("applicant_login")
+
+    # Replay protection: ensure single-use nonce is still in cache
+    cache_key = f"google_auth_nonce_{user_id_str}_{nonce}"
+    if not cache.get(cache_key):
+        messages.error(
+            request,
+            "This approval link has already been used or has expired. Please sign in with Google again.",
+        )
+        return redirect("applicant_login")
+
+    # Consume the token immediately
+    cache.delete(cache_key)
+
+    try:
+        user = User.objects.get(pk=int(user_id_str))
+    except (User.DoesNotExist, ValueError):
+        messages.error(request, "User account not found. Please try signing in again.")
+        return redirect("applicant_login")
+
+    if not user.is_active:
+        messages.error(request, "Your account is disabled. Please contact DBRecruitAI support.")
+        return redirect("applicant_login")
+
+    # Ensure profile exists
+    ApplicantProfile.objects.get_or_create(user=user)
+
+    # Clean up pending verification session data
+    request.session.pop("pending_google_email", None)
+    request.session.pop("pending_google_user_id", None)
+    request.session.pop("pending_google_name", None)
+    request.session.pop("pending_google_dev_verify_url", None)
+
+    # Complete the login
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    messages.success(
+        request,
+        f"Google verification successful! Welcome back, {user.first_name or user.username}."
+    )
+    return redirect("profile")
+
+
+def resend_google_verify(request):
+    """
+    Allows the applicant to request a new verification link if the previous one expired or was missed.
+    Rate limited to 3 per 15 minutes.
+    """
+    if request.method != "POST":
+        return redirect("google_verify_sent")
+
+    user_id = request.session.get("pending_google_user_id")
+    email = request.session.get("pending_google_email", "")
+
+    if not user_id or not email:
+        messages.info(request, "Your session has expired. Please sign in with Google again.")
+        return redirect("applicant_login")
+
+    # Rate limiting: 3 per 15 minutes per IP & email
+    is_limited, limit_err = check_rate_limit(
+        request,
+        action_key="resend_google_verify",
+        limit=3,
+        window_seconds=900,
+        account_identifier=email,
+        enable_debounce=True,
+        debounce_seconds=5,
+    )
+    if is_limited:
+        messages.error(request, limit_err)
+        return redirect("google_verify_sent")
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        messages.error(request, "User account not found. Please try signing in again.")
+        return redirect("applicant_login")
+
+    from .adapters import create_google_verification_token, send_google_verification_email
+
+    token = create_google_verification_token(user, email)
+    result, verify_url = send_google_verification_email(request, user, email, token)
+
+    if not result.get("success") and getattr(settings, "DEBUG", False):
+        request.session["pending_google_dev_verify_url"] = verify_url
+
+    messages.success(request, f"A new verification link has been sent to {email}.")
+    return redirect("google_verify_sent")
