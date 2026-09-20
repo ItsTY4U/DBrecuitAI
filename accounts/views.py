@@ -356,8 +356,8 @@ def profile(request):
             instance=profile
         )
 
-    # Calculate recommendations AFTER profile is loaded/saved
-    recommended_jobs = get_recommended_jobs(profile)
+    # Calculate recommendations AFTER profile is loaded/saved (top 6 best matches)
+    recommended_jobs = get_recommended_jobs(profile, limit=6)
     
     applications = (
         Application.objects.filter(applicant=request.user)

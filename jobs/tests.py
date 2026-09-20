@@ -103,6 +103,38 @@ class ApplicantJobPerformanceTests(TestCase):
             self.assertEqual(len(recs2), 1)
             self.assertEqual(recs2[0]["score"], recs1[0]["score"])
 
+    def test_unrelated_jobs_not_recommended(self):
+        """Applicants with unrelated resumes (e.g. Python programmer) must NOT be recommended unrelated jobs (e.g. Barista)."""
+        cache.clear()
+        # Applicant is an IT software engineer
+        self.profile.resume_data = {
+            "skills": ["Python", "Django", "PostgreSQL", "Docker"],
+            "experience": [{"job_title": "Backend Developer", "description": "Built REST APIs"}],
+            "education": [{"degree": "BS Computer Science"}],
+        }
+        self.profile.resume_text = "Software Engineer with Python, Django, PostgreSQL, Docker."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        # Barista job must NOT be recommended
+        unrelated_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(unrelated_recs, [], "Unrelated job was incorrectly recommended to a software engineer!")
+
+        # Now update applicant profile to be a Barista
+        cache.clear()
+        self.profile.resume_data = {
+            "skills": ["Coffee brewing knowledge", "Customer service skills", "Cash handling"],
+            "experience": [{"job_title": "Cafe Barista", "description": "Brewed specialty espresso beverages"}],
+            "education": [{"degree": "High School Diploma"}],
+        }
+        self.profile.resume_text = "Experienced Barista with coffee brewing knowledge and customer service skills."
+        self.profile.save()
+
+        matching_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(len(matching_recs), 1, "Matching Barista job was not recommended to an actual Barista!")
+        self.assertEqual(matching_recs[0]["job"].id, self.job.id)
+        self.assertGreaterEqual(matching_recs[0]["score"], 70)
+
     def test_single_word_boundary_no_substring_false_positives(self):
         """Single-word skills must not match inside unrelated words (go in good, r in director, art in party)."""
         from jobs.recommendations import find_matched_skills

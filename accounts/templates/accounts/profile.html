@@ -493,12 +493,15 @@
                 <div class="no-recommendations">
 
                     <h3>
-                        No Recommendations Available Yet
+                        No Matching Jobs Available Yet
                     </h3>
 
                     <p>
-                        Upload and process your resume to receive
-                        personalized job recommendations.
+                        {% if profile.default_resume %}
+                            None of our currently active job openings strongly match your uploaded resume's skills and experience. Check back soon as new openings are posted regularly!
+                        {% else %}
+                            Upload and process your resume to receive personalized job recommendations tailored to your skills.
+                        {% endif %}
                     </p>
 
                 </div>

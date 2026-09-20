@@ -376,16 +376,17 @@ def _score_skills_match(applicant_skills: List[str], job_text: str, requirements
         else:
             missing_skills.append(skill)
 
+    num_matched = len(matched_skills)
     total_skills = len(applicant_skills)
-    ratio = len(matched_skills) / total_skills if total_skills > 0 else 0.0
+    ratio = num_matched / total_skills if total_skills > 0 else 0.0
 
-    if ratio >= 0.80:
-        score = 90 + round((ratio - 0.80) / 0.20 * 10)
-    elif ratio >= 0.60:
-        score = 75 + round((ratio - 0.60) / 0.20 * 14)
-    elif ratio >= 0.20:
-        score = 60 + round((ratio - 0.20) / 0.40 * 14)
-    elif len(matched_skills) > 0:
+    if num_matched >= 5 or (num_matched >= 4 and ratio >= 0.50):
+        score = 92 + min(8, num_matched)
+    elif num_matched >= 3 or (num_matched >= 2 and ratio >= 0.50):
+        score = 80 + min(9, round(ratio * 15))
+    elif num_matched >= 2 or (num_matched >= 1 and ratio >= 0.30):
+        score = 70 + min(4, num_matched * 2)
+    elif num_matched >= 1:
         score = 60
     else:
         score = 50
@@ -514,28 +515,30 @@ def _score_experience_match(analyzed_resume, job):
         if any(w in exp_title for w in job_title_words):
             title_matches += 1
 
-        if job_dept and job_dept in exp_desc:
+        if job_dept and (job_dept in exp_desc or job_dept in exp_title):
             desc_matches += 1
+
+    has_relevance = (title_matches > 0) or (desc_matches > 0)
 
     if req_years > 0:
         if applicant_years >= req_years + 2:
-            tenure_score = 90
+            base_score = 90 if has_relevance else 65
         elif applicant_years >= req_years:
-            tenure_score = 80
+            base_score = 80 if has_relevance else 60
         elif applicant_years >= req_years * 0.5:
-            tenure_score = 65
+            base_score = 65 if has_relevance else 55
         else:
-            tenure_score = 55
+            base_score = 55
     else:
         if applicant_years >= 3:
-            tenure_score = 85
+            base_score = 85 if has_relevance else 62
         elif applicant_years >= 1:
-            tenure_score = 75
+            base_score = 75 if has_relevance else 58
         else:
-            tenure_score = 65
+            base_score = 65 if has_relevance else 52
 
     relevance_bonus = min(10, (title_matches * 5) + (desc_matches * 3))
-    final_exp_score = tenure_score + relevance_bonus
+    final_exp_score = base_score + relevance_bonus
 
     return _clamp(final_exp_score, 50, 100)
 
@@ -630,6 +633,14 @@ def calculate_job_match(profile, job):
         education=edu_weight,
     )
 
+    # Calculate domain & title alignment between resume experience and job
+    experiences = analyzed.get("experience", [])
+    job_title_words = [w for w in normalize_text(job.title or "").split() if len(w) > 3]
+    title_matches = sum(
+        1 for exp in experiences
+        if any(w in exp.get("job_title", "") for w in job_title_words)
+    )
+
     # ---- Step 1: Knockout Layer (Safety Check) — shared with ai.py ----
     # Applies to every job, not just ones with a detected mandatory
     # license, per rubric.apply_knockout.
@@ -653,6 +664,7 @@ def calculate_job_match(profile, job):
             "missing_skills": missing_skills,
             "matched_qualifications": matched_quals,
             "missing_qualifications": missing_quals,
+            "title_matches": title_matches,
             "hard_fail": True,
             "hard_fail_reason": hard_fail_reason,
             "criteria_weights": weights,
@@ -681,6 +693,7 @@ def calculate_job_match(profile, job):
         "missing_skills": missing_skills,
         "matched_qualifications": matched_quals,
         "missing_qualifications": missing_quals,
+        "title_matches": title_matches,
         "hard_fail": False,
         "hard_fail_reason": None,
         "criteria_weights": weights,
@@ -785,8 +798,19 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
         if match["hard_fail"]:
             continue
 
+        matched_skills = match.get("matched_skills", [])
+        title_matched = match.get("title_matches", 0) > 0
+        matched_quals = match.get("matched_qualifications", [])
+
+        # STRICT FILTER:
+        # A job is ONLY recommended if the applicant's resume genuinely matches it.
+        # Must have at least 1 verified matched skill OR direct title/qualification match.
+        # Completely unrelated resumes (0 matched skills, 0 relevant experience) are strictly excluded.
+        if not matched_skills and not title_matched and not matched_quals:
+            continue
+
         if match["score"] >= min_score:
-            top_skills = match["matched_skills"][:4]
+            top_skills = matched_skills[:4]
             recommendations.append({
                 "job": job,
                 "score": match["score"],
