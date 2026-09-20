@@ -743,6 +743,405 @@ def _build_candidate_summary(job, top_skills):
 
 
 # ==============================================================================
+# FIELD TAXONOMY & STRONGEST FIELD IDENTIFICATION
+# ==============================================================================
+
+FIELD_TAXONOMY = {
+    "IT": {
+        "display_name": "Technology & IT",
+        "departments": {
+            "it", "information technology", "engineering", "software engineering",
+            "technology", "tech", "development", "web development", "computer science",
+            "software development", "it support", "qa",
+        },
+        "titles": [
+            "software engineer", "developer", "web developer", "front end", "frontend",
+            "back end", "backend", "full stack", "fullstack", "programmer", "systems analyst",
+            "devops", "ui/ux", "ux designer", "ui designer", "it support", "it specialist",
+            "it technician", "network engineer", "network administrator", "database administrator",
+            "dba", "qa engineer", "qa tester", "software tester", "data analyst", "data scientist",
+            "data engineer", "cloud engineer", "solutions architect", "scrum master", "cybersecurity",
+            "information security", "helpdesk technician", "it clerk", "computer technician",
+            "mobile developer", "ios developer", "android developer", "tech lead",
+        ],
+        "skills": [
+            "python", "javascript", "typescript", "java", "c++", "c#", ".net", "dotnet",
+            "react", "react.js", "reactjs", "angular", "vue", "vue.js", "node", "node.js",
+            "nodejs", "django", "flask", "fastapi", "spring boot", "express", "sql",
+            "postgresql", "postgres", "mysql", "sqlite", "mongodb", "redis", "docker",
+            "kubernetes", "aws", "azure", "gcp", "git", "github", "gitlab", "html",
+            "html5", "css", "css3", "tailwind", "bootstrap", "sass", "scss", "rest api",
+            "restful api", "rest", "api", "graphql", "ci/cd", "machine learning", "deep learning",
+            "linux", "bash", "software development", "web development", "mobile development",
+            "android", "ios", "flutter", "react native", "figma", "json", "nosql",
+            "pandas", "numpy", "tensorflow", "pytorch", "ui/ux", "wireframing", "agile", "scrum",
+        ],
+        "education": [
+            "computer science", "information technology", "computer engineering",
+            "software engineering", "information systems", "data science", "comsci",
+            "bsit", "bscs", "bsce",
+        ],
+        "certifications": [
+            "aws", "azure", "cisco", "ccna", "comptia", "google cloud", "pmp", "scrum master",
+        ],
+    },
+    "Sales": {
+        "display_name": "Sales & Marketing",
+        "departments": {
+            "sales", "marketing", "business development", "commercial", "advertising", "retail",
+        },
+        "titles": [
+            "sales staff", "sales representative", "sales rep", "sales associate",
+            "sales executive", "sales manager", "sales lead", "account executive",
+            "account manager", "business development", "bizdev", "telemarketer",
+            "telesales", "retail sales", "retail associate", "merchandiser",
+            "marketing specialist", "marketing manager", "marketing associate",
+            "brand manager", "sales consultant", "promodiser",
+        ],
+        "skills": [
+            "b2b sales", "b2c sales", "cold calling", "lead generation", "sales pipeline",
+            "crm", "salesforce", "hubspot", "negotiation", "closing deals", "client acquisition",
+            "sales forecasting", "quota achievement", "product presentation",
+            "account management", "upselling", "cross-selling", "market research",
+            "digital marketing", "seo", "sem", "social media marketing", "merchandising",
+            "customer acquisition", "sales strategy", "direct sales", "telemarketing",
+        ],
+        "education": [
+            "marketing", "business administration", "commerce", "entrepreneurship",
+            "bsba marketing",
+        ],
+        "certifications": [
+            "hubspot", "salesforce", "google digital marketing",
+        ],
+    },
+    "Warehouse": {
+        "display_name": "Warehouse & Logistics",
+        "departments": {
+            "warehouse", "logistics", "supply chain", "distribution", "inventory",
+        },
+        "titles": [
+            "warehouse helper", "warehouse worker", "warehouse associate", "warehouse staff",
+            "warehouse supervisor", "forklift operator", "forklift driver", "inventory clerk",
+            "inventory specialist", "stocker", "stock clerk", "picker", "packer",
+            "material handler", "logistics coordinator", "logistics assistant",
+            "shipping clerk", "receiving clerk", "dispatcher", "dock worker",
+            "warehouse assistant",
+        ],
+        "skills": [
+            "inventory management", "forklift", "forklift operation", "forklift certified",
+            "picking", "packing", "picking and packing", "order picking", "order fulfillment",
+            "stocking", "shipping", "receiving", "shipping and receiving", "pallet jack",
+            "material handling", "cargo handling", "loading and unloading", "load and unload",
+            "cycle counting", "warehouse management", "wms", "logistics", "supply chain",
+            "stock inventory", "freight",
+        ],
+        "education": [
+            "supply chain management", "logistics management",
+        ],
+        "certifications": [
+            "forklift license", "forklift certification", "tesda heavy equipment",
+        ],
+    },
+    "Administrative": {
+        "display_name": "Administrative & Office",
+        "departments": {
+            "administrative", "administration", "office", "clerical", "secretarial",
+            "general admin",
+        },
+        "titles": [
+            "admin staff", "administrative assistant", "admin assistant",
+            "administrative staff", "office clerk", "executive assistant",
+            "office administrator", "receptionist", "front desk", "office manager",
+            "data entry", "data entry specialist", "data entry clerk",
+            "data entry operator", "secretary", "records clerk", "billing clerk",
+            "clerical assistant", "clerk", "document controller",
+        ],
+        "skills": [
+            "office administration", "data entry", "record keeping", "document management",
+            "calendar management", "meeting scheduling", "filing", "clerical support",
+            "secretarial duties", "microsoft office", "office 365", "excel", "word",
+            "typing", "typing speed", "wpm", "spreadsheet management", "front desk",
+            "phone etiquette", "correspondence", "documentation", "record organization",
+            "office coordination",
+        ],
+        "education": [
+            "office administration", "bsoa", "business administration", "secretarial",
+        ],
+        "certifications": [
+            "civil service", "tesda bookkeeping",
+        ],
+    },
+    "Security": {
+        "display_name": "Security & Safety",
+        "departments": {
+            "security", "safety", "loss prevention", "asset protection",
+        },
+        "titles": [
+            "security guard", "security officer", "safety officer", "patrol officer",
+            "watchman", "bouncer", "cctv operator", "loss prevention officer",
+            "security supervisor", "surveillance officer", "guard",
+        ],
+        "skills": [
+            "surveillance", "patrolling", "cctv", "cctv monitoring", "access control",
+            "incident reporting", "incident response", "physical security",
+            "emergency response", "asset protection", "perimeter security",
+            "crowd control", "first aid", "security inspection", "guarding",
+            "security protocol",
+        ],
+        "education": [
+            "criminology", "security management",
+        ],
+        "certifications": [
+            "sosia", "security guard license", "security license", "safety officer",
+            "so2", "osh",
+        ],
+    },
+    "Operations": {
+        "display_name": "Operations & Food Service",
+        "departments": {
+            "operations", "food & beverage", "f&b", "hospitality", "restaurant",
+            "cafe", "food service", "dining",
+        },
+        "titles": [
+            "barista", "cafe staff", "food server", "waiter", "waitress", "bartender",
+            "restaurant crew", "service crew", "dining crew", "kitchen staff", "cook",
+            "chef", "baker", "counter staff", "store crew", "fast food crew",
+            "crew member", "restaurant worker",
+        ],
+        "skills": [
+            "coffee brewing", "coffee brewing knowledge", "espresso", "latte art",
+            "drink preparation", "food preparation", "food handling", "point of sale",
+            "pos", "cash handling", "table service", "food safety", "sanitation",
+            "kitchen operations", "menu knowledge", "brewing", "beverage preparation",
+            "barista skills",
+        ],
+        "education": [
+            "hospitality management", "hotel and restaurant management", "hrm",
+            "culinary arts",
+        ],
+        "certifications": [
+            "tesda barista", "barista nc ii", "food safety certification", "servsafe",
+        ],
+    },
+    "Human Resources": {
+        "display_name": "Human Resources",
+        "departments": {
+            "human resources", "hr", "people operations", "talent acquisition", "recruitment",
+        },
+        "titles": [
+            "hr assistant", "hr officer", "hr specialist", "hr manager", "recruiter",
+            "talent acquisition", "people operations", "payroll officer",
+            "compensation and benefits", "hr generalist", "human resources coordinator",
+        ],
+        "skills": [
+            "recruitment", "talent acquisition", "applicant screening", "candidate sourcing",
+            "interviewing", "onboarding", "employee relations", "payroll",
+            "compensation and benefits", "hr compliance", "labor law",
+            "personnel administration", "performance management", "hris",
+        ],
+        "education": [
+            "human resource management", "psychology", "behavioral science",
+            "industrial relations",
+        ],
+        "certifications": [
+            "shrm", "chra",
+        ],
+    },
+    "Production": {
+        "display_name": "Production & Manufacturing",
+        "departments": {
+            "production", "manufacturing", "assembly", "plant operations", "industrial",
+        },
+        "titles": [
+            "production worker", "machine operator", "assembly line worker", "assembler",
+            "manufacturing technician", "plant worker", "fabricator",
+            "quality control inspector", "qc inspector", "production helper", "factory worker",
+        ],
+        "skills": [
+            "assembly line", "machine operation", "product assembly", "quality inspection",
+            "quality control", "manufacturing process", "blueprint reading",
+            "equipment operation", "preventive maintenance", "production quota",
+            "soldering", "tool handling", "fabrication",
+        ],
+        "education": [
+            "mechanical engineering", "industrial engineering",
+        ],
+        "certifications": [
+            "tesda smaw", "nc ii",
+        ],
+    },
+    "Finance": {
+        "display_name": "Finance & Accounting",
+        "departments": {
+            "finance", "accounting", "auditing", "financial services",
+        },
+        "titles": [
+            "accountant", "accounting assistant", "accounting clerk", "bookkeeper",
+            "financial analyst", "auditor", "tax associate", "accounts payable",
+            "accounts receivable", "finance manager", "controller",
+        ],
+        "skills": [
+            "bookkeeping", "accounting", "financial reporting", "general ledger",
+            "balance sheet", "financial analysis", "bank reconciliation",
+            "accounts payable", "accounts receivable", "taxation", "auditing",
+            "quickbooks", "sap", "xero", "financial statements", "tax preparation",
+        ],
+        "education": [
+            "accountancy", "accounting", "finance", "financial management", "bsa",
+        ],
+        "certifications": [
+            "cpa", "certified public accountant", "cma",
+        ],
+    },
+}
+
+
+def get_job_field(job) -> str:
+    """
+    Classify a Job into its canonical field category (e.g. 'IT', 'Sales', 'Warehouse').
+    Matches against department synonyms, then department text, then title keywords.
+    Falls back to normalized department string if unmapped.
+    """
+    if not job:
+        return ""
+
+    dept_raw = str(getattr(job, "department", "") or "").strip()
+    dept_norm = normalize_text(dept_raw)
+    title_norm = normalize_text(getattr(job, "title", "") or "")
+
+    # 1. Match exact department synonym
+    for field_key, field_data in FIELD_TAXONOMY.items():
+        if dept_norm in field_data["departments"]:
+            return field_key
+
+    # 2. Match department substring
+    for field_key, field_data in FIELD_TAXONOMY.items():
+        if any(d in dept_norm for d in field_data["departments"]):
+            return field_key
+
+    # 3. Match job title keywords
+    for field_key, field_data in FIELD_TAXONOMY.items():
+        if any(_match_phrase_in_text(kw, title_norm) for kw in field_data["titles"]):
+            return field_key
+
+    # Fallback to normalized department or 'General'
+    return dept_raw if dept_raw else "General"
+
+
+def identify_strongest_field(analyzed_resume: dict) -> Tuple[Optional[str], Optional[str], dict]:
+    """
+    Identify the applicant's single strongest professional field from their analyzed resume.
+
+    Weights:
+    - Experience Job Titles: 25 pts each (max 75 pts) - primary career trajectory
+    - Explicit Skills: 15 pts each (max 90 pts) - demonstrated competencies
+    - Relevant Education Degree: 20 pts (max 40 pts) - academic grounding
+    - Certifications: 15 pts each (max 45 pts) - licensed credentials
+    - Experience Description: 3 pts per keyword (max 15 pts)
+    - Summary & Searchable Text: 2 pts per keyword (max 10 pts)
+
+    Returns:
+        (strongest_field_key, strongest_field_display, field_scores)
+        If no field has a positive score, returns (None, None, field_scores).
+    """
+    if not analyzed_resume or not isinstance(analyzed_resume, dict):
+        return None, None, {}
+
+    skills = analyzed_resume.get("skills", [])
+    experiences = analyzed_resume.get("experience", [])
+    educations = analyzed_resume.get("education", [])
+    certifications = analyzed_resume.get("certifications", [])
+    summary = analyzed_resume.get("summary", "")
+    searchable_text = analyzed_resume.get("searchable_text", "")
+
+    field_scores = {}
+
+    for field_key, field_data in FIELD_TAXONOMY.items():
+        score = 0.0
+
+        # 1. Experience Job Titles (25 pts per title match, up to 75 pts)
+        title_points = 0
+        desc_points = 0
+        for exp in experiences:
+            exp_title = exp.get("job_title", "")
+            exp_desc = exp.get("description", "")
+            if any(_match_phrase_in_text(kw, exp_title) for kw in field_data["titles"]):
+                title_points += 25
+            for kw in field_data["skills"]:
+                if _match_phrase_in_text(kw, exp_desc):
+                    desc_points += 3
+        score += min(75, title_points)
+        score += min(15, desc_points)
+
+        # 2. Skills (15 pts per match, up to 90 pts)
+        skill_points = 0
+        for s in skills:
+            if any(_match_phrase_in_text(kw, s) for kw in field_data["skills"]):
+                skill_points += 15
+        score += min(90, skill_points)
+
+        # 3. Education (20 pts per match, up to 40 pts)
+        edu_points = 0
+        for edu in educations:
+            deg = edu.get("degree", "")
+            if any(_match_phrase_in_text(kw, deg) for kw in field_data["education"]):
+                edu_points += 20
+        score += min(40, edu_points)
+
+        # 4. Certifications (15 pts per match, up to 45 pts)
+        cert_points = 0
+        for cert in certifications:
+            if any(_match_phrase_in_text(kw, cert) for kw in field_data["certifications"]):
+                cert_points += 15
+        score += min(45, cert_points)
+
+        # 5. Summary mentions (2 pts each, up to 10 pts)
+        summary_points = 0
+        for kw in field_data["titles"] + field_data["skills"][:10]:
+            if _match_phrase_in_text(kw, summary):
+                summary_points += 2
+        score += min(10, summary_points)
+
+        # 6. Fallback Searchable Text (1 pt each, up to 6 pts)
+        if score > 0:
+            extra = sum(1 for kw in field_data["skills"][:10] if _match_phrase_in_text(kw, searchable_text))
+            score += min(6, extra)
+
+        field_scores[field_key] = round(score, 1)
+
+    if not field_scores or max(field_scores.values()) <= 0:
+        return None, None, field_scores
+
+    # Tie-breaking: pick field with highest score
+    sorted_fields = sorted(
+        field_scores.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    top_field_key, top_score = sorted_fields[0]
+    top_display = FIELD_TAXONOMY[top_field_key]["display_name"]
+
+    return top_field_key, top_display, field_scores
+
+
+def get_applicant_strongest_field(profile) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Public helper to get (strongest_field_key, strongest_field_display)
+    for a given applicant profile.
+    """
+    if not profile:
+        return None, None
+    resume_data = get_applicant_resume_data(profile)
+    if not resume_data:
+        return None, None
+    resume_text = getattr(profile, "resume_text", "") or ""
+    analyzed = analyze_applicant_resume(resume_data, resume_text)
+    field_key, field_display, _ = identify_strongest_field(analyzed)
+    return field_key, field_display
+
+
+# ==============================================================================
 # PIPELINE STEP 5: RECOMMEND BEST JOBS
 # ==============================================================================
 
@@ -751,17 +1150,14 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
     Step 5: Recommend best jobs for the applicant.
 
     Full Pipeline:
-    Applicant Resume -> Analyze Resume -> Compare With Active Jobs -> Rank Jobs -> Recommend Best Jobs
+    Applicant Resume -> Analyze Resume -> Identify Strongest Field ->
+    Filter Active Jobs by Strongest Field -> Compare & Score -> Rank Jobs -> Recommend Best Jobs
 
-    Returns a ranked list of dictionaries ready for templates and views.
-
-    Hard-failed jobs (missing a mandatory qualification) are always
-    excluded here, regardless of min_score, since a knockout means "Not
-    Qualified" no matter what the leftover qualification_match number
-    happens to be. The default min_score is the rubric's own
-    "Potentially Qualified" cutoff, so this section only ever surfaces
-    jobs the rubric itself calls a real match — anything weaker belongs
-    on the full jobs listing, not under "Recommended".
+    Category Isolation Rule:
+    Identifies the applicant's single strongest professional field (e.g. IT, Sales,
+    Warehouse, Operations) from their uploaded resume, and exclusively evaluates
+    and recommends jobs from that category only. For example, a tech-focused resume
+    gets tech jobs only.
     """
     if min_score is None:
         min_score = POTENTIALLY_QUALIFIED_THRESHOLD
@@ -781,20 +1177,35 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
     if not resume_data:
         return []
 
-    jobs = Job.objects.filter(
+    resume_text = getattr(profile, "resume_text", "") or ""
+    analyzed = analyze_applicant_resume(resume_data, resume_text)
+
+    # 1. Identify applicant's single strongest field
+    strongest_field, strongest_display, _ = identify_strongest_field(analyzed)
+    if not strongest_field:
+        return []
+
+    # 2. Retrieve active jobs and isolate exclusively to the applicant's strongest field
+    all_jobs = Job.objects.filter(
         status="Active"
     ).prefetch_related(
         "requirements_list"
     )
 
+    category_jobs = [
+        job for job in all_jobs
+        if get_job_field(job) == strongest_field
+    ]
+
+    if not category_jobs:
+        return []
+
     recommendations = []
 
-    for job in jobs:
+    for job in category_jobs:
         match = calculate_job_match(profile, job)
 
-        # A hard fail is "Not Qualified" by rubric definition, no matter
-        # what match["score"] (== qualification_match) happens to be —
-        # never let it into a "Recommended for you" section.
+        # A hard fail is "Not Qualified" by rubric definition — never recommend
         if match["hard_fail"]:
             continue
 
@@ -803,9 +1214,7 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
         matched_quals = match.get("matched_qualifications", [])
 
         # STRICT FILTER:
-        # A job is ONLY recommended if the applicant's resume genuinely matches it.
         # Must have at least 1 verified matched skill OR direct title/qualification match.
-        # Completely unrelated resumes (0 matched skills, 0 relevant experience) are strictly excluded.
         if not matched_skills and not title_matched and not matched_quals:
             continue
 
@@ -825,6 +1234,8 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
                 "education_match": match["education_match"],
                 "qualification_match": match["qualification_match"],
                 "summary": _build_candidate_summary(job, top_skills),
+                "field": strongest_field,
+                "field_display": strongest_display,
             })
 
     ranked_recommendations = rank_jobs(recommendations)
@@ -835,4 +1246,4 @@ def get_recommended_jobs(profile, min_score=None, limit=None):
     if limit and limit > 0:
         return ranked_recommendations[:limit]
 
-    return ranked_recommendations
+    return ranked_recommendations
