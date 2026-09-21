@@ -414,7 +414,11 @@
                 <h2>Recommended for you</h2>
 
                 <p>
-                    Jobs that may match your skills and experience.
+                    {% if strongest_field_display %}
+                        Curated jobs matching your primary field in <strong>{{ strongest_field_display }}</strong>.
+                    {% else %}
+                        Jobs that may match your skills and experience.
+                    {% endif %}
                 </p>
             </div>
 
@@ -493,12 +497,19 @@
                 <div class="no-recommendations">
 
                     <h3>
-                        No Recommendations Available Yet
+                        No Matching Jobs Available Yet
                     </h3>
 
                     <p>
-                        Upload and process your resume to receive
-                        personalized job recommendations.
+                        {% if profile.default_resume or profile.resume_data %}
+                            {% if strongest_field_display %}
+                                None of our currently active job openings in <strong>{{ strongest_field_display }}</strong> match your profile. Check back soon as new openings are posted regularly!
+                            {% else %}
+                                None of our currently active job openings strongly match your uploaded resume's skills and experience. Check back soon as new openings are posted regularly!
+                            {% endif %}
+                        {% else %}
+                            Upload and process your resume to receive personalized job recommendations tailored to your skills.
+                        {% endif %}
                     </p>
 
                 </div>

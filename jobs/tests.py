@@ -16,6 +16,9 @@ from jobs.recommendations import (
     calculate_job_match,
     rank_jobs,
     get_recommended_jobs,
+    identify_strongest_field,
+    get_applicant_strongest_field,
+    get_job_field,
 )
 
 
@@ -102,6 +105,171 @@ class ApplicantJobPerformanceTests(TestCase):
             recs2 = get_recommended_jobs(self.profile)
             self.assertEqual(len(recs2), 1)
             self.assertEqual(recs2[0]["score"], recs1[0]["score"])
+
+    def test_unrelated_jobs_not_recommended(self):
+        """Applicants with unrelated resumes (e.g. Python programmer) must NOT be recommended unrelated jobs (e.g. Barista)."""
+        cache.clear()
+        # Applicant is an IT software engineer
+        self.profile.resume_data = {
+            "skills": ["Python", "Django", "PostgreSQL", "Docker"],
+            "experience": [{"job_title": "Backend Developer", "description": "Built REST APIs"}],
+            "education": [{"degree": "BS Computer Science"}],
+        }
+        self.profile.resume_text = "Software Engineer with Python, Django, PostgreSQL, Docker."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        # Barista job must NOT be recommended
+        unrelated_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(unrelated_recs, [], "Unrelated job was incorrectly recommended to a software engineer!")
+
+        # Now update applicant profile to be a Barista
+        cache.clear()
+        self.profile.resume_data = {
+            "skills": ["Coffee brewing knowledge", "Customer service skills", "Cash handling"],
+            "experience": [{"job_title": "Cafe Barista", "description": "Brewed specialty espresso beverages"}],
+            "education": [{"degree": "High School Diploma"}],
+        }
+        self.profile.resume_text = "Experienced Barista with coffee brewing knowledge and customer service skills."
+        self.profile.save()
+
+        matching_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(len(matching_recs), 1, "Matching Barista job was not recommended to an actual Barista!")
+        self.assertEqual(matching_recs[0]["job"].id, self.job.id)
+        self.assertGreaterEqual(matching_recs[0]["score"], 70)
+
+    def test_tech_resume_gets_tech_jobs_only(self):
+        """A tech-focused resume must strictly receive tech jobs only, excluding Sales, Warehouse, and Operations."""
+        cache.clear()
+
+        # Create diverse active jobs across multiple departments
+        tech_job = Job.objects.create(
+            title="Junior Front-End Developer",
+            department="IT",
+            job_type="FULL-TIME",
+            description="Build modern web applications with React and JavaScript",
+            requirements="Experience with React, JavaScript, and CSS",
+            status="Active"
+        )
+        Requirement.objects.create(job=tech_job, text="React")
+        Requirement.objects.create(job=tech_job, text="JavaScript")
+
+        sales_job = Job.objects.create(
+            title="Sales Staff",
+            department="Sales",
+            job_type="FULL-TIME",
+            description="Achieve sales quotas and handle client inquiries",
+            requirements="Sales experience and communication skills",
+            status="Active"
+        )
+        Requirement.objects.create(job=sales_job, text="B2B Sales")
+
+        warehouse_job = Job.objects.create(
+            title="Warehouse Helper",
+            department="Warehouse",
+            job_type="FULL-TIME",
+            description="Handle inventory and operate pallet jacks",
+            requirements="Warehouse experience",
+            status="Active"
+        )
+        Requirement.objects.create(job=warehouse_job, text="Inventory Management")
+
+        # Applicant is an IT software engineer
+        self.profile.resume_data = {
+            "skills": ["React", "JavaScript", "Python", "CSS", "Git"],
+            "experience": [{"job_title": "Web Developer", "description": "Developed web applications in React"}],
+            "education": [{"degree": "BS Information Technology"}],
+        }
+        self.profile.resume_text = "Frontend Web Developer specializing in React, JavaScript, Python, and CSS."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        # Check strongest field
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "IT")
+        self.assertEqual(field_display, "Technology & IT")
+
+        # Get recommendations
+        recs = get_recommended_jobs(self.profile)
+        self.assertTrue(len(recs) >= 1)
+
+        # All recommended jobs MUST be in the IT category only
+        for rec in recs:
+            self.assertEqual(get_job_field(rec["job"]), "IT")
+            self.assertEqual(rec["field"], "IT")
+            self.assertNotEqual(rec["job"].id, sales_job.id)
+            self.assertNotEqual(rec["job"].id, warehouse_job.id)
+            self.assertNotEqual(rec["job"].id, self.job.id)  # Barista
+
+    def test_warehouse_resume_gets_warehouse_jobs_only(self):
+        """A warehouse-focused resume must strictly receive warehouse jobs only."""
+        cache.clear()
+
+        wh_job = Job.objects.create(
+            title="Warehouse Assistant",
+            department="Warehouse",
+            job_type="FULL-TIME",
+            description="Organize goods and manage stock",
+            requirements="Forklift operation and inventory skills",
+            status="Active"
+        )
+        Requirement.objects.create(job=wh_job, text="Forklift")
+        Requirement.objects.create(job=wh_job, text="Inventory Management")
+
+        self.profile.resume_data = {
+            "skills": ["Forklift", "Inventory Management", "Picking and Packing", "Stocking"],
+            "experience": [{"job_title": "Warehouse Associate", "description": "Handled order fulfillment"}],
+            "education": [{"degree": "High School Diploma"}],
+        }
+        self.profile.resume_text = "Warehouse associate with forklift certified and inventory management skills."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "Warehouse")
+        self.assertEqual(field_display, "Warehouse & Logistics")
+
+        recs = get_recommended_jobs(self.profile)
+        self.assertTrue(len(recs) >= 1)
+        for rec in recs:
+            self.assertEqual(get_job_field(rec["job"]), "Warehouse")
+            self.assertEqual(rec["field"], "Warehouse")
+            self.assertNotEqual(rec["job"].id, self.job.id)
+
+    def test_mixed_skills_recommends_primary_field_only(self):
+        """An engineer with an incidental soft skill (e.g. customer service) still only receives IT jobs."""
+        cache.clear()
+
+        tech_job = Job.objects.create(
+            title="Software Engineer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            description="Build scalable backend services",
+            requirements="Proficiency in Python and PostgreSQL",
+            status="Active"
+        )
+        Requirement.objects.create(job=tech_job, text="Python")
+
+        self.profile.resume_data = {
+            "skills": ["Python", "Django", "PostgreSQL", "Docker", "Customer Service"],
+            "experience": [
+                {"job_title": "Software Engineer", "description": "Backend API development"},
+                {"job_title": "Store Cashier", "description": "High school summer job"},
+            ],
+            "education": [{"degree": "BS Computer Science"}],
+        }
+        self.profile.resume_text = "Software Engineer with Python, Django, Docker, and customer service experience."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "IT")
+
+        recs = get_recommended_jobs(self.profile)
+        # Should recommend the tech job and NOT the Barista job
+        recommended_job_ids = [r["job"].id for r in recs]
+        self.assertIn(tech_job.id, recommended_job_ids)
+        self.assertNotIn(self.job.id, recommended_job_ids)
 
     def test_single_word_boundary_no_substring_false_positives(self):
         """Single-word skills must not match inside unrelated words (go in good, r in director, art in party)."""

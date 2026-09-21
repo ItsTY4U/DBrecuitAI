@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.core.files.storage import default_storage
 from django.utils import timezone
-from jobs.recommendations import get_recommended_jobs
+from jobs.recommendations import get_recommended_jobs, get_applicant_strongest_field
 from .models import ApplicantProfile
 from jobs.models import Application
 from django.contrib import messages
@@ -356,8 +356,9 @@ def profile(request):
             instance=profile
         )
 
-    # Calculate recommendations AFTER profile is loaded/saved
-    recommended_jobs = get_recommended_jobs(profile)
+    # Calculate recommendations AFTER profile is loaded/saved (top 6 best matches)
+    recommended_jobs = get_recommended_jobs(profile, limit=6)
+    strongest_field_key, strongest_field_display = get_applicant_strongest_field(profile)
     
     applications = (
         Application.objects.filter(applicant=request.user)
@@ -374,6 +375,8 @@ def profile(request):
             "profile_form": profile_form,
             "profile": profile,
             "recommended_jobs": recommended_jobs,
+            "strongest_field": strongest_field_key,
+            "strongest_field_display": strongest_field_display,
             "applications": applications,
         }
     )
