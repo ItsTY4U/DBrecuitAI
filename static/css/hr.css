@@ -6761,13 +6761,6 @@ table .btn-review-applicant {
 }
 
 
-/* Add Button */
-
-.criteria-add-btn {
-    flex: 0 0 auto;
-}
-
-
 /* Criteria Container */
 
 .criteria-container {
@@ -6860,38 +6853,6 @@ table .btn-review-applicant {
     pointer-events: none;
 }
 
-
-/* Remove */
-
-.remove-criteria {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 32px;
-    height: 32px;
-
-    padding: 0;
-
-    border: none;
-    border-radius: 6px;
-
-    background: transparent;
-
-    color: #a0a8b0;
-
-    cursor: pointer;
-
-    transition:
-        color 0.2s ease,
-        background 0.2s ease;
-}
-
-.remove-criteria:hover {
-    color: #d64545;
-
-    background: rgba(214, 69, 69, 0.08);
-}
 
 
 /* Total */
