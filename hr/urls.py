@@ -47,6 +47,11 @@ urlpatterns = [
         name="reanalyze_candidate_application",
         ),
 
+    path("candidates/applicant/<int:pk>/send-email/", 
+        views.send_candidate_email, 
+        name="send_candidate_email",
+        ),
+
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),

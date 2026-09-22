@@ -3,6 +3,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Group
 from jobs.models import Job, Application, Requirement, Department
+from hr.models import Interview
 from hr.views import invalidate_hr_cache
 
 class CandidateManagementTests(TestCase):
@@ -758,6 +759,129 @@ class CandidateManagementTests(TestCase):
         app.refresh_from_db()
         self.assertEqual(app.ai_score, 92)
         self.assertEqual(app.ai_recommendation, "Highly Recommended")
+
+    def test_candidate_detail_hero_card_4_columns(self):
+        """Candidate detail page renders 4 columns in hero card with indicator-only stage card and no dropdown."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Marco",
+            last_name="Polo",
+            email="marco@explorer.com",
+            phone="09191234567",
+            ai_score=88,
+            resume_processed=True,
+            status="Screening",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # 4 columns present
+        self.assertContains(response, "candidate-hero-4col")
+        self.assertContains(response, "hero-col-applicant")
+        self.assertContains(response, "hero-col-details")
+        self.assertContains(response, "hero-col-actions")
+        self.assertContains(response, "hero-col-stage")
+
+        # Candidate details present in Col 1 & 2
+        self.assertContains(response, "marco@explorer.com")
+        self.assertContains(response, "09191234567")
+        self.assertContains(response, app.application_id)
+
+        # Actions present in Col 3
+        self.assertContains(response, "btn-schedule")
+        self.assertContains(response, "btn-email")
+        self.assertContains(response, f"?applicant_id={app.id}")
+        self.assertContains(response, "mail.google.com/mail/?view=cm")
+        self.assertNotContains(response, "mailto:")
+        self.assertNotContains(response, "Updated Profile CV")
+
+        # Stage CTA present in Col 4 (Indicator only, no select dropdown)
+        self.assertContains(response, "stage-cta-card")
+        self.assertContains(response, "stage-card-screening")
+        self.assertNotContains(response, '<select name="status"')
+
+    def test_candidate_detail_normalizes_legacy_pending_to_screening(self):
+        """Any legacy Pending application is normalized to Screening when loaded."""
+        legacy_app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Legacy",
+            last_name="Applicant",
+            email="legacy@test.com",
+            phone="09198765432",
+            ai_score=75,
+            resume_processed=True,
+            status="Pending",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": legacy_app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        legacy_app.refresh_from_db()
+        self.assertEqual(legacy_app.status, "Screening")
+
+    def test_schedule_interview_auto_advances_candidate_to_interview_stage(self):
+        """Scheduling an interview automatically moves selected applicants from Screening to Interview."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Sara",
+            last_name="Connor",
+            email="sara@future.com",
+            phone="09110001111",
+            ai_score=94,
+            resume_processed=True,
+            status="Screening",
+        )
+        self.assertEqual(app.status, "Screening")
+        self.assertFalse(app.interview_scheduled)
+
+        post_data = {
+            "interview_type": "HR Interview",
+            "interviewer": "John HR Lead",
+            "date": "2026-10-15",
+            "time": "14:00",
+            "location": "Online / Zoom",
+            "notes": "Initial interview round.",
+            "applicants": [str(app.id)],
+        }
+        url = reverse("schedule_interview", kwargs={"job_id": self.job_sales_staff.id})
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+
+        app.refresh_from_db()
+        self.assertEqual(app.status, "Interview")
+        self.assertTrue(app.interview_scheduled)
+
+    @patch("main.emailer.send_gmail_message")
+    def test_send_candidate_email_view(self, mock_send):
+        """HR can send direct emails to candidates with Gmail API."""
+        mock_send.return_value = {"success": True, "id": "msg_123"}
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Leo",
+            last_name="Vinci",
+            email="leo@art.com",
+            phone="09123456789",
+            ai_score=89,
+            resume_processed=True,
+            status="Screening",
+        )
+        url = reverse("send_candidate_email", kwargs={"pk": app.pk})
+        post_data = {
+            "recipient_email": app.email,
+            "subject": "Interview Invitation - DBRecruitAI",
+            "message": "Dear Leo, we would love to invite you for an interview.",
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("candidate_detail", kwargs={"pk": app.pk}))
+
+        mock_send.assert_called_once()
+        args, kwargs = mock_send.call_args
+        self.assertEqual(kwargs["to_email"], "leo@art.com")
+        self.assertEqual(kwargs["subject"], "Interview Invitation - DBRecruitAI")
+        self.assertIn("Dear Leo", kwargs["text_content"])
+
 
 
 

@@ -229,7 +229,7 @@ def apply_job(request, pk):
             last_name=last_name,
             email=email,
             phone=phone,
-            status="Pending",
+            status="Screening",
             resume_processed=False,
             ai_score=0,
             ai_recommendation="Pending Review",
@@ -360,7 +360,7 @@ def upload_resume(request, pk):
     application = Application.objects.create(
         job=job,
         resume=resume,
-        status="Pending",
+        status="Screening",
         first_name="",
         middle_initial="",
         last_name="",

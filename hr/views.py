@@ -585,6 +585,12 @@ def candidate_detail(request, pk):
         pk=pk
     )
 
+    # Normalize legacy Pending status to Screening
+    if application.status == "Pending":
+        application.status = "Screening"
+        application.save(update_fields=["status"])
+        invalidate_hr_cache()
+
     # Auto re-analyze candidate with AI if score is 0, pending, or not yet processed
     has_resume = bool(application.resume or (application.applicant and application.applicant.default_resume))
     if has_resume and (not application.resume_processed or application.ai_score == 0 or application.ai_recommendation == "Pending Review"):
@@ -704,6 +710,43 @@ def update_application_status(request, pk):
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
+
+@never_cache
+@hr_required(login_url="hr_login")
+def send_candidate_email(request, pk):
+    application = get_object_or_404(Application, pk=pk)
+
+    if request.method == "POST":
+        subject = request.POST.get("subject", "").strip()
+        body = request.POST.get("message", "").strip()
+        recipient_email = request.POST.get("recipient_email", "").strip() or application.email
+
+        if not subject or not body:
+            messages.error(request, "Email subject and message cannot be empty.")
+            return redirect("candidate_detail", pk=pk)
+
+        html_content = (
+            f"<div style='font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;'>"
+            f"{body.replace(chr(10), '<br>')}"
+            f"</div>"
+        )
+
+        from main.emailer import send_gmail_message
+        result = send_gmail_message(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=body,
+        )
+
+        if result.get("success"):
+            messages.success(request, f"Email successfully sent to {recipient_email}!")
+        else:
+            err = result.get("error", "Gmail API not configured or failed.")
+            messages.warning(request, f"Could not send email automatically ({err}). Please use desktop email.")
+
+    return redirect("candidate_detail", pk=pk)
+
 @never_cache
 @hr_required(login_url="hr_login")
 def interviews(request):
@@ -808,9 +851,17 @@ def schedule_interview(request, job_id):
 
     applicants = Application.objects.filter(
         job=job,
-        status="Interview",
+        status__in=["Screening", "Interview", "Pending"],
         interview__isnull=True,
     ).order_by("-ai_score")
+
+    preselected_applicant_id = None
+    raw_app_id = request.GET.get("applicant_id")
+    if raw_app_id:
+        try:
+            preselected_applicant_id = int(raw_app_id)
+        except (ValueError, TypeError):
+            preselected_applicant_id = None
 
     if request.method == "POST":
         interview = Interview.objects.create(
@@ -824,6 +875,12 @@ def schedule_interview(request, job_id):
 
         ids = request.POST.getlist("applicants")
         interview.applicants.set(ids)
+        # Automatically move scheduled applicants to Interview stage
+        if ids:
+            Application.objects.filter(id__in=ids).update(
+                status="Interview",
+                interview_scheduled=True
+            )
         invalidate_hr_cache()
 
         return redirect("interviews")
@@ -835,6 +892,7 @@ def schedule_interview(request, job_id):
             "job": job,
             "applicants": applicants,
             "interview": Interview,
+            "preselected_applicant_id": preselected_applicant_id,
         },
     )
 
