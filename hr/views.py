@@ -52,18 +52,22 @@ def hr_required(view_func=None, login_url="hr_login"):
         if asyncio.iscoroutinefunction(view):
             @wraps(view)
             async def async_wrapper(request, *args, **kwargs):
-                user = request.user
-                if not user.is_authenticated:
+                @sync_to_async(thread_sensitive=True)
+                def check_access():
+                    user = request.user
+                    if not user.is_authenticated:
+                        return "unauthenticated"
+                    if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                        return "authorized"
+                    return "forbidden"
+
+                status = await check_access()
+                if status == "unauthenticated":
                     return redirect_to_login(request.get_full_path(), actual_login_url)
-
-                is_hr = await sync_to_async(
-                    lambda: user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists(),
-                    thread_sensitive=True
-                )()
-                if is_hr:
+                elif status == "authorized":
                     return await view(request, *args, **kwargs)
-
-                raise PermissionDenied
+                else:
+                    raise PermissionDenied
             return async_wrapper
         else:
             @wraps(view)
@@ -120,12 +124,14 @@ def hr_login(request):
 def parse_ai_bullets(text):
     if not text:
         return []
-    text = text.strip()
+    if isinstance(text, list):
+        return [str(item).strip().lstrip("-*• ") for item in text if str(item).strip()]
+    text = str(text).strip()
     if text.startswith("[") and text.endswith("]"):
         try:
-            items = ast.literal_eval(text)
-            if isinstance(items, list):
-                return [str(i).strip() for i in items if i and str(i).strip()]
+            evaluated = ast.literal_eval(text)
+            if isinstance(evaluated, list):
+                return [str(item).strip().lstrip("-*• ") for item in evaluated if str(item).strip()]
         except Exception:
             pass
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
@@ -139,37 +145,16 @@ def hr_logout(request):
 
 
 @hr_required(login_url="hr_login")
-async def dashboard(request):
+def dashboard(request):
     cache_key = "hr_dashboard_data"
     content = cache.get(cache_key)
     if content is None:
-        @sync_to_async(thread_sensitive=False)
-        def get_app_counts():
-            return Application.objects.aggregate(
-                total=Count("id"),
-                screening=Count("id", filter=Q(status="Screening")),
-                hired=Count("id", filter=Q(status="Hired")),
-                interview=Count("id", filter=Q(status="Interview")),
-                pending=Count("id", filter=Q(status="Pending")),
-            )
-
-        @sync_to_async(thread_sensitive=False)
-        def get_active_jobs_count():
-            return Job.objects.filter(status="Active").count()
-
-        @sync_to_async(thread_sensitive=False)
-        def get_recent_applications():
-            return list(
-                Application.objects.select_related("job")
-                .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
-                .order_by("-created_at")[:5]
-            )
-
-        # Run independent queries concurrently in parallel database connections
-        app_counts, active_jobs, recent_applications = await asyncio.gather(
-            get_app_counts(),
-            get_active_jobs_count(),
-            get_recent_applications(),
+        app_counts = Application.objects.aggregate(
+            total=Count("id"),
+            screening=Count("id", filter=Q(status="Screening")),
+            hired=Count("id", filter=Q(status="Hired")),
+            interview=Count("id", filter=Q(status="Interview")),
+            pending=Count("id", filter=Q(status="Pending")),
         )
 
         total_applications = app_counts["total"]
@@ -179,6 +164,8 @@ async def dashboard(request):
         pending_count = app_counts["pending"]
         interview_count = app_counts["interview"]
 
+        active_jobs = Job.objects.filter(status="Active").count()
+
         if total_applications > 0:
             screening_percent = screening / total_applications * 100
             interview_percent = interview / total_applications * 100
@@ -187,6 +174,12 @@ async def dashboard(request):
             screening_percent = 0
             interview_percent = 0
             hired_percent = 0
+
+        recent_applications = list(
+            Application.objects.select_related("job")
+            .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
+            .order_by("-created_at")[:5]
+        )
 
         content = {
             "total_applications": total_applications,
