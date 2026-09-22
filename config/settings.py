@@ -245,7 +245,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_STORAGE = (
-    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    "whitenoise.storage.CompressedStaticFilesStorage"
 )
 
 # Cloudflare R2 Media Storage
@@ -291,7 +291,7 @@ else:
 staticfiles_storage = (
     "django.contrib.staticfiles.storage.StaticFilesStorage"
     if (DEBUG or "test" in getattr(sys, "argv", []))
-    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    else "whitenoise.storage.CompressedStaticFilesStorage"
 )
 
 STORAGES = {
