@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement, Department
 from .models import Interview
-from video_interview.models import InterviewSession
-from django.db.models import Q, Count, Prefetch
+from video_interview.models import InterviewSession, InterviewResponse
+from django.db.models import Q, Count, Prefetch, F, Window
+from django.db.models.functions import RowNumber
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -22,6 +23,8 @@ import ast
 import math
 from urllib.parse import quote
 from django.urls import reverse
+import asyncio
+from asgiref.sync import sync_to_async
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
@@ -36,6 +39,7 @@ def hr_required(view_func=None, login_url="hr_login"):
     - If user is authenticated and HR: grants access.
     - Otherwise: raises PermissionDenied (403).
     Supports both @hr_required and @hr_required(login_url="...").
+    Supports both sync and async view functions.
     """
     if isinstance(view_func, str):
         actual_login_url = view_func
@@ -45,17 +49,38 @@ def hr_required(view_func=None, login_url="hr_login"):
         actual_view_func = view_func
 
     def decorator(view):
-        @wraps(view)
-        def wrapper(request, *args, **kwargs):
-            user = request.user
-            if not user.is_authenticated:
-                return redirect_to_login(request.get_full_path(), actual_login_url)
+        if asyncio.iscoroutinefunction(view):
+            @wraps(view)
+            async def async_wrapper(request, *args, **kwargs):
+                @sync_to_async(thread_sensitive=True)
+                def check_access():
+                    user = request.user
+                    if not user.is_authenticated:
+                        return "unauthenticated"
+                    if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                        return "authorized"
+                    return "forbidden"
 
-            if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
-                return view(request, *args, **kwargs)
+                status = await check_access()
+                if status == "unauthenticated":
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
+                elif status == "authorized":
+                    return await view(request, *args, **kwargs)
+                else:
+                    raise PermissionDenied
+            return async_wrapper
+        else:
+            @wraps(view)
+            def wrapper(request, *args, **kwargs):
+                user = request.user
+                if not user.is_authenticated:
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
 
-            raise PermissionDenied
-        return wrapper
+                if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                    return view(request, *args, **kwargs)
+
+                raise PermissionDenied
+            return wrapper
 
     if callable(actual_view_func):
         return decorator(actual_view_func)
@@ -99,12 +124,14 @@ def hr_login(request):
 def parse_ai_bullets(text):
     if not text:
         return []
-    text = text.strip()
+    if isinstance(text, list):
+        return [str(item).strip().lstrip("-*• ") for item in text if str(item).strip()]
+    text = str(text).strip()
     if text.startswith("[") and text.endswith("]"):
         try:
-            items = ast.literal_eval(text)
-            if isinstance(items, list):
-                return [str(i).strip() for i in items if i and str(i).strip()]
+            evaluated = ast.literal_eval(text)
+            if isinstance(evaluated, list):
+                return [str(item).strip().lstrip("-*• ") for item in evaluated if str(item).strip()]
         except Exception:
             pass
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
@@ -122,7 +149,6 @@ def dashboard(request):
     cache_key = "hr_dashboard_data"
     content = cache.get(cache_key)
     if content is None:
-        # 1. Single conditional aggregation query for all application counts
         app_counts = Application.objects.aggregate(
             total=Count("id"),
             screening=Count("id", filter=Q(status="Screening")),
@@ -139,7 +165,7 @@ def dashboard(request):
         interview_count = app_counts["interview"]
 
         active_jobs = Job.objects.filter(status="Active").count()
-        
+
         if total_applications > 0:
             screening_percent = screening / total_applications * 100
             interview_percent = interview / total_applications * 100
@@ -148,13 +174,13 @@ def dashboard(request):
             screening_percent = 0
             interview_percent = 0
             hired_percent = 0
-        
+
         recent_applications = list(
             Application.objects.select_related("job")
             .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
             .order_by("-created_at")[:5]
         )
-        
+
         content = {
             "total_applications": total_applications,
             "screening": screening,
@@ -512,20 +538,74 @@ def candidates(request):
         "email", "phone", "ai_score", "status", "created_at", "job_id"
     )
 
-    # Group jobs by department and prepare top 3 cards + initial table context for each job
+    filtered_job_ids = [j.id for j in filtered_jobs]
+    top_candidates_by_job = defaultdict(list)
+    table_candidates_by_job = defaultdict(list)
+
+    if filtered_job_ids:
+        # 1. Fetch top 3 candidates for ALL filtered jobs in 1 single partitioned query
+        top_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                )
+            )
+            .filter(row_num__lte=3)
+            .only(*base_candidate_fields)
+        )
+        for cand in top_cands_qs:
+            top_candidates_by_job[cand.job_id].append(cand)
+
+        # 2. Fetch table candidates (ranks 4 to 8) for ALL filtered jobs in 1 single partitioned query
+        table_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                )
+            )
+            .filter(row_num__gte=4, row_num__lte=8)
+            .only(*base_candidate_fields)
+        )
+        for cand in table_cands_qs:
+            cand.table_rank = cand.row_num
+            table_candidates_by_job[cand.job_id].append(cand)
+
+    # Group jobs by department and assign top 3 cards + initial table context for each job
     departments_dict = defaultdict(list)
     for job in filtered_jobs:
-        top_candidates = list(
-            Application.objects.filter(job=job)
-            .only(*base_candidate_fields)
-            .order_by("-ai_score", "-created_at")[:3]
-        )
+        top_candidates = top_candidates_by_job.get(job.id, [])
         for idx, cand in enumerate(top_candidates):
             cand.top_rank = idx + 1
         job.top_candidates = top_candidates
 
-        # Default initial table context (Page 1: ranks 4 to 8)
-        job.table_data = get_job_candidates_table_context(job, search_query="", page_number=1)
+        total_apps = job.applicant_count if hasattr(job, "applicant_count") else len(top_candidates)
+        total_table_candidates = max(0, total_apps - 3)
+        total_pages = max(1, math.ceil(total_table_candidates / TABLE_PAGE_SIZE)) if total_table_candidates > 0 else 1
+        
+        table_page = table_candidates_by_job.get(job.id, [])
+        job.table_data = {
+            "job": job,
+            "candidates": table_page,
+            "is_search": False,
+            "search_query": "",
+            "total_count": total_apps,
+            "total_table_candidates": total_table_candidates,
+            "start_index": 4 if total_table_candidates > 0 else 0,
+            "end_index": min(3 + len(table_page), total_apps),
+            "current_page": 1,
+            "total_pages": total_pages,
+            "has_previous": False,
+            "has_next": total_pages > 1,
+            "previous_page": 1,
+            "next_page": 2,
+            "page_range": range(1, total_pages + 1),
+        }
         departments_dict[job.department].append(job)
 
     department_sections = []
@@ -585,6 +665,12 @@ def candidate_detail(request, pk):
         pk=pk
     )
 
+    # Normalize legacy Pending status to Screening
+    if application.status == "Pending":
+        application.status = "Screening"
+        application.save(update_fields=["status"])
+        invalidate_hr_cache()
+
     # Auto re-analyze candidate with AI if score is 0, pending, or not yet processed
     has_resume = bool(application.resume or (application.applicant and application.applicant.default_resume))
     if has_resume and (not application.resume_processed or application.ai_score == 0 or application.ai_recommendation == "Pending Review"):
@@ -605,11 +691,11 @@ def candidate_detail(request, pk):
 
     interview_session = InterviewSession.objects.filter(
         application=application
-    ).prefetch_related("responses").first()
+    ).prefetch_related(
+        Prefetch("responses", queryset=InterviewResponse.objects.order_by("question_number"))
+    ).first()
 
-    interview_responses = []
-    if interview_session:
-        interview_responses = interview_session.responses.all().order_by("question_number")
+    interview_responses = list(interview_session.responses.all()) if interview_session else []
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
@@ -619,40 +705,6 @@ def candidate_detail(request, pk):
         "interview_responses": interview_responses,
     })
 
-
-@never_cache
-@hr_required(login_url="hr_login")
-def reanalyze_candidate_application(request, pk):
-    """
-    Explicit HR action to re-evaluate candidate resume and job requirements using Gemini AI.
-    Bypasses cache (force_refresh=True) and uses the exact same AI screening engine.
-    """
-    application = get_object_or_404(
-        Application.objects.select_related("job", "applicant"),
-        pk=pk
-    )
-    has_resume = bool(application.resume or (application.applicant and application.applicant.default_resume))
-    if not has_resume:
-        messages.error(request, "No resume file available for this candidate to analyze.")
-        return redirect("candidate_detail", pk=pk)
-
-    try:
-        from jobs.ai import screen_application
-        success = screen_application(application, force_refresh=True, max_retries=2)
-        if success:
-            messages.success(
-                request,
-                f"Application for {application.first_name} {application.last_name} was analyzed by Gemini AI successfully (Score: {application.ai_score}%)."
-            )
-        else:
-            messages.warning(
-                request,
-                "AI evaluation could not complete right now (API quota/network busy). Queued for auto-retry on next refresh."
-            )
-    except Exception as e:
-        messages.error(request, f"Failed to analyze application: {e}")
-
-    return redirect("candidate_detail", pk=pk)
 
 @never_cache
 @hr_required(login_url="hr_login")
@@ -703,6 +755,43 @@ def update_application_status(request, pk):
         invalidate_hr_cache()
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def send_candidate_email(request, pk):
+    application = get_object_or_404(Application, pk=pk)
+
+    if request.method == "POST":
+        subject = request.POST.get("subject", "").strip()
+        body = request.POST.get("message", "").strip()
+        recipient_email = request.POST.get("recipient_email", "").strip() or application.email
+
+        if not subject or not body:
+            messages.error(request, "Email subject and message cannot be empty.")
+            return redirect("candidate_detail", pk=pk)
+
+        html_content = (
+            f"<div style='font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;'>"
+            f"{body.replace(chr(10), '<br>')}"
+            f"</div>"
+        )
+
+        from main.emailer import send_gmail_message
+        result = send_gmail_message(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=body,
+        )
+
+        if result.get("success"):
+            messages.success(request, f"Email successfully sent to {recipient_email}!")
+        else:
+            err = result.get("error", "Gmail API not configured or failed.")
+            messages.warning(request, f"Could not send email automatically ({err}). Please use desktop email.")
+
+    return redirect("candidate_detail", pk=pk)
 
 @never_cache
 @hr_required(login_url="hr_login")
@@ -808,7 +897,7 @@ def schedule_interview(request, job_id):
 
     applicants = Application.objects.filter(
         job=job,
-        status="Interview",
+        status__in=["Screening", "Interview", "Pending"],
         interview__isnull=True,
     ).order_by("-ai_score")
     
@@ -816,6 +905,14 @@ def schedule_interview(request, job_id):
         groups__name="HR",
         is_active=True
         ).order_by("first_name", "last_name")
+
+    preselected_applicant_id = None
+    raw_app_id = request.GET.get("applicant_id")
+    if raw_app_id:
+        try:
+            preselected_applicant_id = int(raw_app_id)
+        except (ValueError, TypeError):
+            preselected_applicant_id = None
 
     if request.method == "POST":
         interview = Interview.objects.create(
@@ -829,6 +926,12 @@ def schedule_interview(request, job_id):
 
         ids = request.POST.getlist("applicants")
         interview.applicants.set(ids)
+        # Automatically move scheduled applicants to Interview stage
+        if ids:
+            Application.objects.filter(id__in=ids).update(
+                status="Interview",
+                interview_scheduled=True
+            )
         invalidate_hr_cache()
 
         return redirect("interviews")
@@ -840,7 +943,6 @@ def schedule_interview(request, job_id):
             "job": job,
             "applicants": applicants,
             "interview": Interview,
-            "hr_staff": hr_staff,
         },
     )
 

@@ -125,15 +125,36 @@ TEMPLATES = [
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "dbrecruitai-locmem-cache",
-        "TIMEOUT": 300,
-        "OPTIONS": {
-            "MAX_ENTRIES": 2000,
-        },
+# Cache configuration with Redis (Upstash) support and LocMem fallback
+redis_url = os.getenv("REDIS_URL")
+if redis_url:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": redis_url,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "CONNECTION_POOL_KWARGS": {"max_connections": 20, "timeout": 5},
+            },
+            "KEY_PREFIX": "dbrecruitai",
+            "TIMEOUT": 300,
+        }
     }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "dbrecruitai-locmem-cache",
+            "TIMEOUT": 300,
+            "OPTIONS": {
+                "MAX_ENTRIES": 2000,
+            },
+        }
+    }
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 15,
 }
 
 WSGI_APPLICATION = "config.wsgi.application"
@@ -151,6 +172,19 @@ db_name = os.getenv("DB_NAME")
 if db_engine == "django.db.backends.sqlite3" and not db_name:
     db_name = str(BASE_DIR / "db.sqlite3")
 
+db_port = os.getenv("DB_PORT", "6543" if IS_VERCEL else "5432")
+# In transaction pooler (6543) or serverless (Vercel), close connections at request end (0) to prevent connection leaks
+default_conn_max_age = 0 if (IS_VERCEL or db_port == "6543") else 600
+conn_max_age = int(os.getenv("CONN_MAX_AGE", str(default_conn_max_age)))
+
+db_options = {}
+if "postgresql" in db_engine:
+    db_options = {
+        # Required for Psycopg 3 with PgBouncer transaction mode (port 6543) to disable prepared statements
+        "prepare_threshold": None,
+        "sslmode": "require",
+    }
+
 DATABASES = {
     "default": {
         "ENGINE": db_engine,
@@ -158,24 +192,14 @@ DATABASES = {
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
-        # Use Transaction Pooler (6543) by default in serverless (Vercel) to prevent connection exhaustion
-        "PORT": os.getenv("DB_PORT", "6543" if IS_VERCEL else "5432"),
-
-        # In serverless environments, close connections at request end (0); in persistent servers, keep alive (600)
-        "CONN_MAX_AGE": int(os.getenv("CONN_MAX_AGE", "0" if IS_VERCEL else "600")),
+        "PORT": db_port,
+        "CONN_MAX_AGE": conn_max_age,
         "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": db_options,
     }
 }
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "dbrecruitai-cache",
-        "TIMEOUT": 300,
-    }
-}
 
 
 AUTHENTICATION_BACKENDS = [
@@ -221,7 +245,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STATICFILES_STORAGE = (
-    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    "whitenoise.storage.CompressedStaticFilesStorage"
 )
 
 # Cloudflare R2 Media Storage
@@ -267,7 +291,7 @@ else:
 staticfiles_storage = (
     "django.contrib.staticfiles.storage.StaticFilesStorage"
     if (DEBUG or "test" in getattr(sys, "argv", []))
-    else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    else "whitenoise.storage.CompressedStaticFilesStorage"
 )
 
 STORAGES = {
@@ -312,6 +336,7 @@ if not DEBUG:
 # Static files cache headers for production CDN / browser caching
 WHITENOISE_MAX_AGE = 31536000 if not DEBUG else 0
 WHITENOISE_MANIFEST_STRICT = False
+WHITENOISE_USE_FINDERS = True
 
 # Allauth Social Account Settings - Bypass intermediate confirmation page
 SOCIALACCOUNT_LOGIN_ON_GET = True

@@ -721,11 +721,10 @@ body.hr-loading .sidebar-logo .loader,
     justify-content: space-between; 
     height: 145px; 
     position: relative; 
-    transition: transform 0.25s ease, box-shadow 0.25s ease; 
+    transition: box-shadow 0.25s ease; 
 }
 
 .stat-card:hover { 
-    transform: translateY(-4px); 
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.06); 
 }
 
@@ -1301,7 +1300,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .admin-job-card:hover {
-    transform: translateY(-4px);
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -1849,7 +1847,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .category-card:hover {
-    transform: translateY(-4px);
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.06);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -2057,7 +2054,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .applicant-card:hover { 
-    transform: translateY(-3px); 
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05); 
     border-color: rgba(45, 90, 39, 0.2); 
 }
@@ -2265,7 +2261,454 @@ table .btn-review-applicant {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
 }
 
-/* Candidate Detail 2-Column Grid */
+/* Candidate Hero Card - 4-Column Layout */
+.candidate-hero-4col {
+    display: grid;
+    grid-template-columns: 1.4fr 1.3fr 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+.hero-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-width: 0;
+}
+
+.hero-col:not(:last-child) {
+    border-right: 1px solid rgba(226, 232, 240, 0.8);
+    padding-right: 22px;
+}
+
+/* Col 1: Applicant Profile */
+.hero-applicant-profile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.hero-applicant-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary) 0%, #3e7b36 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    box-shadow: 0 6px 18px rgba(45, 90, 39, 0.25);
+    flex-shrink: 0;
+}
+
+.hero-applicant-name-wrap {
+    min-width: 0;
+}
+
+.hero-applicant-name-wrap .candidate-name {
+    font-size: 19px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 2px 0;
+    line-height: 1.25;
+    word-break: break-word;
+}
+
+.applicant-profile-tag {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.hero-contact-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.hero-contact-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 11px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 12px;
+    color: #334155;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    word-break: break-all;
+}
+
+.hero-contact-chip i {
+    color: var(--primary);
+    font-size: 12.5px;
+    flex-shrink: 0;
+}
+
+.hero-contact-chip:hover {
+    background: #ffffff;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.hero-contact-chip.hero-contact-chip-copyable {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 6px 6px 11px;
+}
+
+.hero-contact-chip .contact-chip-val {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #334155;
+    font-weight: 500;
+}
+
+.btn-copy-chip {
+    background: transparent;
+    border: none;
+    padding: 4px 7px;
+    border-radius: 6px;
+    color: #64748b;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.btn-copy-chip:hover {
+    background: #e2e8f0;
+    color: var(--primary);
+}
+
+.btn-copy-chip.copied {
+    color: #16a34a !important;
+    background: #dcfce7 !important;
+}
+
+/* Col 2: Application Details */
+.hero-col-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hero-detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 12.5px;
+}
+
+.hero-detail-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    color: #475569;
+}
+
+.hero-detail-item .detail-label {
+    font-weight: 700;
+    color: #64748b;
+    font-size: 11px;
+    min-width: 54px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.hero-detail-item strong {
+    color: #0f172a;
+    font-weight: 700;
+    word-break: break-word;
+}
+
+.hero-resume-pills {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.hero-resume-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, #1e3d1a 100%);
+    color: #ffffff !important;
+    border-radius: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none !important;
+    box-shadow: 0 3px 10px rgba(45, 90, 39, 0.2);
+    transition: all 0.2s ease;
+}
+
+.hero-resume-pill:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(45, 90, 39, 0.3);
+}
+
+.hero-resume-pill.secondary-pill {
+    background: #f1f5f9;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1;
+    box-shadow: none;
+}
+
+.hero-resume-pill.secondary-pill:hover {
+    background: #ffffff;
+    border-color: var(--primary);
+    color: var(--primary) !important;
+}
+
+/* Col 3: Actions */
+.hero-actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    height: 100%;
+}
+
+.hero-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none !important;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.hero-action-btn.btn-schedule {
+    background: linear-gradient(135deg, var(--primary) 0%, #1e3d1a 100%);
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(45, 90, 39, 0.25);
+}
+
+.hero-action-btn.btn-schedule:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(45, 90, 39, 0.35);
+}
+
+.hero-action-btn.btn-email {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    color: #334155 !important;
+}
+
+.hero-action-btn.btn-email:hover {
+    background: #ffffff;
+    border-color: var(--primary);
+    color: var(--primary) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Col 4: Stage CTA Card */
+.hero-stage-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.stage-cta-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 16px;
+    border-radius: 14px;
+    border: 1.5px solid transparent;
+    height: 100%;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.stage-card-screening {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.04) 100%);
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.stage-card-interview {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%);
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+.stage-card-hired {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.stage-card-rejected {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(220, 38, 38, 0.04) 100%);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.stage-badge-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.stage-badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stage-card-screening .stage-badge-pill {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.stage-card-interview .stage-badge-pill {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.stage-card-hired .stage-badge-pill {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.stage-card-rejected .stage-badge-pill {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.stage-pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+    animation: stagePulse 2s infinite ease-in-out;
+}
+
+@keyframes stagePulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.stage-desc {
+    font-size: 12px;
+    color: #64748b;
+    margin: 4px 0 10px 0;
+    line-height: 1.4;
+}
+
+.stage-cta-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.stage-card-screening .stage-cta-footer { color: #b45309; }
+.stage-card-interview .stage-cta-footer { color: #6d28d9; }
+.stage-card-hired .stage-cta-footer { color: #047857; }
+.stage-card-rejected .stage-cta-footer { color: #b91c1c; }
+
+/* Full-Width Candidate Evaluation Container */
+.candidate-eval-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.candidate-eval-container .ai-eval-box {
+    margin-right: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Responsive Breakpoints for 4-Col Hero */
+@media (max-width: 1200px) {
+    .candidate-hero-4col {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .hero-col:nth-child(2) {
+        border-right: none;
+        padding-right: 0;
+    }
+    .hero-col:nth-child(1),
+    .hero-col:nth-child(2) {
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        padding-bottom: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .candidate-hero-4col {
+        grid-template-columns: 1fr;
+        padding: 20px 16px;
+    }
+    .hero-col {
+        border-right: none !important;
+        padding-right: 0 !important;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        padding-bottom: 16px;
+    }
+    .hero-col:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+}
+
+/* Candidate Detail 2-Column Grid (Fallback) */
 .candidate-details-grid {
     display: grid;
     grid-template-columns: 1fr 380px;
@@ -2819,7 +3262,6 @@ table .btn-review-applicant {
     background: #ffffff;
     border-color: rgba(45, 90, 39, 0.2);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-    transform: translateX(3px);
 }
 
 .waiting-job-info h4 {
@@ -2891,7 +3333,6 @@ table .btn-review-applicant {
 }
 
 .today-interview-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
     border-color: rgba(45, 90, 39, 0.3);
 }
@@ -3084,7 +3525,6 @@ table .btn-review-applicant {
 }
 
 .upcoming-interview-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -3888,11 +4328,84 @@ table .btn-review-applicant {
     align-items: start;
 }
 
+/* 3-Column Form Grid for Post Job and Edit Job Modals */
+.three-col-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+    align-items: start;
+}
+
+/* 4-Column Form Grid for Post Job and Edit Job Modals */
+.four-col-form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
 .form-col-left,
-.form-col-right {
+.form-col-right,
+.form-col-1,
+.form-col-2,
+.form-col-3,
+.form-col-4 {
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+.four-col-form-grid .form-group {
+    margin-bottom: 11px;
+}
+
+.four-col-form-grid .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.four-col-form-grid .form-label {
+    font-size: 12.5px;
+    margin-bottom: 5px;
+}
+
+.four-col-form-grid .form-input,
+.four-col-form-grid .form-select {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.four-col-form-grid .form-section-title {
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.four-col-form-grid .status-toggle-card {
+    padding: 8px 12px;
+    gap: 12px;
+}
+
+/* Double the default text field height of Job Description & Requirements */
+.job-modal-textarea,
+.four-col-form-grid .form-textarea {
+    min-height: 140px;
+    height: 140px;
+    resize: vertical;
+    font-size: 13px;
+    padding: 9px 12px;
+    line-height: 1.5;
+}
+
+.form-col-1 .form-group,
+.form-col-2 .form-group,
+.form-col-3 .form-group {
+    margin-bottom: 18px;
+}
+
+.form-col-1 .form-group:last-child,
+.form-col-2 .form-group:last-child,
+.form-col-3 .form-group:last-child {
+    margin-bottom: 0;
 }
 
 .form-col-right .form-group {
@@ -3903,9 +4416,28 @@ table .btn-review-applicant {
     margin-bottom: 0;
 }
 
-/* Widen the Post Job modal and Edit Job modal so two columns have room to breathe */
+/* Criteria inside column 4 */
+.criteria-form-group-col {
+    width: 100%;
+    margin-top: 0;
+}
+
+/* Widen the Post Job modal and Edit Job modal for 4 columns, keeping non-scrollable view */
 .post-job-card-wide {
-    max-width: 1000px !important;
+    max-width: 1460px !important;
+    width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 22px 28px !important;
+}
+
+.post-job-card-wide .modal-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+}
+
+.post-job-card-wide .modal-footer-actions {
+    margin-top: 16px;
+    padding-top: 14px;
 }
 
 /* Referenced by the "not visible to applicants" hint under
@@ -3919,6 +4451,24 @@ table .btn-review-applicant {
     line-height: 1.5;
 }
 
+@media (max-width: 1200px) {
+    .four-col-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+}
+
+@media (max-width: 1150px) {
+    .three-col-form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    .three-col-form-grid .form-col-3 {
+        grid-column: span 2;
+    }
+}
+
 @media (max-width: 900px) {
     .two-col-form-grid {
         grid-template-columns: 1fr;
@@ -3927,6 +4477,33 @@ table .btn-review-applicant {
 
     .form-col-right {
         margin-top: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .four-col-form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .four-col-form-grid .form-col-2,
+    .four-col-form-grid .form-col-3,
+    .four-col-form-grid .form-col-4 {
+        margin-top: 16px;
+    }
+
+    .three-col-form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .three-col-form-grid .form-col-3 {
+        grid-column: span 1;
+    }
+
+    .three-col-form-grid .form-col-2,
+    .three-col-form-grid .form-col-3 {
+        margin-top: 16px;
     }
 }
 
@@ -4716,7 +5293,6 @@ table .btn-review-applicant {
 }
 
 .top-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
@@ -5011,11 +5587,10 @@ table .btn-review-applicant {
     background: #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     border-radius: 10px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease;
 }
 
 .candidate-row:hover {
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -5521,7 +6096,6 @@ table .btn-review-applicant {
 }
 
 .top-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
@@ -5816,11 +6390,10 @@ table .btn-review-applicant {
     background: #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     border-radius: 10px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease;
 }
 
 .candidate-row:hover {
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -6743,21 +7316,22 @@ table .btn-review-applicant {
 
 .criteria-header-row {
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .criteria-title {
     display: block;
     margin-bottom: 3px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #334155;
 }
 
 .criteria-description {
     margin: 0;
-
-    color: #7b8794;
-
-    font-size: 10px;
-    line-height: 1.5;
+    color: #64748b;
+    font-size: 11.5px;
+    line-height: 1.4;
 }
 
 
@@ -6766,9 +7340,7 @@ table .btn-review-applicant {
 .criteria-container {
     display: flex;
     flex-direction: column;
-
-    gap: 8px;
-
+    gap: 7px;
     width: 100%;
 }
 
@@ -6777,24 +7349,15 @@ table .btn-review-applicant {
 
 .criteria-row {
     display: grid;
-
-    grid-template-columns: minmax(0, 1fr) 85px 34px;
-
+    grid-template-columns: minmax(0, 1fr) 85px;
     align-items: center;
-
     gap: 8px;
-
     width: 100%;
-
-    padding: 7px;
-
+    padding: 6px 10px;
     box-sizing: border-box;
-
     border: 1px solid #e2e7eb;
     border-radius: 8px;
-
     background: #fafbfc;
-
     transition:
         border-color 0.2s ease,
         background 0.2s ease;
@@ -6802,7 +7365,6 @@ table .btn-review-applicant {
 
 .criteria-row:focus-within {
     border-color: rgba(45, 90, 39, 0.35);
-
     background: #ffffff;
 }
 
@@ -6813,9 +7375,15 @@ table .btn-review-applicant {
     min-width: 0;
 }
 
+.criteria-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1e293b;
+    display: block;
+}
+
 .criteria-name-input {
     width: 100%;
-
     box-sizing: border-box;
 }
 
@@ -6824,32 +7392,28 @@ table .btn-review-applicant {
 
 .criteria-weight-wrapper {
     position: relative;
-
     display: flex;
     align-items: center;
-
     width: 100%;
 }
 
 .criteria-weight-input {
     width: 100%;
-
-    padding-right: 23px;
-
+    padding: 6px 20px 6px 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #0f172a;
     box-sizing: border-box;
-
     text-align: center;
+    height: 32px;
 }
 
 .criteria-percent {
     position: absolute;
-
-    right: 9px;
-
-    color: #7b8794;
-
-    font-size: 10px;
-
+    right: 8px;
+    color: #64748b;
+    font-size: 11.5px;
+    font-weight: 600;
     pointer-events: none;
 }
 
@@ -6861,37 +7425,26 @@ table .btn-review-applicant {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-
     gap: 8px;
-
-    margin-top: 10px;
-
-    padding-top: 10px;
-
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px solid #e7ebee;
 }
 
 .criteria-total-label {
-    color: #66717d;
-
-    font-size: 10px;
+    color: #475569;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .criteria-total {
-    min-width: 52px;
-
-    padding: 5px 9px;
-
+    min-width: 50px;
+    padding: 4px 8px;
     border-radius: 6px;
-
     background: #f1f3f5;
-
     color: #59636d;
-
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 700;
-
     text-align: center;
 }
 
@@ -6900,7 +7453,6 @@ table .btn-review-applicant {
 
 .criteria-total.is-valid {
     background: rgba(45, 90, 39, 0.1);
-
     color: #2d5a27;
 }
 
@@ -6909,7 +7461,6 @@ table .btn-review-applicant {
 
 .criteria-total.is-invalid {
     background: rgba(214, 69, 69, 0.1);
-
     color: #c43d3d;
 }
 
@@ -6919,14 +7470,11 @@ table .btn-review-applicant {
 .criteria-validation {
     display: flex;
     align-items: center;
-
     gap: 6px;
-
-    margin-top: 7px;
-
+    margin-top: 6px;
     color: #c43d3d;
-
-    font-size: 9.5px;
+    font-size: 11.5px;
+    font-weight: 500;
 }
 
 .criteria-validation.is-valid {
@@ -6934,7 +7482,7 @@ table .btn-review-applicant {
 }
 
 .criteria-validation i {
-    font-size: 10px;
+    font-size: 11.5px;
 }
 
 
@@ -6942,8 +7490,9 @@ table .btn-review-applicant {
 
 .criteria-help {
     display: block;
-
-    margin-top: 6px;
+    margin-top: 5px;
+    font-size: 11.5px;
+    color: #94a3b8;
 }
 
 

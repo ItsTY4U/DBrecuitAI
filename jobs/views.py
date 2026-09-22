@@ -17,10 +17,14 @@ from main.rate_limit import check_rate_limit
 # Throttles concurrent background Gemini screening calls to prevent 429 Resource Exhausted rate limits
 AI_SCREENING_SEMAPHORE = threading.Semaphore(2)
 
+from django.core.paginator import Paginator
+from django.views.decorators.cache import cache_control
+
 def jobs(request):
     try:
         query = request.GET.get("q", "").strip()
         department = request.GET.get("department", "").strip()
+        page_number = request.GET.get("page", 1)
 
         is_default_view = not query and not department
         jobs_list = None
@@ -50,18 +54,28 @@ def jobs(request):
             else:
                 jobs_list = jobs_qs
 
+        paginator = Paginator(jobs_list, 9)
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            "jobs": page_obj,
+            "page_obj": page_obj,
+            "query": query,
+            "department": department,
+        }
+
         # Fast partial response for HTMX search / filter requests
         if request.headers.get("HX-Request"):
             return render(
                 request,
                 "jobs/partials/jobs_list.html",
-                {"jobs": jobs_list},
+                context,
             )
 
         return render(
             request,
             "jobs/jobs.html",
-            {"jobs": jobs_list},
+            context,
         )
 
     except Exception as e:
@@ -71,6 +85,7 @@ def jobs(request):
             status=500
         )
         
+@cache_control(public=True, max_age=30, s_maxage=300, stale_while_revalidate=1800)
 def job_detail(request, id):
     cache_key = f"job_detail_{id}"
     job = cache.get(cache_key)
@@ -229,7 +244,7 @@ def apply_job(request, pk):
             last_name=last_name,
             email=email,
             phone=phone,
-            status="Pending",
+            status="Screening",
             resume_processed=False,
             ai_score=0,
             ai_recommendation="Pending Review",
@@ -360,7 +375,7 @@ def upload_resume(request, pk):
     application = Application.objects.create(
         job=job,
         resume=resume,
-        status="Pending",
+        status="Screening",
         first_name="",
         middle_initial="",
         last_name="",
