@@ -943,6 +943,8 @@ def schedule_interview(request, job_id):
             "job": job,
             "applicants": applicants,
             "interview": Interview,
+            "hr_staff": hr_staff,
+            "preselected_applicant_id": preselected_applicant_id,
         },
     )
 
