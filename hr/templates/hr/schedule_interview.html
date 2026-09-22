@@ -187,7 +187,7 @@
                     <div class="form-grid-single">
                         <div class="form-group">
                             <label class="form-label" for="interview_type">Interview Type <span class="required-star">*</span></label>
-                            <select name="interview_type" id="interview_type" class="form-control-custom" required>
+                            <select name="interview_type" id="interview_type" class="form-input interview-type" required>
                                 {% for value, label in interview.TYPE_CHOICES %}
                                 <option value="{{ value }}">{{ label }}</option>
                                 {% endfor %}
@@ -196,24 +196,35 @@
 
                         <div class="form-group">
                             <label class="form-label" for="interviewer">Interviewer / Panel Lead <span class="required-star">*</span></label>
-                            <input type="text" name="interviewer" id="interviewer" class="form-control-custom" placeholder="e.g. Maria Santos (Lead HR)" required>
+                            <select class="form-input interviewer-select" id="interviewer" name="interviewer" required>
+                                <option vlaue="">Select Interviewer</option>
+                                {% for hr in hr_staff %}
+                                    <option value="{{ hr.id }}">
+                                        {{ hr.first_name }} {{ hr.last_name }}
+                                    </option>
+                                {% empty %}
+                                    <option value="" disabled>
+                                        No HR Staff Available
+                                    </option>
+                                {% endfor %}
+                            </select>
                         </div>
 
                         <div class="form-row-2col">
                             <div class="form-group">
                                 <label class="form-label" for="date">Interview Date <span class="required-star">*</span></label>
-                                <input type="date" name="date" id="date" class="form-control-custom" required>
+                                <input type="date" name="date" id="date" class="form-input interview-date" required>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label" for="location">Location / Meeting Link <span class="required-star">*</span></label>
-                            <input type="text" name="location" id="location" class="form-control-custom" placeholder="e.g. HR Conference Room B / Google Meet" required>
+                            <input type="text" name="location" id="location" class="form-input interview-location" placeholder="e.g. HR Conference Room B / Google Meet" required>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label" for="notes">Notes / Special Instructions (Optional)</label>
-                            <textarea name="notes" id="notes" class="form-control-custom textarea-notes" rows="4" placeholder="Bring updated portfolio, prepare coding assessment, etc."></textarea>
+                            <textarea name="notes" id="notes" class="form-input textarea-notes" rows="4" placeholder="Bring updated portfolio, prepare coding assessment, etc."></textarea>
                         </div>
 
                         <div class="form-actions-bar" style="margin-top: 10px;">

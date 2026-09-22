@@ -900,6 +900,11 @@ def schedule_interview(request, job_id):
         status__in=["Screening", "Interview", "Pending"],
         interview__isnull=True,
     ).order_by("-ai_score")
+    
+    hr_staff = User.objects.filter(
+        groups__name="HR",
+        is_active=True
+        ).order_by("first_name", "last_name")
 
     preselected_applicant_id = None
     raw_app_id = request.GET.get("applicant_id")
@@ -938,6 +943,7 @@ def schedule_interview(request, job_id):
             "job": job,
             "applicants": applicants,
             "interview": Interview,
+            "hr_staff": hr_staff,
             "preselected_applicant_id": preselected_applicant_id,
         },
     )
@@ -991,3 +997,4 @@ def update_interview_status(request, pk):
         "interview_detail",
         pk=interview.id
     )
+    
