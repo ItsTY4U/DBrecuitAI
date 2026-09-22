@@ -721,11 +721,10 @@ body.hr-loading .sidebar-logo .loader,
     justify-content: space-between; 
     height: 145px; 
     position: relative; 
-    transition: transform 0.25s ease, box-shadow 0.25s ease; 
+    transition: box-shadow 0.25s ease; 
 }
 
 .stat-card:hover { 
-    transform: translateY(-4px); 
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.06); 
 }
 
@@ -1301,7 +1300,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .admin-job-card:hover {
-    transform: translateY(-4px);
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.06);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -1849,7 +1847,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .category-card:hover {
-    transform: translateY(-4px);
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.06);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -2057,7 +2054,6 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .applicant-card:hover { 
-    transform: translateY(-3px); 
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05); 
     border-color: rgba(45, 90, 39, 0.2); 
 }
@@ -2369,7 +2365,49 @@ table .btn-review-applicant {
     background: #ffffff;
     border-color: var(--primary);
     color: var(--primary);
-    transform: translateY(-1px);
+}
+
+.hero-contact-chip.hero-contact-chip-copyable {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 6px 6px 11px;
+}
+
+.hero-contact-chip .contact-chip-val {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #334155;
+    font-weight: 500;
+}
+
+.btn-copy-chip {
+    background: transparent;
+    border: none;
+    padding: 4px 7px;
+    border-radius: 6px;
+    color: #64748b;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.btn-copy-chip:hover {
+    background: #e2e8f0;
+    color: var(--primary);
+}
+
+.btn-copy-chip.copied {
+    color: #16a34a !important;
+    background: #dcfce7 !important;
 }
 
 /* Col 2: Application Details */
@@ -3224,7 +3262,6 @@ table .btn-review-applicant {
     background: #ffffff;
     border-color: rgba(45, 90, 39, 0.2);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-    transform: translateX(3px);
 }
 
 .waiting-job-info h4 {
@@ -3296,7 +3333,6 @@ table .btn-review-applicant {
 }
 
 .today-interview-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
     border-color: rgba(45, 90, 39, 0.3);
 }
@@ -3489,7 +3525,6 @@ table .btn-review-applicant {
 }
 
 .upcoming-interview-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
     border-color: rgba(45, 90, 39, 0.2);
 }
@@ -5121,7 +5156,6 @@ table .btn-review-applicant {
 }
 
 .top-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
@@ -5416,11 +5450,10 @@ table .btn-review-applicant {
     background: #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     border-radius: 10px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease;
 }
 
 .candidate-row:hover {
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -5926,7 +5959,6 @@ table .btn-review-applicant {
 }
 
 .top-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
@@ -6221,11 +6253,10 @@ table .btn-review-applicant {
     background: #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     border-radius: 10px;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease;
 }
 
 .candidate-row:hover {
-    transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 

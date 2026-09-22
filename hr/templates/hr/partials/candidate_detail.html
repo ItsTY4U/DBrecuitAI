@@ -29,24 +29,30 @@
 
         <div class="hero-contact-chips">
             {% if application.email %}
-            <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}" target="_blank" rel="noopener noreferrer" class="hero-contact-chip" title="Email {{ application.email }} via Gmail">
+            <div class="hero-contact-chip hero-contact-chip-copyable" title="Candidate Email">
                 <i class="fas fa-envelope"></i>
-                <span>{{ application.email }}</span>
-            </a>
+                <span class="contact-chip-val">{{ application.email }}</span>
+                <button type="button" class="btn-copy-chip" onclick="copyCandidateContact('{{ application.email|escapejs }}', this)" title="Copy email address" aria-label="Copy email">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
             {% else %}
-            <span class="hero-contact-chip">
+            <span class="hero-contact-chip no-value">
                 <i class="fas fa-envelope"></i>
                 <span>No email provided</span>
             </span>
             {% endif %}
 
             {% if application.phone %}
-            <a href="tel:{{ application.phone }}" class="hero-contact-chip" title="Call {{ application.phone }}">
+            <div class="hero-contact-chip hero-contact-chip-copyable" title="Candidate Phone">
                 <i class="fas fa-phone"></i>
-                <span>{{ application.phone }}</span>
-            </a>
+                <span class="contact-chip-val">{{ application.phone }}</span>
+                <button type="button" class="btn-copy-chip" onclick="copyCandidateContact('{{ application.phone|escapejs }}', this)" title="Copy phone number" aria-label="Copy phone">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
             {% else %}
-            <span class="hero-contact-chip">
+            <span class="hero-contact-chip no-value">
                 <i class="fas fa-phone-slash"></i>
                 <span>No phone provided</span>
             </span>
@@ -103,26 +109,7 @@
         </div>
     </div>
 
-    <!-- Column 3: Actions -->
-    <div class="hero-col hero-col-actions">
-        <span class="hero-col-title">
-            <i class="fas fa-bolt"></i> Next Actions
-        </span>
-
-        <div class="hero-actions-stack">
-            <a href="{% url 'schedule_interview' application.job.id %}?applicant_id={{ application.id }}" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
-                <i class="fas fa-calendar-plus"></i>
-                <span>Schedule Interview</span>
-            </a>
-
-            <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}&su=Update%20regarding%20your%20application%20for%20{{ application.job.title|urlencode }}%20(Ref%20%23{{ application.application_id|urlencode }})&body=Dear%20{{ application.first_name|urlencode }},%0A%0A" target="_blank" rel="noopener noreferrer" class="hero-action-btn btn-email" title="Compose email to {{ application.first_name }} in Gmail">
-                <i class="fas fa-paper-plane"></i>
-                <span>Send Candidate Email</span>
-            </a>
-        </div>
-    </div>
-
-    <!-- Column 4: Candidate Stage Indicator (CTA) -->
+    <!-- Column 3: Candidate Stage Indicator (CTA) -->
     <div class="hero-col hero-col-stage">
         <span class="hero-col-title">
             <i class="fas fa-flag"></i> Candidate Stage
@@ -190,6 +177,25 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Column 4: Actions -->
+    <div class="hero-col hero-col-actions">
+        <span class="hero-col-title">
+            <i class="fas fa-bolt"></i> Next Actions
+        </span>
+
+        <div class="hero-actions-stack">
+            <a href="{% url 'schedule_interview' application.job.id %}?applicant_id={{ application.id }}" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Schedule Interview</span>
+            </a>
+
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}&su=Update%20regarding%20your%20application%20for%20{{ application.job.title|urlencode }}%20(Ref%20%23{{ application.application_id|urlencode }})&body=Dear%20{{ application.first_name|urlencode }},%0A%0A" target="_blank" rel="noopener noreferrer" class="hero-action-btn btn-email" title="Compose email to {{ application.first_name }} in Gmail">
+                <i class="fas fa-paper-plane"></i>
+                <span>Send Candidate Email</span>
+            </a>
+        </div>
+    </div>
 </div>
 
 <!-- Candidate Evaluation Cards Container -->
@@ -203,27 +209,13 @@
                     </h3>
                     <p class="box-subtitle" style="margin: 3px 0 0; font-size: 12.5px; color: #666;">Automated resume parsing and role fit evaluation</p>
                 </div>
-                <div>
-                    <form method="POST" action="{% url 'reanalyze_candidate_application' application.pk %}" style="margin: 0;" onsubmit="return confirm('Re-evaluate this candidate resume using Gemini AI?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn" style="padding: 7px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-rotate"></i> Re-analyze with AI
-                        </button>
-                    </form>
-                </div>
             </div>
 
             {% if not application.resume_processed or application.ai_recommendation == "Pending Review" or application.ai_score == 0 and not application.ai_summary %}
-            <div style="background: rgba(230, 126, 34, 0.1); border-left: 4px solid #e67e22; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="background: rgba(230, 126, 34, 0.1); border-left: 4px solid #e67e22; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 13px; color: #d35400; font-weight: 600;">
-                    <i class="fas fa-clock"></i> AI Evaluation was delayed or pending.
+                    <i class="fas fa-clock"></i> AI Evaluation was delayed or pending review.
                 </span>
-                <form method="POST" action="{% url 'reanalyze_candidate_application' application.pk %}" style="margin: 0;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #27ae60; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-play"></i> Run AI Screening Now
-                    </button>
-                </form>
             </div>
             {% endif %}
 
@@ -626,3 +618,44 @@
             {% endif %}
         </div>
 </div>
+
+<script>
+function copyCandidateContact(text, btn) {
+    if (!text) return;
+    function showSuccess() {
+        var icon = btn.querySelector('i');
+        var origClass = icon ? icon.className : 'fas fa-copy';
+        btn.classList.add('copied');
+        btn.setAttribute('title', 'Copied!');
+        if (icon) icon.className = 'fas fa-check';
+        setTimeout(function() {
+            btn.classList.remove('copied');
+            btn.setAttribute('title', 'Copy');
+            if (icon) icon.className = origClass;
+        }, 1800);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(showSuccess).catch(function() {
+            fallbackCopy(text, showSuccess);
+        });
+    } else {
+        fallbackCopy(text, showSuccess);
+    }
+    function fallbackCopy(val, cb) {
+        var ta = document.createElement("textarea");
+        ta.value = val;
+        ta.style.position = "fixed";
+        ta.style.left = "-999999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            cb();
+        } catch (e) {
+            console.error('Copy failed', e);
+        }
+        document.body.removeChild(ta);
+    }
+}
+</script>

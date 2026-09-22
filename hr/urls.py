@@ -42,10 +42,6 @@ urlpatterns = [
         name="reanalyze_candidate_interview",
         ),
 
-    path("candidates/applicant/<int:pk>/reanalyze-application/", 
-        views.reanalyze_candidate_application, 
-        name="reanalyze_candidate_application",
-        ),
 
     path("candidates/applicant/<int:pk>/send-email/", 
         views.send_candidate_email, 

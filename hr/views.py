@@ -628,40 +628,6 @@ def candidate_detail(request, pk):
 
 @never_cache
 @hr_required(login_url="hr_login")
-def reanalyze_candidate_application(request, pk):
-    """
-    Explicit HR action to re-evaluate candidate resume and job requirements using Gemini AI.
-    Bypasses cache (force_refresh=True) and uses the exact same AI screening engine.
-    """
-    application = get_object_or_404(
-        Application.objects.select_related("job", "applicant"),
-        pk=pk
-    )
-    has_resume = bool(application.resume or (application.applicant and application.applicant.default_resume))
-    if not has_resume:
-        messages.error(request, "No resume file available for this candidate to analyze.")
-        return redirect("candidate_detail", pk=pk)
-
-    try:
-        from jobs.ai import screen_application
-        success = screen_application(application, force_refresh=True, max_retries=2)
-        if success:
-            messages.success(
-                request,
-                f"Application for {application.first_name} {application.last_name} was analyzed by Gemini AI successfully (Score: {application.ai_score}%)."
-            )
-        else:
-            messages.warning(
-                request,
-                "AI evaluation could not complete right now (API quota/network busy). Queued for auto-retry on next refresh."
-            )
-    except Exception as e:
-        messages.error(request, f"Failed to analyze application: {e}")
-
-    return redirect("candidate_detail", pk=pk)
-
-@never_cache
-@hr_required(login_url="hr_login")
 def reset_candidate_interview(request, pk):
     application = get_object_or_404(Application, pk=pk)
     session = InterviewSession.objects.filter(application=application).first()

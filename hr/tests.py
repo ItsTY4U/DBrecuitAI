@@ -720,46 +720,6 @@ class CandidateManagementTests(TestCase):
         self.assertTrue(unscreened_app.resume_processed)
         self.assertEqual(unscreened_app.ai_recommendation, "Recommended")
 
-    @patch("jobs.ai.extract_resume_text", return_value="Experienced senior sales executive with proven track record.")
-    @patch("jobs.ai.analyze_resume")
-    def test_reanalyze_candidate_application_endpoint(self, mock_analyze, mock_extract):
-        """HR manual re-analyze button calls screen_application with force_refresh and updates score."""
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        mock_analyze.return_value = {
-            "score": 92,
-            "match_level": "Exceptional",
-            "recommendation": "Highly Recommended",
-            "summary": "Re-evaluated with updated job criteria.",
-            "strengths": ["Senior sales experience"],
-            "weaknesses": [],
-            "matched_qualifications": ["Top performer"],
-            "missing_qualifications": [],
-            "skills_match": 95,
-            "experience_match": 90,
-            "education_match": 85,
-            "qualification_match": 95,
-            "criteria_weights": {},
-            "weight_reasoning": {},
-        }
-        app = Application.objects.create(
-            job=self.job_sales_staff,
-            first_name="Elena",
-            last_name="Cruz",
-            email="elena@test.com",
-            phone="09223334444",
-            resume=SimpleUploadedFile("elena.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
-            ai_score=60,
-            resume_processed=True,
-        )
-        url = reverse("reanalyze_candidate_application", kwargs={"pk": app.pk})
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse("candidate_detail", kwargs={"pk": app.pk}))
-
-        app.refresh_from_db()
-        self.assertEqual(app.ai_score, 92)
-        self.assertEqual(app.ai_recommendation, "Highly Recommended")
-
     def test_candidate_detail_hero_card_4_columns(self):
         """Candidate detail page renders 4 columns in hero card with indicator-only stage card and no dropdown."""
         app = Application.objects.create(
@@ -780,26 +740,40 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, "candidate-hero-4col")
         self.assertContains(response, "hero-col-applicant")
         self.assertContains(response, "hero-col-details")
-        self.assertContains(response, "hero-col-actions")
         self.assertContains(response, "hero-col-stage")
+        self.assertContains(response, "hero-col-actions")
+
+        # Verify Column 3 (Stage) appears before Column 4 (Actions)
+        content = response.content.decode("utf-8")
+        stage_pos = content.find("hero-col-stage")
+        actions_pos = content.find("hero-col-actions")
+        self.assertTrue(stage_pos > 0 and actions_pos > 0 and stage_pos < actions_pos)
 
         # Candidate details present in Col 1 & 2
         self.assertContains(response, "marco@explorer.com")
         self.assertContains(response, "09191234567")
         self.assertContains(response, app.application_id)
 
-        # Actions present in Col 3
+        # Copy buttons present, no tel: or mailto: links in contact chips
+        self.assertContains(response, "btn-copy-chip")
+        self.assertContains(response, "copyCandidateContact")
+        self.assertNotContains(response, 'href="mailto:')
+        self.assertNotContains(response, 'href="tel:')
+
+        # Actions present in Col 4
         self.assertContains(response, "btn-schedule")
         self.assertContains(response, "btn-email")
         self.assertContains(response, f"?applicant_id={app.id}")
         self.assertContains(response, "mail.google.com/mail/?view=cm")
-        self.assertNotContains(response, "mailto:")
         self.assertNotContains(response, "Updated Profile CV")
 
-        # Stage CTA present in Col 4 (Indicator only, no select dropdown)
+        # Stage CTA present in Col 3 (Indicator only, no select dropdown)
         self.assertContains(response, "stage-cta-card")
         self.assertContains(response, "stage-card-screening")
         self.assertNotContains(response, '<select name="status"')
+
+        # Re-analyze with AI button must be removed
+        self.assertNotContains(response, "Re-analyze with AI")
 
     def test_candidate_detail_normalizes_legacy_pending_to_screening(self):
         """Any legacy Pending application is normalized to Screening when loaded."""
