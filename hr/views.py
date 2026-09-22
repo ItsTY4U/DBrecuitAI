@@ -811,6 +811,11 @@ def schedule_interview(request, job_id):
         status="Interview",
         interview__isnull=True,
     ).order_by("-ai_score")
+    
+    hr_staff = User.objects.filter(
+        groups__name="HR",
+        is_active=True
+        ).order_by("first_name", "last_name")
 
     if request.method == "POST":
         interview = Interview.objects.create(
@@ -835,6 +840,7 @@ def schedule_interview(request, job_id):
             "job": job,
             "applicants": applicants,
             "interview": Interview,
+            "hr_staff": hr_staff,
         },
     )
 
@@ -887,3 +893,4 @@ def update_interview_status(request, pk):
         "interview_detail",
         pk=interview.id
     )
+    
