@@ -568,206 +568,108 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-document.addEventListener("DOMContentLoaded", function () {
+// ==========================================
+// CRITERIA WEIGHT CALCULATION
+// ==========================================
 
-    const criteriaContainer = document.getElementById("criteria-container");
-    const addCriteriaButton = document.getElementById("add-criteria");
-    const criteriaTotal = document.getElementById("criteria-total");
-    const criteriaValidation = document.getElementById("criteria-validation");
-    const postJobButton = document.getElementById("post-job-submit");
-
+function updateCriteriaTotal(
+    container,
+    totalDisplay,
+    validation,
+    submitButton
+) {
     if (
-        !criteriaContainer ||
-        !addCriteriaButton ||
-        !criteriaTotal ||
-        !criteriaValidation ||
-        !postJobButton
+        !container ||
+        !totalDisplay ||
+        !validation ||
+        !submitButton
     ) {
         return;
     }
 
-    function updateCriteriaTotal() {
-        const weightInputs = criteriaContainer.querySelectorAll(
-            ".criteria-weight-input"
-        );
+    const inputs = container.querySelectorAll(
+        ".criteria-weight-input"
+    );
 
-        let total = 0;
+    let total = 0;
 
-        weightInputs.forEach(function (input) {
-            const value = parseFloat(input.value);
+    inputs.forEach(function (input) {
 
-            if (!isNaN(value)) {
-                total += value;
-            }
-        });
+        let value = parseFloat(input.value);
 
-        criteriaTotal.textContent = `${total}%`;
-
-        if (total === 100) {
-
-            criteriaTotal.classList.remove("is-invalid");
-            criteriaTotal.classList.add("is-valid");
-
-            criteriaValidation.classList.remove("is-invalid");
-            criteriaValidation.classList.add("is-valid");
-
-            criteriaValidation.innerHTML = `
-                <i class="fas fa-circle-check"></i>
-                <span>Criteria weights are valid.</span>
-            `;
-
-            postJobButton.disabled = false;
-
-        } else {
-
-            criteriaTotal.classList.remove("is-valid");
-            criteriaTotal.classList.add("is-invalid");
-
-            criteriaValidation.classList.remove("is-valid");
-            criteriaValidation.classList.add("is-invalid");
-
-            criteriaValidation.innerHTML = `
-                <i class="fas fa-circle-info"></i>
-                <span>Criteria weights must total 100%.</span>
-            `;
-
-            postJobButton.disabled = true;
-        }
-    }
-
-    function bindCriterionRow(row) {
-
-        const weightInput = row.querySelector(
-            ".criteria-weight-input"
-        );
-
-        const removeButton = row.querySelector(
-            ".remove-criteria"
-        );
-
-        if (weightInput) {
-            weightInput.addEventListener(
-                "input",
-                updateCriteriaTotal
-            );
+        if (!isNaN(value)) {
+            total += value;
         }
 
-        if (removeButton) {
-            removeButton.addEventListener(
-                "click",
-                function () {
+    });
 
-                    const rows = criteriaContainer.querySelectorAll(
-                        ".criteria-row"
-                    );
+    total = Math.round(total * 100) / 100;
 
-                    if (rows.length > 1) {
-                        row.remove();
-                    } else {
-                        const nameInput = row.querySelector(
-                            ".criteria-name-input"
-                        );
+    totalDisplay.textContent = `${total}%`;
 
-                        if (nameInput) {
-                            nameInput.value = "";
-                        }
+    if (total === 100) {
 
-                        if (weightInput) {
-                            weightInput.value = "";
-                        }
-                    }
+        totalDisplay.classList.remove("is-invalid");
+        totalDisplay.classList.add("is-valid");
 
-                    updateCriteriaTotal();
-                }
-            );
-        }
-    }
+        validation.classList.remove("is-invalid");
+        validation.classList.add("is-valid");
 
-    addCriteriaButton.addEventListener("click", function () {
-
-        const row = document.createElement("div");
-
-        row.className = "criteria-row";
-
-        row.innerHTML = `
-            <div class="criteria-name-wrapper">
-                <input
-                    type="text"
-                    name="criteria_name"
-                    class="form-input criteria-name-input"
-                    placeholder="Enter criterion"
-                >
-            </div>
-
-            <div class="criteria-weight-wrapper">
-                <input
-                    type="number"
-                    name="criteria_weight"
-                    class="form-input criteria-weight-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    placeholder="0"
-                >
-
-                <span class="criteria-percent">%</span>
-            </div>
-
-            <button
-                type="button"
-                class="remove-criteria"
-                title="Remove criterion"
-            >
-                <i class="fas fa-trash-can"></i>
-            </button>
+        validation.innerHTML = `
+            <i class="fas fa-circle-check"></i>
+            <span>
+                Criteria weights are valid.
+            </span>
         `;
 
-        criteriaContainer.appendChild(row);
+        submitButton.disabled = false;
 
-        bindCriterionRow(row);
+    } else {
 
-        updateCriteriaTotal();
-    });
+        totalDisplay.classList.remove("is-valid");
+        totalDisplay.classList.add("is-invalid");
 
-    const initialRows = criteriaContainer.querySelectorAll(
-        ".criteria-row"
-    );
+        validation.classList.remove("is-valid");
+        validation.classList.add("is-invalid");
 
-    initialRows.forEach(function (row) {
-        bindCriterionRow(row);
-    });
+        validation.innerHTML = `
+            <i class="fas fa-circle-info"></i>
+            <span>
+                Criteria weights must total 100%.
+            </span>
+        `;
 
-    updateCriteriaTotal();
-});
-
+        submitButton.disabled = true;
+    }
+}
 
 
 // ==========================================
-// EDIT JOB CRITERIA
+// CRITERIA WEIGHT CALCULATOR
 // ==========================================
 
-// ------------------------------------------
-// UPDATE CRITERIA TOTAL
-// ------------------------------------------
-function updateEditCriteriaTotal() {
+function updateCriteriaModal(modal) {
 
-    const container = document.getElementById(
-        "edit-criteria-container"
+    if (!modal) {
+        return;
+    }
+
+    const container = modal.querySelector(
+        ".criteria-container"
     );
 
-    const totalElement = document.getElementById(
-        "edit-criteria-total"
+    const totalElement = modal.querySelector(
+        ".criteria-total"
     );
 
-    const validationElement = document.getElementById(
-        "edit-criteria-validation"
+    const validationElement = modal.querySelector(
+        ".criteria-validation"
     );
 
-    const submitButton = document.getElementById(
-        "edit-job-submit"
+    const submitButton = modal.querySelector(
+        ".btn-modal-submit"
     );
 
-    // Edit modal is not currently loaded
     if (
         !container ||
         !totalElement ||
@@ -777,13 +679,13 @@ function updateEditCriteriaTotal() {
         return;
     }
 
-    const weightInputs = container.querySelectorAll(
+    const inputs = container.querySelectorAll(
         ".criteria-weight-input"
     );
 
     let total = 0;
 
-    weightInputs.forEach(function (input) {
+    inputs.forEach(function (input) {
 
         const value = parseFloat(input.value);
 
@@ -793,15 +695,11 @@ function updateEditCriteriaTotal() {
 
     });
 
-    // Prevent values such as 99.5 from displaying oddly
     total = Math.round(total * 100) / 100;
 
-    totalElement.textContent = `${total}%`;
+    totalElement.textContent = total + "%";
 
 
-    // ------------------------------------------
-    // VALID TOTAL
-    // ------------------------------------------
     if (total === 100) {
 
         totalElement.classList.remove("is-invalid");
@@ -812,18 +710,14 @@ function updateEditCriteriaTotal() {
 
         validationElement.innerHTML = `
             <i class="fas fa-circle-check"></i>
-            <span>Criteria weights are valid.</span>
+            <span>
+                Criteria weights are valid.
+            </span>
         `;
 
         submitButton.disabled = false;
 
-    }
-
-
-    // ------------------------------------------
-    // INVALID TOTAL
-    // ------------------------------------------
-    else {
+    } else {
 
         totalElement.classList.remove("is-valid");
         totalElement.classList.add("is-invalid");
@@ -833,7 +727,9 @@ function updateEditCriteriaTotal() {
 
         validationElement.innerHTML = `
             <i class="fas fa-circle-info"></i>
-            <span>Criteria weights must total 100%.</span>
+            <span>
+                Criteria weights must total 100%.
+            </span>
         `;
 
         submitButton.disabled = true;
@@ -842,204 +738,137 @@ function updateEditCriteriaTotal() {
 
 
 // ==========================================
-// ADD / REMOVE CRITERIA
+// HANDLE CRITERIA INPUT
 // ==========================================
 
-document.addEventListener("click", function (e) {
-
-
-    // ------------------------------------------
-    // ADD CRITERION
-    // ------------------------------------------
-    const addCriteriaButton = e.target.closest(
-        "#edit-add-criteria"
-    );
-
-    if (addCriteriaButton) {
-
-        const container = document.getElementById(
-            "edit-criteria-container"
-        );
-
-        if (!container) {
-            return;
-        }
-
-        const row = document.createElement("div");
-
-        row.className = "criteria-row";
-
-        row.innerHTML = `
-            <div class="criteria-name-wrapper">
-
-                <input
-                    type="text"
-                    name="criteria_name"
-                    class="form-input criteria-name-input"
-                    placeholder="Enter criterion"
-                >
-
-            </div>
-
-            <div class="criteria-weight-wrapper">
-
-                <input
-                    type="number"
-                    name="criteria_weight"
-                    class="form-input criteria-weight-input"
-                    min="0"
-                    max="100"
-                    step="1"
-                    placeholder="0"
-                >
-
-                <span class="criteria-percent">
-                    %
-                </span>
-
-            </div>
-
-            <button
-                type="button"
-                class="remove-criteria"
-                title="Remove criterion"
-            >
-                <i class="fas fa-trash-can"></i>
-            </button>
-        `;
-
-        container.appendChild(row);
-
-        updateEditCriteriaTotal();
-
-        return;
-    }
-
-
-    // ------------------------------------------
-    // REMOVE CRITERION
-    // ------------------------------------------
-    const removeCriteriaButton = e.target.closest(
-        "#edit-criteria-container .remove-criteria"
-    );
-
-    if (removeCriteriaButton) {
-
-        const row = removeCriteriaButton.closest(
-            ".criteria-row"
-        );
-
-        const container = document.getElementById(
-            "edit-criteria-container"
-        );
-
-        if (!row || !container) {
-            return;
-        }
-
-        const rows = container.querySelectorAll(
-            ".criteria-row"
-        );
-
-
-        // Keep at least one row
-        if (rows.length > 1) {
-
-            row.remove();
-
-        } else {
-
-            const nameInput = row.querySelector(
-                ".criteria-name-input"
-            );
-
-            const weightInput = row.querySelector(
-                ".criteria-weight-input"
-            );
-
-            if (nameInput) {
-                nameInput.value = "";
-            }
-
-            if (weightInput) {
-                weightInput.value = "";
-            }
-        }
-
-        updateEditCriteriaTotal();
-
-        return;
-    }
-
-});
-
-
-// ==========================================
-// CRITERIA WEIGHT INPUT
-// ==========================================
-
-document.addEventListener("input", function (e) {
+document.addEventListener("input", function (event) {
 
     if (
-        e.target.matches(
-            "#edit-criteria-container .criteria-weight-input"
+        !event.target.classList.contains(
+            "criteria-weight-input"
         )
     ) {
-
-        // Keep the value within 0-100
-        if (e.target.value !== "") {
-
-            let value = parseFloat(e.target.value);
-
-            if (isNaN(value)) {
-                e.target.value = "";
-            }
-
-            else if (value < 0) {
-                e.target.value = 0;
-            }
-
-            else if (value > 100) {
-                e.target.value = 100;
-            }
-        }
-
-        updateEditCriteriaTotal();
+        return;
     }
 
+    const modal = event.target.closest(
+        "#post-job-modal, #edit-job-modal"
+    );
+
+    if (!modal) {
+        return;
+    }
+
+    let value = event.target.value;
+
+    if (value !== "") {
+
+        value = parseFloat(value);
+
+        if (isNaN(value)) {
+
+            event.target.value = "";
+
+        } else if (value < 0) {
+
+            event.target.value = 0;
+
+        } else if (value > 100) {
+
+            event.target.value = 100;
+
+        }
+    }
+
+    updateCriteriaModal(modal);
+
 });
 
 
 // ==========================================
-// INITIALIZE EDIT CRITERIA
+// HANDLE CHANGE EVENT
 // ==========================================
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("change", function (event) {
 
-    updateEditCriteriaTotal();
+    if (
+        !event.target.classList.contains(
+            "criteria-weight-input"
+        )
+    ) {
+        return;
+    }
+
+    const modal = event.target.closest(
+        "#post-job-modal, #edit-job-modal"
+    );
+
+    if (!modal) {
+        return;
+    }
+
+    updateCriteriaModal(modal);
 
 });
 
 
 // ==========================================
-// INITIALIZE AFTER HTMX LOAD
+// INITIALIZE EXISTING MODALS
+// ==========================================
+
+function initializeCriteriaModals() {
+
+    const postModal = document.getElementById(
+        "post-job-modal"
+    );
+
+    const editModal = document.getElementById(
+        "edit-job-modal"
+    );
+
+    if (postModal) {
+        updateCriteriaModal(postModal);
+    }
+
+    if (editModal) {
+        updateCriteriaModal(editModal);
+    }
+}
+
+
+// ==========================================
+// INITIAL PAGE LOAD
+// ==========================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        initializeCriteriaModals();
+
+    }
+);
+
+
+// ==========================================
+// HTMX MODAL LOAD
 // ==========================================
 
 document.body.addEventListener(
     "htmx:afterSwap",
-    function (event) {
+    function () {
 
-        if (
-            event.target &&
-            event.target.querySelector &&
-            event.target.querySelector(
-                "#edit-criteria-container"
-            )
-        ) {
+        initializeCriteriaModals();
 
-            updateEditCriteriaTotal();
+    }
+);
 
-        }
+
+document.body.addEventListener(
+    "htmx:afterSettle",
+    function () {
+
+        initializeCriteriaModals();
 
     }
 );

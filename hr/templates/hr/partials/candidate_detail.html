@@ -7,61 +7,199 @@
     </a>
 </div>
 
-<!-- Candidate Hero Profile Card -->
-<div class="candidate-hero-card">
-    <div class="hero-left-profile">
-        <div class="candidate-hero-avatar">
-            {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+<!-- Candidate Hero Profile Card (4-Column Layout) -->
+<div class="candidate-hero-card candidate-hero-4col">
+    <!-- Column 1: Applicant Details -->
+    <div class="hero-col hero-col-applicant">
+        <div class="hero-applicant-profile">
+            <div class="hero-applicant-avatar">
+                {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+            </div>
+            <div class="hero-applicant-name-wrap">
+                <h1 class="candidate-name">
+                    {{ application.first_name }}
+                    {% if application.middle_initial %}{{ application.middle_initial }}.{% endif %}
+                    {{ application.last_name }}
+                </h1>
+                <span class="applicant-profile-tag">
+                    <i class="fas fa-user-circle"></i> Candidate Profile
+                </span>
+            </div>
         </div>
-        <div class="candidate-hero-details">
-            <div class="hero-tags-row">
-                <span class="hero-badge badge-primary">
-                    <i class="fas fa-building"></i> {{ application.job.department }}
-                </span>
-                <span class="hero-badge badge-type">
-                    {{ application.job.job_type }}
-                </span>
-                <span class="hero-date">
-                    <i class="fas fa-calendar-day"></i> Applied {{ application.created_at|date:"M d, Y" }}
-                </span>
+
+        <div class="hero-contact-chips">
+            {% if application.email %}
+            <div class="hero-contact-chip hero-contact-chip-copyable" title="Candidate Email">
+                <i class="fas fa-envelope"></i>
+                <span class="contact-chip-val">{{ application.email }}</span>
+                <button type="button" class="btn-copy-chip" onclick="copyCandidateContact('{{ application.email|escapejs }}', this)" title="Copy email address" aria-label="Copy email">
+                    <i class="fas fa-copy"></i>
+                </button>
             </div>
+            {% else %}
+            <span class="hero-contact-chip no-value">
+                <i class="fas fa-envelope"></i>
+                <span>No email provided</span>
+            </span>
+            {% endif %}
 
-            <h1 class="candidate-name">
-                {{ application.first_name }}
-                {% if application.middle_initial %}{{ application.middle_initial }}.{% endif %}
-                {{ application.last_name }}
-            </h1>
-
-            <p class="candidate-target-role">
-                Applied for <strong>{{ application.job.title }}</strong>
-            </p>
-
-            <div class="app-id-tag">
-                <span>Application Ref:</span>
-                <code>{{ application.application_id }}</code>
+            {% if application.phone %}
+            <div class="hero-contact-chip hero-contact-chip-copyable" title="Candidate Phone">
+                <i class="fas fa-phone"></i>
+                <span class="contact-chip-val">{{ application.phone }}</span>
+                <button type="button" class="btn-copy-chip" onclick="copyCandidateContact('{{ application.phone|escapejs }}', this)" title="Copy phone number" aria-label="Copy phone">
+                    <i class="fas fa-copy"></i>
+                </button>
             </div>
+            {% else %}
+            <span class="hero-contact-chip no-value">
+                <i class="fas fa-phone-slash"></i>
+                <span>No phone provided</span>
+            </span>
+            {% endif %}
         </div>
     </div>
 
-    <div class="hero-status-box">
-        <label class="status-change-label">Candidate Stage</label>
-        <form method="POST" action="{% url 'update_application_status' application.id %}" class="status-form">
-            {% csrf_token %}
-            <select name="status" class="status-select-btn status-{{ application.status|lower }}" onchange="this.form.submit()">
-                {% for value, label in application.STATUS_CHOICES %}
-                    <option value="{{ value }}" {% if application.status == value %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                {% endfor %}
-            </select>
-        </form>
+    <!-- Column 2: Application Details -->
+    <div class="hero-col hero-col-details">
+        <span class="hero-col-title">
+            <i class="fas fa-briefcase"></i> Application Details
+        </span>
+
+        <div class="hero-tags-row" style="margin-bottom: 8px;">
+            <span class="hero-badge badge-primary">
+                <i class="fas fa-building"></i> {{ application.job.department }}
+            </span>
+            <span class="hero-badge badge-type">
+                {{ application.job.job_type }}
+            </span>
+        </div>
+
+        <div class="hero-detail-list">
+            <div class="hero-detail-item">
+                <span class="detail-label">Role:</span>
+                <strong>{{ application.job.title }}</strong>
+            </div>
+            <div class="hero-detail-item">
+                <span class="detail-label">Ref ID:</span>
+                <span class="app-id-tag" style="margin: 0;"><code>{{ application.application_id }}</code></span>
+            </div>
+            <div class="hero-detail-item">
+                <span class="detail-label">Applied:</span>
+                <span><i class="fas fa-calendar-day" style="color: #94a3b8; margin-right: 4px;"></i>{{ application.created_at|date:"M d, Y" }}</span>
+            </div>
+        </div>
+
+        <div class="hero-resume-pills">
+            {% if application.resume %}
+            <a href="{{ application.resume.url }}" target="_blank" class="hero-resume-pill" title="Submitted Application Resume (PDF)">
+                <span><i class="fas fa-file-pdf"></i> Submitted Resume</span>
+                <i class="fas fa-arrow-up-right-from-square" style="font-size: 11px;"></i>
+            </a>
+            {% elif application.applicant and application.applicant.profile and application.applicant.profile.default_resume %}
+            <a href="{{ application.applicant.profile.default_resume.url }}" target="_blank" class="hero-resume-pill" title="Submitted Application Resume (PDF)">
+                <span><i class="fas fa-file-pdf"></i> Submitted Resume</span>
+                <i class="fas fa-arrow-up-right-from-square" style="font-size: 11px;"></i>
+            </a>
+            {% else %}
+            <span class="hero-detail-item" style="color: #94a3b8; font-size: 11.5px;">
+                <i class="fas fa-file-excel"></i> No resume uploaded
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Column 3: Candidate Stage Indicator (CTA) -->
+    <div class="hero-col hero-col-stage">
+        <span class="hero-col-title">
+            <i class="fas fa-flag"></i> Candidate Stage
+        </span>
+
+        <div class="hero-stage-container">
+            {% if application.status == "Interview" %}
+            <div class="stage-cta-card stage-card-interview">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-calendar-check"></i> Interview
+                        </span>
+                    </div>
+                    <p class="stage-desc">Candidate is scheduled or participating in the interview round.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-clock"></i> Interview Stage Active
+                </div>
+            </div>
+            {% elif application.status == "Hired" %}
+            <div class="stage-cta-card stage-card-hired">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-award"></i> Hired
+                        </span>
+                    </div>
+                    <p class="stage-desc">Applicant successfully passed evaluation and is hired.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-check-circle"></i> Candidate Hired
+                </div>
+            </div>
+            {% elif application.status == "Rejected" %}
+            <div class="stage-cta-card stage-card-rejected">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-ban"></i> Rejected
+                        </span>
+                    </div>
+                    <p class="stage-desc">Application closed and candidate not selected.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-times-circle"></i> Process Concluded
+                </div>
+            </div>
+            {% else %}
+            <!-- Default / Screening Stage -->
+            <div class="stage-cta-card stage-card-screening">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <span class="stage-pulse-dot"></span>
+                            <span>Screening</span>
+                        </span>
+                    </div>
+                    <p class="stage-desc">Application is under review and AI screening assessment.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-arrow-right"></i> Next: Schedule Interview
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Column 4: Actions -->
+    <div class="hero-col hero-col-actions">
+        <span class="hero-col-title">
+            <i class="fas fa-bolt"></i> Next Actions
+        </span>
+
+        <div class="hero-actions-stack">
+            <a href="{% url 'schedule_interview' application.job.id %}?applicant_id={{ application.id }}" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Schedule Interview</span>
+            </a>
+
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}&su=Update%20regarding%20your%20application%20for%20{{ application.job.title|urlencode }}%20(Ref%20%23{{ application.application_id|urlencode }})&body=Dear%20{{ application.first_name|urlencode }},%0A%0A" target="_blank" rel="noopener noreferrer" class="hero-action-btn btn-email" title="Compose email to {{ application.first_name }} in Gmail">
+                <i class="fas fa-paper-plane"></i>
+                <span>Send Candidate Email</span>
+            </a>
+        </div>
     </div>
 </div>
 
-<!-- Evaluation & Profile 2-Column Grid -->
-<div class="candidate-details-grid">
-    <!-- Left Column: AI Evaluation -->
-    <div class="eval-column">
+<!-- Candidate Evaluation Cards Container -->
+<div class="candidate-eval-container">
         <!-- AI Score & Summary Card -->
         <div class="content-box ai-eval-box">
             <div class="box-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #edf2f7; flex-wrap: wrap; gap: 10px;">
@@ -71,27 +209,13 @@
                     </h3>
                     <p class="box-subtitle" style="margin: 3px 0 0; font-size: 12.5px; color: #666;">Automated resume parsing and role fit evaluation</p>
                 </div>
-                <div>
-                    <form method="POST" action="{% url 'reanalyze_candidate_application' application.pk %}" style="margin: 0;" onsubmit="return confirm('Re-evaluate this candidate resume using Gemini AI?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn" style="padding: 7px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-rotate"></i> Re-analyze with AI
-                        </button>
-                    </form>
-                </div>
             </div>
 
             {% if not application.resume_processed or application.ai_recommendation == "Pending Review" or application.ai_score == 0 and not application.ai_summary %}
-            <div style="background: rgba(230, 126, 34, 0.1); border-left: 4px solid #e67e22; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div style="background: rgba(230, 126, 34, 0.1); border-left: 4px solid #e67e22; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 13px; color: #d35400; font-weight: 600;">
-                    <i class="fas fa-clock"></i> AI Evaluation was delayed or pending.
+                    <i class="fas fa-clock"></i> AI Evaluation was delayed or pending review.
                 </span>
-                <form method="POST" action="{% url 'reanalyze_candidate_application' application.pk %}" style="margin: 0;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 700; background: #27ae60; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-play"></i> Run AI Screening Now
-                    </button>
-                </form>
             </div>
             {% endif %}
 
@@ -493,96 +617,45 @@
                 </div>
             {% endif %}
         </div>
-    </div>
-
-    <!-- Right Column: Candidate Info & Actions -->
-    <div class="info-column">
-        <!-- Contact & Profile Card -->
-        <div class="content-box">
-            <div class="box-header">
-                <div class="box-header-title">
-                    <i class="fas fa-id-card header-icon"></i>
-                    <div>
-                        <h3>Candidate Details</h3>
-                        <p class="box-subtitle">Contact info & documents</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="contact-info-list">
-                <div class="contact-info-item">
-                    <div class="contact-icon-box">
-                        <i class="fas fa-envelope"></i>
-                    </div>
-                    <div class="contact-text">
-                        <span class="contact-label">Email Address</span>
-                        <a href="mailto:{{ application.email }}" class="contact-val email-link">
-                            {{ application.email }}
-                        </a>
-                    </div>
-                </div>
-
-                <div class="contact-info-item">
-                    <div class="contact-icon-box">
-                        <i class="fas fa-phone"></i>
-                    </div>
-                    <div class="contact-text">
-                        <span class="contact-label">Phone Number</span>
-                        <a href="tel:{{ application.phone }}" class="contact-val">
-                            {{ application.phone }}
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="resume-cta-box">
-                {% if application.resume %}
-                <a href="{{ application.resume.url }}" target="_blank" class="btn-resume-view" title="Submitted Application Resume">
-                    <i class="fas fa-file-pdf"></i>
-                    <span>Open Submitted Resume (PDF)</span>
-                    <i class="fas fa-external-link"></i>
-                </a>
-                {% if application.applicant.profile.default_resume and application.applicant.profile.default_resume.name != application.resume.name %}
-                <a href="{{ application.applicant.profile.default_resume.url }}" target="_blank" class="btn-resume-view secondary-resume-link" style="margin-top: 8px; background: rgba(255,255,255,0.08); font-size: 0.82rem; border-color: rgba(255,255,255,0.15);" title="Updated Resume on Applicant Profile">
-                    <i class="fas fa-file-alt"></i>
-                    <span>View Updated Profile Resume</span>
-                    <i class="fas fa-external-link"></i>
-                </a>
-                {% endif %}
-                {% elif application.applicant.profile.default_resume %}
-                <a href="{{ application.applicant.profile.default_resume.url }}" target="_blank" class="btn-resume-view">
-                    <i class="fas fa-file-pdf"></i>
-                    <span>Open Profile Resume (PDF)</span>
-                    <i class="fas fa-external-link"></i>
-                </a>
-                {% else %}
-                <p class="no-resume-text">No resume file uploaded.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Next Actions Card -->
-        <div class="content-box">
-            <div class="box-header">
-                <div class="box-header-title">
-                    <i class="fas fa-bolt header-icon"></i>
-                    <div>
-                        <h3>Next Actions</h3>
-                        <p class="box-subtitle">Candidate progression</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="quick-candidate-actions">
-                <a href="{% url 'schedule_interview' application.job.id %}" class="candidate-action-btn primary-action">
-                    <i class="fas fa-calendar-plus"></i>
-                    <span>Schedule Interview</span>
-                </a>
-                <a href="mailto:{{ application.email }}?subject=Update regarding your application for {{ application.job.title }}" class="candidate-action-btn">
-                    <i class="fas fa-paper-plane"></i>
-                    <span>Send Candidate Email</span>
-                </a>
-            </div>
-        </div>
-    </div>
 </div>
+
+<script>
+function copyCandidateContact(text, btn) {
+    if (!text) return;
+    function showSuccess() {
+        var icon = btn.querySelector('i');
+        var origClass = icon ? icon.className : 'fas fa-copy';
+        btn.classList.add('copied');
+        btn.setAttribute('title', 'Copied!');
+        if (icon) icon.className = 'fas fa-check';
+        setTimeout(function() {
+            btn.classList.remove('copied');
+            btn.setAttribute('title', 'Copy');
+            if (icon) icon.className = origClass;
+        }, 1800);
+    }
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(showSuccess).catch(function() {
+            fallbackCopy(text, showSuccess);
+        });
+    } else {
+        fallbackCopy(text, showSuccess);
+    }
+    function fallbackCopy(val, cb) {
+        var ta = document.createElement("textarea");
+        ta.value = val;
+        ta.style.position = "fixed";
+        ta.style.left = "-999999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            cb();
+        } catch (e) {
+            console.error('Copy failed', e);
+        }
+        document.body.removeChild(ta);
+    }
+}
+</script>

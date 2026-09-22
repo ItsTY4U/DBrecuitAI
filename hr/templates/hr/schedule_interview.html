@@ -64,6 +64,7 @@
                                         value="{{ applicant.id }}"
                                         id="app-{{ applicant.id }}"
                                         class="applicant-check custom-checkbox"
+                                        {% if preselected_applicant_id == applicant.id %}checked{% endif %}
                                     >
 
                                     <div class="mini-avatar">

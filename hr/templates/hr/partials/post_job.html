@@ -121,37 +121,85 @@
                             Define the factors used tp evalute applicant during AI screening.
                         </p>
                     </div>
-                    <button type="button"
-                            class="btn-add-req-chip criteria-add-btn"
-                            id="add-criteria">
-                            <i class="fas fa-plus"></i>
-                            Add Criterion
-                    </button>
                 </div>
 
-                <div id="criteria-container" class="criteria-container">
+                <div class="criteria-container">
                     <div class="criteria-row">
                         <div class="criteria-name-wrapper">
-                            <input type="text"
-                                    name="criteria_name"
-                                    class="form-input criteria-name-input"
-                                    placeholder="Enter criteria">
+                            <span class="criteria-name">Skills</span>
                         </div>
                         <div class="criteria-weight-wrapper">
                             <input
                                 type="number"
-                                name="criteria_weight"
+                                name="criteria_skills_weight"
                                 class="form-input criteria-weight-input"
                                 min="0"
                                 max="100"
                                 step="1"
-                                placeholder="0">
+                                placeholder="0"
+                                value="25"
+                                aria-label="Skills weight">
                             <span class="criteria-percent">%</span>
                         </div>
-                        <button type="button" class="remove-criteria" title="Remove criterion">
-                            <i class="fas fa-trash-can"></i>
-                        </button>
                     </div>
+
+                    <div class="criteria-row">
+                        <div class="criteria-name-wrapper">
+                            <span class="criteria-name">Education</span>
+                        </div>
+                        <div class="criteria-weight-wrapper">
+                            <input
+                                type="number"
+                                name="criteria_educaiotn_weight"
+                                class="form-input criteria-weight-input"
+                                min="0"
+                                max="100"
+                                step="1"
+                                placeholder="0"
+                                value="25"
+                                aria-label="Education weight">
+                            <span class="criteria-percent">%</span>
+                        </div>
+                    </div>
+
+                    <div class="criteria-row">
+                        <div class="criteria-name-wrapper">
+                            <span class="criteria-name">Experience</span>
+                        </div>
+                        <div class="criteria-weight-wrapper">
+                            <input
+                                type="number"
+                                name="criteria_experience_weight"
+                                class="form-input criteria-weight-input"
+                                min="0"
+                                max="100"
+                                step="1"
+                                placeholder="0"
+                                value="25"
+                                aria-label="Experience weight">
+                            <span class="criteria-percent">%</span>
+                        </div>
+                    </div>
+
+                    <div class="criteria-row">
+                        <div class="criteria-name-wrapper">
+                            <span class="criteria-name">Qualification</span>
+                        </div>
+                        <div class="criteria-weight-wrapper">
+                            <input
+                                type="number"
+                                name="criteria_qualification_weight"
+                                class="form-input criteria-weight-input"
+                                min="0"
+                                max="100"
+                                step="1"
+                                placeholder="0"
+                                value="25"
+                                aria-label="Qualification weight">
+                            <span class="criteria-percent">%</span>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="criteria-total-row">
@@ -159,7 +207,7 @@
                     <span id="criteria-total" class="criteria-total">0%</span>
                 </div>
 
-                <div class="criteria-calidation" id="criteria-validation">
+                <div class="criteria-validation" id="criteria-validation">
                     <i class="fas fa-circle-info"></i>
                     <span>Criretira weights must total 100%</span>
                 </div>

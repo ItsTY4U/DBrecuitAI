@@ -609,11 +609,10 @@ body {
     align-items: center;
     background: white;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: box-shadow 0.3s;
 }
 
 .job-card:hover {
-    transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
 }
 
@@ -1137,7 +1136,6 @@ body {
 
 .video-placeholder:hover .play-btn {
     background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.08);
 }
 
 .video-label {

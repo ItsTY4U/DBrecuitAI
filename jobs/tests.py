@@ -353,8 +353,8 @@ class ApplicantJobPerformanceTests(TestCase):
         # Ensure email and phone could NOT be tampered with
         self.assertEqual(app.email, self.user.email)
         self.assertEqual(app.phone, "09123456789")
-        # Ensure initial state is non-blocking pending
-        self.assertEqual(app.status, "Pending")
+        # Ensure initial state is screening
+        self.assertEqual(app.status, "Screening")
         self.assertFalse(app.resume_processed)
 
         # Ensure background worker was spawned
