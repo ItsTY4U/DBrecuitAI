@@ -11,6 +11,7 @@ document.addEventListener("click", function (e) {
                 deptInput.value = deptAttr ? deptAttr : '';
             }
             modal.classList.add('active');
+            updateCriteriaModal(modal);
         }
         return;
     }

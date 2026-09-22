@@ -679,6 +679,104 @@ class CandidateManagementTests(TestCase):
         self.assertEqual(hx_response.headers.get("HX-Trigger"), "closePostModal")
         self.assertContains(hx_response, "Accountant")
 
+    def test_post_job_modal_four_column_layout(self):
+        """Verify Create New Job Opening modal has a 4-column layout with separated Key Qualifications and Criteria."""
+        response = self.client.get(reverse("job_management"))
+        self.assertEqual(response.status_code, 200)
+
+        # Modal overlay, wide card, and 4-column grid
+        self.assertContains(response, 'id="post-job-modal"')
+        self.assertContains(response, 'post-job-card-wide')
+        self.assertContains(response, 'four-col-form-grid')
+
+        # 4 Columns
+        self.assertContains(response, 'class="form-col-1"')
+        self.assertContains(response, 'class="form-col-2"')
+        self.assertContains(response, 'class="form-col-3"')
+        self.assertContains(response, 'class="form-col-4"')
+
+        # Uniform section title spans
+        self.assertContains(response, '<span>Job Details</span>')
+        self.assertContains(response, '<span>Job Description</span>')
+        self.assertContains(response, '<span>Requirements</span>')
+        self.assertContains(response, '<span>Key Qualifications</span>')
+        self.assertContains(response, '<span>Criteria</span>')
+
+        # Column 1 fields: title, department, job_type, schedule, shift
+        self.assertContains(response, 'id="new-job-title"')
+        self.assertContains(response, 'id="new-job-cat"')
+        self.assertContains(response, 'id="new-job-type"')
+        self.assertContains(response, 'id="new-job-schedule"')
+        self.assertContains(response, 'id="new-job-shift"')
+
+        # Column 2 fields: description, requirements, doubled height class
+        self.assertContains(response, 'id="new-job-description"')
+        self.assertContains(response, 'id="new-job-requirements"')
+        self.assertContains(response, 'job-modal-textarea')
+
+        # Column 3 fields: key qualifications
+        self.assertContains(response, 'id="key-qualifications-container"')
+        self.assertContains(response, 'id="add-key-qualification"')
+
+        # Column 4 fields: criteria weights, total, validation
+        self.assertContains(response, 'name="criteria_skills_weight"')
+        self.assertContains(response, 'name="criteria_education_weight"')
+        self.assertContains(response, 'name="criteria_experience_weight"')
+        self.assertContains(response, 'name="criteria_qualification_weight"')
+        self.assertContains(response, 'id="criteria-total"')
+        self.assertContains(response, 'id="criteria-validation"')
+
+    def test_edit_job_modal_four_column_layout(self):
+        """Verify Edit Job Details modal has a 4-column layout with uniform spans and separated Criteria."""
+        url = reverse("manage_job", kwargs={"pk": self.job_sales_staff.pk})
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+        # Modal overlay, wide card, and 4-column grid
+        self.assertContains(response, 'id="edit-job-modal"')
+        self.assertContains(response, 'post-job-card-wide')
+        self.assertContains(response, 'four-col-form-grid')
+
+        # 4 Columns
+        self.assertContains(response, 'class="form-col-1"')
+        self.assertContains(response, 'class="form-col-2"')
+        self.assertContains(response, 'class="form-col-3"')
+        self.assertContains(response, 'class="form-col-4"')
+
+        # Uniform section title spans (no "General Information" or "Role Description")
+        self.assertContains(response, '<span>Job Details</span>')
+        self.assertNotContains(response, '<span>General Information</span>')
+        self.assertContains(response, '<span>Job Description</span>')
+        self.assertNotContains(response, '<span>Role Description</span>')
+        self.assertContains(response, '<span>Requirements</span>')
+        self.assertContains(response, '<span>Key Qualifications</span>')
+        self.assertContains(response, '<span>Criteria</span>')
+
+        # Column 1 fields: title, department, job_type, schedule, shift, status toggle
+        self.assertContains(response, 'id="edit-modal-title"')
+        self.assertContains(response, 'id="edit-modal-dept"')
+        self.assertContains(response, 'id="edit-modal-type"')
+        self.assertContains(response, 'id="edit-modal-schedule"')
+        self.assertContains(response, 'id="edit-modal-shift"')
+        self.assertContains(response, 'id="edit-status-toggle"')
+
+        # Column 2 fields: description, requirements, doubled height class
+        self.assertContains(response, 'id="edit-modal-description"')
+        self.assertContains(response, 'id="edit-modal-requirements"')
+        self.assertContains(response, 'job-modal-textarea')
+
+        # Column 3 fields: key qualifications
+        self.assertContains(response, 'id="key-qualifications-container"')
+        self.assertContains(response, 'id="edit-add-key-qualification"')
+
+        # Column 4 fields: criteria weights, total, validation
+        self.assertContains(response, 'name="criteria_skills_weight"')
+        self.assertContains(response, 'name="criteria_education_weight"')
+        self.assertContains(response, 'name="criteria_experience_weight"')
+        self.assertContains(response, 'name="criteria_qualification_weight"')
+        self.assertContains(response, 'id="edit-criteria-total"')
+        self.assertContains(response, 'id="edit-criteria-validation"')
+
     @patch("jobs.ai.extract_resume_text", return_value="Experienced sales associate with 5 years customer service.")
     @patch("jobs.ai.analyze_resume")
     def test_candidate_detail_auto_reanalyzes_unscreened_candidate(self, mock_analyze, mock_extract):

@@ -4328,11 +4328,84 @@ table .btn-review-applicant {
     align-items: start;
 }
 
+/* 3-Column Form Grid for Post Job and Edit Job Modals */
+.three-col-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
+    align-items: start;
+}
+
+/* 4-Column Form Grid for Post Job and Edit Job Modals */
+.four-col-form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
 .form-col-left,
-.form-col-right {
+.form-col-right,
+.form-col-1,
+.form-col-2,
+.form-col-3,
+.form-col-4 {
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+.four-col-form-grid .form-group {
+    margin-bottom: 11px;
+}
+
+.four-col-form-grid .form-group:last-child {
+    margin-bottom: 0;
+}
+
+.four-col-form-grid .form-label {
+    font-size: 12.5px;
+    margin-bottom: 5px;
+}
+
+.four-col-form-grid .form-input,
+.four-col-form-grid .form-select {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.four-col-form-grid .form-section-title {
+    font-size: 13px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.four-col-form-grid .status-toggle-card {
+    padding: 8px 12px;
+    gap: 12px;
+}
+
+/* Double the default text field height of Job Description & Requirements */
+.job-modal-textarea,
+.four-col-form-grid .form-textarea {
+    min-height: 140px;
+    height: 140px;
+    resize: vertical;
+    font-size: 13px;
+    padding: 9px 12px;
+    line-height: 1.5;
+}
+
+.form-col-1 .form-group,
+.form-col-2 .form-group,
+.form-col-3 .form-group {
+    margin-bottom: 18px;
+}
+
+.form-col-1 .form-group:last-child,
+.form-col-2 .form-group:last-child,
+.form-col-3 .form-group:last-child {
+    margin-bottom: 0;
 }
 
 .form-col-right .form-group {
@@ -4343,9 +4416,28 @@ table .btn-review-applicant {
     margin-bottom: 0;
 }
 
-/* Widen the Post Job modal and Edit Job modal so two columns have room to breathe */
+/* Criteria inside column 4 */
+.criteria-form-group-col {
+    width: 100%;
+    margin-top: 0;
+}
+
+/* Widen the Post Job modal and Edit Job modal for 4 columns, keeping non-scrollable view */
 .post-job-card-wide {
-    max-width: 1000px !important;
+    max-width: 1460px !important;
+    width: 96vw !important;
+    max-height: 94vh !important;
+    padding: 22px 28px !important;
+}
+
+.post-job-card-wide .modal-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+}
+
+.post-job-card-wide .modal-footer-actions {
+    margin-top: 16px;
+    padding-top: 14px;
 }
 
 /* Referenced by the "not visible to applicants" hint under
@@ -4359,6 +4451,24 @@ table .btn-review-applicant {
     line-height: 1.5;
 }
 
+@media (max-width: 1200px) {
+    .four-col-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+}
+
+@media (max-width: 1150px) {
+    .three-col-form-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+    }
+
+    .three-col-form-grid .form-col-3 {
+        grid-column: span 2;
+    }
+}
+
 @media (max-width: 900px) {
     .two-col-form-grid {
         grid-template-columns: 1fr;
@@ -4367,6 +4477,33 @@ table .btn-review-applicant {
 
     .form-col-right {
         margin-top: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .four-col-form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .four-col-form-grid .form-col-2,
+    .four-col-form-grid .form-col-3,
+    .four-col-form-grid .form-col-4 {
+        margin-top: 16px;
+    }
+
+    .three-col-form-grid {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .three-col-form-grid .form-col-3 {
+        grid-column: span 1;
+    }
+
+    .three-col-form-grid .form-col-2,
+    .three-col-form-grid .form-col-3 {
+        margin-top: 16px;
     }
 }
 
@@ -7179,21 +7316,22 @@ table .btn-review-applicant {
 
 .criteria-header-row {
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .criteria-title {
     display: block;
     margin-bottom: 3px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #334155;
 }
 
 .criteria-description {
     margin: 0;
-
-    color: #7b8794;
-
-    font-size: 10px;
-    line-height: 1.5;
+    color: #64748b;
+    font-size: 11.5px;
+    line-height: 1.4;
 }
 
 
@@ -7202,9 +7340,7 @@ table .btn-review-applicant {
 .criteria-container {
     display: flex;
     flex-direction: column;
-
-    gap: 8px;
-
+    gap: 7px;
     width: 100%;
 }
 
@@ -7213,24 +7349,15 @@ table .btn-review-applicant {
 
 .criteria-row {
     display: grid;
-
-    grid-template-columns: minmax(0, 1fr) 85px 34px;
-
+    grid-template-columns: minmax(0, 1fr) 85px;
     align-items: center;
-
     gap: 8px;
-
     width: 100%;
-
-    padding: 7px;
-
+    padding: 6px 10px;
     box-sizing: border-box;
-
     border: 1px solid #e2e7eb;
     border-radius: 8px;
-
     background: #fafbfc;
-
     transition:
         border-color 0.2s ease,
         background 0.2s ease;
@@ -7238,7 +7365,6 @@ table .btn-review-applicant {
 
 .criteria-row:focus-within {
     border-color: rgba(45, 90, 39, 0.35);
-
     background: #ffffff;
 }
 
@@ -7249,9 +7375,15 @@ table .btn-review-applicant {
     min-width: 0;
 }
 
+.criteria-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1e293b;
+    display: block;
+}
+
 .criteria-name-input {
     width: 100%;
-
     box-sizing: border-box;
 }
 
@@ -7260,32 +7392,28 @@ table .btn-review-applicant {
 
 .criteria-weight-wrapper {
     position: relative;
-
     display: flex;
     align-items: center;
-
     width: 100%;
 }
 
 .criteria-weight-input {
     width: 100%;
-
-    padding-right: 23px;
-
+    padding: 6px 20px 6px 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #0f172a;
     box-sizing: border-box;
-
     text-align: center;
+    height: 32px;
 }
 
 .criteria-percent {
     position: absolute;
-
-    right: 9px;
-
-    color: #7b8794;
-
-    font-size: 10px;
-
+    right: 8px;
+    color: #64748b;
+    font-size: 11.5px;
+    font-weight: 600;
     pointer-events: none;
 }
 
@@ -7297,37 +7425,26 @@ table .btn-review-applicant {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-
     gap: 8px;
-
-    margin-top: 10px;
-
-    padding-top: 10px;
-
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px solid #e7ebee;
 }
 
 .criteria-total-label {
-    color: #66717d;
-
-    font-size: 10px;
+    color: #475569;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .criteria-total {
-    min-width: 52px;
-
-    padding: 5px 9px;
-
+    min-width: 50px;
+    padding: 4px 8px;
     border-radius: 6px;
-
     background: #f1f3f5;
-
     color: #59636d;
-
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 700;
-
     text-align: center;
 }
 
@@ -7336,7 +7453,6 @@ table .btn-review-applicant {
 
 .criteria-total.is-valid {
     background: rgba(45, 90, 39, 0.1);
-
     color: #2d5a27;
 }
 
@@ -7345,7 +7461,6 @@ table .btn-review-applicant {
 
 .criteria-total.is-invalid {
     background: rgba(214, 69, 69, 0.1);
-
     color: #c43d3d;
 }
 
@@ -7355,14 +7470,11 @@ table .btn-review-applicant {
 .criteria-validation {
     display: flex;
     align-items: center;
-
     gap: 6px;
-
-    margin-top: 7px;
-
+    margin-top: 6px;
     color: #c43d3d;
-
-    font-size: 9.5px;
+    font-size: 11.5px;
+    font-weight: 500;
 }
 
 .criteria-validation.is-valid {
@@ -7370,7 +7482,7 @@ table .btn-review-applicant {
 }
 
 .criteria-validation i {
-    font-size: 10px;
+    font-size: 11.5px;
 }
 
 
@@ -7378,8 +7490,9 @@ table .btn-review-applicant {
 
 .criteria-help {
     display: block;
-
-    margin-top: 6px;
+    margin-top: 5px;
+    font-size: 11.5px;
+    color: #94a3b8;
 }
 
 

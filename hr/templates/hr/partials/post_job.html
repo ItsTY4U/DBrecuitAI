@@ -23,73 +23,91 @@
               hx-swap="outerHTML">
             {% csrf_token %}
 
-            <div class="two-col-form-grid">
+            <div class="four-col-form-grid">
 
-                <!-- LEFT COLUMN: General details & description -->
-                <div class="form-col-left">
+                <!-- 1ST COLUMN: Job details, department, employment type etc. -->
+                <div class="form-col-1">
+                    <div class="form-section-title">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Job Details</span>
+                    </div>
 
                     <div class="form-group">
                         <label class="form-label" for="new-job-title">Job Title <span class="required-star">*</span></label>
                         <input type="text" name="title" id="new-job-title" class="form-input" placeholder="e.g. Senior Software Engineer" required>
                     </div>
 
-                    <div class="form-row-2col">
-                        <div class="form-group">
-                            <label class="form-label" for="new-job-cat">Department <span class="required-star">*</span></label>
-                            <input type="text" name="department" id="new-job-cat" list="new-department-list" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
-                            <datalist id="new-department-list">
-                                {% for dept in all_departments %}
-                                <option value="{{ dept }}">
-                                {% endfor %}
-                            </datalist>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="new-job-type">Employment Type</label>
-                            <select name="job_type" id="new-job-type" class="form-select">
-                                <option value="FULL-TIME">Full-Time</option>
-                                <option value="PART-TIME">Part-Time</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row-2col">
-                        <div class="form-group">
-                            <label class="form-label" for="new-job-schedule">Work Schedule</label>
-                            <input type="text" name="schedule" id="new-job-schedule" class="form-input" placeholder="e.g. Monday to Friday">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="new-job-shift">Shift Hours</label>
-                            <input type="text" name="shift" id="new-job-shift" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-cat">Department <span class="required-star">*</span></label>
+                        <input type="text" name="department" id="new-job-cat" list="new-department-list" class="form-input" placeholder="e.g. Engineering, Sales, HR" required>
+                        <datalist id="new-department-list">
+                            {% for dept in all_departments %}
+                            <option value="{{ dept }}">
+                            {% endfor %}
+                        </datalist>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Job Description</label>
-                        <textarea name="description" class="form-textarea" rows="6" placeholder="Outline the main responsibilities, goals, and team expectations..."></textarea>
+                        <label class="form-label" for="new-job-type">Employment Type</label>
+                        <select name="job_type" id="new-job-type" class="form-select">
+                            <option value="FULL-TIME">Full-Time</option>
+                            <option value="PART-TIME">Part-Time</option>
+                        </select>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-schedule">Work Schedule</label>
+                        <input type="text" name="schedule" id="new-job-schedule" class="form-input" placeholder="e.g. Monday to Friday">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-shift">Shift Hours</label>
+                        <input type="text" name="shift" id="new-job-shift" class="form-input" placeholder="e.g. 8:00 AM - 5:00 PM">
+                    </div>
                 </div>
 
-                <!-- RIGHT COLUMN: Requirements & Key Qualifications -->
-                <div class="form-col-right">
+                <!-- 2ND COLUMN: Job description and requirements text fields -->
+                <div class="form-col-2">
+                    <div class="form-section-title">
+                        <i class="fas fa-align-left"></i>
+                        <span>Job Description</span>
+                    </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="new-job-requirements">Requirements</label>
+                        <label class="form-label" for="new-job-description">Description</label>
+                        <textarea name="description" id="new-job-description" class="form-textarea job-modal-textarea" rows="5" placeholder="Outline the main responsibilities, goals, and team expectations..."></textarea>
+                    </div>
+
+                    <div class="form-section-title" style="margin-top: 14px;">
+                        <i class="fas fa-list-check"></i>
+                        <span>Requirements</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="new-job-requirements">General Requirements</label>
                         <textarea
                             name="requirements"
                             id="new-job-requirements"
-                            class="form-textarea"
-                            rows="6"
+                            class="form-textarea job-modal-textarea"
+                            rows="5"
                             placeholder="Enter the general requirements for this position..."
                         ></textarea>
                         <small class="form-help">
                             Free-form requirements shown to applicants (skills, experience, degree, etc).
                         </small>
                     </div>
+                </div>
+
+                <!-- 3RD COLUMN: Key Qualifications -->
+                <div class="form-col-3">
+                    <div class="form-section-title">
+                        <i class="fas fa-star"></i>
+                        <span>Key Qualifications</span>
+                    </div>
 
                     <div class="form-group">
                         <div class="req-header-row">
-                            <label class="form-label" style="margin-bottom: 0;">Key Qualifications</label>
+                            <label class="form-label" style="margin-bottom: 0;">Qualifications</label>
                             <button type="button" class="btn-add-req-chip" id="add-key-qualification">
                                 <i class="fas fa-plus"></i> Add Another
                             </button>
@@ -106,115 +124,119 @@
                             These qualifications are important criteria used by the AI during applicant screening and are not visible to applicants.
                         </small>
                     </div>
-
                 </div>
 
-            </div>
-
-            <!--Criteria-->
-            <div class="form-group criteria-form-group">
-                <div class="req-header-row criteria-header-row">
-                    <div>
-                        <label class="form-label criteria-title">Criteria</label>
-
-                        <p class="criteria-description">
-                            Define the factors used tp evalute applicant during AI screening.
-                        </p>
+                <!-- 4TH COLUMN: Criteria -->
+                <div class="form-col-4">
+                    <div class="form-section-title">
+                        <i class="fas fa-sliders"></i>
+                        <span>Criteria</span>
                     </div>
+
+                    <div class="form-group criteria-form-group-col">
+                        <div class="req-header-row criteria-header-row">
+                            <div>
+                                <label class="form-label criteria-title">Screening Weights</label>
+                                <p class="criteria-description">
+                                    Define the factors used to evaluate applicants during AI screening.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="criteria-container">
+                            <div class="criteria-row">
+                                <div class="criteria-name-wrapper">
+                                    <span class="criteria-name">Skills</span>
+                                </div>
+                                <div class="criteria-weight-wrapper">
+                                    <input
+                                        type="number"
+                                        name="criteria_skills_weight"
+                                        class="form-input criteria-weight-input"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        placeholder="0"
+                                        value="25"
+                                        aria-label="Skills weight">
+                                    <span class="criteria-percent">%</span>
+                                </div>
+                            </div>
+
+                            <div class="criteria-row">
+                                <div class="criteria-name-wrapper">
+                                    <span class="criteria-name">Education</span>
+                                </div>
+                                <div class="criteria-weight-wrapper">
+                                    <input
+                                        type="number"
+                                        name="criteria_education_weight"
+                                        class="form-input criteria-weight-input"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        placeholder="0"
+                                        value="25"
+                                        aria-label="Education weight">
+                                    <span class="criteria-percent">%</span>
+                                </div>
+                            </div>
+
+                            <div class="criteria-row">
+                                <div class="criteria-name-wrapper">
+                                    <span class="criteria-name">Experience</span>
+                                </div>
+                                <div class="criteria-weight-wrapper">
+                                    <input
+                                        type="number"
+                                        name="criteria_experience_weight"
+                                        class="form-input criteria-weight-input"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        placeholder="0"
+                                        value="25"
+                                        aria-label="Experience weight">
+                                    <span class="criteria-percent">%</span>
+                                </div>
+                            </div>
+
+                            <div class="criteria-row">
+                                <div class="criteria-name-wrapper">
+                                    <span class="criteria-name">Qualification</span>
+                                </div>
+                                <div class="criteria-weight-wrapper">
+                                    <input
+                                        type="number"
+                                        name="criteria_qualification_weight"
+                                        class="form-input criteria-weight-input"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        placeholder="0"
+                                        value="25"
+                                        aria-label="Qualification weight">
+                                    <span class="criteria-percent">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="criteria-total-row">
+                            <span class="criteria-total-label">Total Weight</span>
+                            <span id="criteria-total" class="criteria-total">0%</span>
+                        </div>
+
+                        <div class="criteria-validation" id="criteria-validation">
+                            <i class="fas fa-circle-info"></i>
+                            <span>Criteria weights must total 100%</span>
+                        </div>
+
+                        <small class="form-help criteria-help">
+                            Assign weight to each criteria. The total weight must equal 100%
+                        </small>
+                    </div>
+
                 </div>
-
-                <div class="criteria-container">
-                    <div class="criteria-row">
-                        <div class="criteria-name-wrapper">
-                            <span class="criteria-name">Skills</span>
-                        </div>
-                        <div class="criteria-weight-wrapper">
-                            <input
-                                type="number"
-                                name="criteria_skills_weight"
-                                class="form-input criteria-weight-input"
-                                min="0"
-                                max="100"
-                                step="1"
-                                placeholder="0"
-                                value="25"
-                                aria-label="Skills weight">
-                            <span class="criteria-percent">%</span>
-                        </div>
-                    </div>
-
-                    <div class="criteria-row">
-                        <div class="criteria-name-wrapper">
-                            <span class="criteria-name">Education</span>
-                        </div>
-                        <div class="criteria-weight-wrapper">
-                            <input
-                                type="number"
-                                name="criteria_educaiotn_weight"
-                                class="form-input criteria-weight-input"
-                                min="0"
-                                max="100"
-                                step="1"
-                                placeholder="0"
-                                value="25"
-                                aria-label="Education weight">
-                            <span class="criteria-percent">%</span>
-                        </div>
-                    </div>
-
-                    <div class="criteria-row">
-                        <div class="criteria-name-wrapper">
-                            <span class="criteria-name">Experience</span>
-                        </div>
-                        <div class="criteria-weight-wrapper">
-                            <input
-                                type="number"
-                                name="criteria_experience_weight"
-                                class="form-input criteria-weight-input"
-                                min="0"
-                                max="100"
-                                step="1"
-                                placeholder="0"
-                                value="25"
-                                aria-label="Experience weight">
-                            <span class="criteria-percent">%</span>
-                        </div>
-                    </div>
-
-                    <div class="criteria-row">
-                        <div class="criteria-name-wrapper">
-                            <span class="criteria-name">Qualification</span>
-                        </div>
-                        <div class="criteria-weight-wrapper">
-                            <input
-                                type="number"
-                                name="criteria_qualification_weight"
-                                class="form-input criteria-weight-input"
-                                min="0"
-                                max="100"
-                                step="1"
-                                placeholder="0"
-                                value="25"
-                                aria-label="Qualification weight">
-                            <span class="criteria-percent">%</span>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="criteria-total-row">
-                    <span class="criteria-total-label">Total Weight</span>
-                    <span id="criteria-total" class="criteria-total">0%</span>
-                </div>
-
-                <div class="criteria-validation" id="criteria-validation">
-                    <i class="fas fa-circle-info"></i>
-                    <span>Criretira weights must total 100%</span>
-                </div>
-
-                <small class="form-help criteria-help">
-                    Assign weight to each criteria. The total weight must equal 100%
-                </small>
 
             </div>
 
