@@ -113,9 +113,14 @@ def start_interview_view(request, application_id):
         messages.error(request, "This interview has already been completed or abandoned.")
         return redirect("profile")
 
-    # If retaking or previously started, clear old responses and delete their video clips from storage
+    # Clean up video files from storage if present, then bulk delete responses in 1 SQL query
     for old_resp in session.responses.all():
-        old_resp.delete()
+        if old_resp.video_clip:
+            try:
+                old_resp.video_clip.delete(save=False)
+            except Exception:
+                pass
+    session.responses.all().delete()
 
     # 1. Two standard intro questions
     questions = [

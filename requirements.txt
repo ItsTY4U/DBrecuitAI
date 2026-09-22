@@ -11,6 +11,8 @@ distro==1.9.0
 Django==6.0.3
 django-allauth==65.19.2
 django-cors-headers==4.9.0
+django-redis==5.4.0
+redis==5.2.1
 django-storages==1.14.6
 djangorestframework==3.17.1
 google-auth==2.55.1

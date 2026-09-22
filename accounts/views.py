@@ -356,10 +356,6 @@ def profile(request):
             instance=profile
         )
 
-    # Calculate recommendations AFTER profile is loaded/saved (top 6 best matches)
-    recommended_jobs = get_recommended_jobs(profile, limit=6)
-    strongest_field_key, strongest_field_display = get_applicant_strongest_field(profile)
-    
     applications = (
         Application.objects.filter(applicant=request.user)
         .select_related("job", "video_interview")
@@ -374,10 +370,29 @@ def profile(request):
             "user_form": user_form,
             "profile_form": profile_form,
             "profile": profile,
+            "applications": applications,
+        }
+    )
+
+@login_required
+def profile_recommendations(request):
+    """
+    HTMX lazy-loaded endpoint to calculate and render job recommendations
+    asynchronously so initial profile page load is instantaneous.
+    """
+    profile, _ = ApplicantProfile.objects.get_or_create(
+        user=request.user
+    )
+    recommended_jobs = get_recommended_jobs(profile, limit=6)
+    strongest_field_key, strongest_field_display = get_applicant_strongest_field(profile)
+    return render(
+        request,
+        "accounts/partials/recommended_jobs.html",
+        {
+            "profile": profile,
             "recommended_jobs": recommended_jobs,
             "strongest_field": strongest_field_key,
             "strongest_field_display": strongest_field_display,
-            "applications": applications,
         }
     )
     

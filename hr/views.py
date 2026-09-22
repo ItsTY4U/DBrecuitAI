@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement, Department
 from .models import Interview
-from video_interview.models import InterviewSession
-from django.db.models import Q, Count, Prefetch
+from video_interview.models import InterviewSession, InterviewResponse
+from django.db.models import Q, Count, Prefetch, F, Window
+from django.db.models.functions import RowNumber
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -22,6 +23,8 @@ import ast
 import math
 from urllib.parse import quote
 from django.urls import reverse
+import asyncio
+from asgiref.sync import sync_to_async
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
@@ -36,6 +39,7 @@ def hr_required(view_func=None, login_url="hr_login"):
     - If user is authenticated and HR: grants access.
     - Otherwise: raises PermissionDenied (403).
     Supports both @hr_required and @hr_required(login_url="...").
+    Supports both sync and async view functions.
     """
     if isinstance(view_func, str):
         actual_login_url = view_func
@@ -45,17 +49,34 @@ def hr_required(view_func=None, login_url="hr_login"):
         actual_view_func = view_func
 
     def decorator(view):
-        @wraps(view)
-        def wrapper(request, *args, **kwargs):
-            user = request.user
-            if not user.is_authenticated:
-                return redirect_to_login(request.get_full_path(), actual_login_url)
+        if asyncio.iscoroutinefunction(view):
+            @wraps(view)
+            async def async_wrapper(request, *args, **kwargs):
+                user = request.user
+                if not user.is_authenticated:
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
 
-            if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
-                return view(request, *args, **kwargs)
+                is_hr = await sync_to_async(
+                    lambda: user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists(),
+                    thread_sensitive=True
+                )()
+                if is_hr:
+                    return await view(request, *args, **kwargs)
 
-            raise PermissionDenied
-        return wrapper
+                raise PermissionDenied
+            return async_wrapper
+        else:
+            @wraps(view)
+            def wrapper(request, *args, **kwargs):
+                user = request.user
+                if not user.is_authenticated:
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
+
+                if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                    return view(request, *args, **kwargs)
+
+                raise PermissionDenied
+            return wrapper
 
     if callable(actual_view_func):
         return decorator(actual_view_func)
@@ -118,17 +139,37 @@ def hr_logout(request):
 
 
 @hr_required(login_url="hr_login")
-def dashboard(request):
+async def dashboard(request):
     cache_key = "hr_dashboard_data"
     content = cache.get(cache_key)
     if content is None:
-        # 1. Single conditional aggregation query for all application counts
-        app_counts = Application.objects.aggregate(
-            total=Count("id"),
-            screening=Count("id", filter=Q(status="Screening")),
-            hired=Count("id", filter=Q(status="Hired")),
-            interview=Count("id", filter=Q(status="Interview")),
-            pending=Count("id", filter=Q(status="Pending")),
+        @sync_to_async(thread_sensitive=False)
+        def get_app_counts():
+            return Application.objects.aggregate(
+                total=Count("id"),
+                screening=Count("id", filter=Q(status="Screening")),
+                hired=Count("id", filter=Q(status="Hired")),
+                interview=Count("id", filter=Q(status="Interview")),
+                pending=Count("id", filter=Q(status="Pending")),
+            )
+
+        @sync_to_async(thread_sensitive=False)
+        def get_active_jobs_count():
+            return Job.objects.filter(status="Active").count()
+
+        @sync_to_async(thread_sensitive=False)
+        def get_recent_applications():
+            return list(
+                Application.objects.select_related("job")
+                .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
+                .order_by("-created_at")[:5]
+            )
+
+        # Run independent queries concurrently in parallel database connections
+        app_counts, active_jobs, recent_applications = await asyncio.gather(
+            get_app_counts(),
+            get_active_jobs_count(),
+            get_recent_applications(),
         )
 
         total_applications = app_counts["total"]
@@ -138,8 +179,6 @@ def dashboard(request):
         pending_count = app_counts["pending"]
         interview_count = app_counts["interview"]
 
-        active_jobs = Job.objects.filter(status="Active").count()
-        
         if total_applications > 0:
             screening_percent = screening / total_applications * 100
             interview_percent = interview / total_applications * 100
@@ -148,13 +187,7 @@ def dashboard(request):
             screening_percent = 0
             interview_percent = 0
             hired_percent = 0
-        
-        recent_applications = list(
-            Application.objects.select_related("job")
-            .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
-            .order_by("-created_at")[:5]
-        )
-        
+
         content = {
             "total_applications": total_applications,
             "screening": screening,
@@ -512,20 +545,74 @@ def candidates(request):
         "email", "phone", "ai_score", "status", "created_at", "job_id"
     )
 
-    # Group jobs by department and prepare top 3 cards + initial table context for each job
+    filtered_job_ids = [j.id for j in filtered_jobs]
+    top_candidates_by_job = defaultdict(list)
+    table_candidates_by_job = defaultdict(list)
+
+    if filtered_job_ids:
+        # 1. Fetch top 3 candidates for ALL filtered jobs in 1 single partitioned query
+        top_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                )
+            )
+            .filter(row_num__lte=3)
+            .only(*base_candidate_fields)
+        )
+        for cand in top_cands_qs:
+            top_candidates_by_job[cand.job_id].append(cand)
+
+        # 2. Fetch table candidates (ranks 4 to 8) for ALL filtered jobs in 1 single partitioned query
+        table_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                )
+            )
+            .filter(row_num__gte=4, row_num__lte=8)
+            .only(*base_candidate_fields)
+        )
+        for cand in table_cands_qs:
+            cand.table_rank = cand.row_num
+            table_candidates_by_job[cand.job_id].append(cand)
+
+    # Group jobs by department and assign top 3 cards + initial table context for each job
     departments_dict = defaultdict(list)
     for job in filtered_jobs:
-        top_candidates = list(
-            Application.objects.filter(job=job)
-            .only(*base_candidate_fields)
-            .order_by("-ai_score", "-created_at")[:3]
-        )
+        top_candidates = top_candidates_by_job.get(job.id, [])
         for idx, cand in enumerate(top_candidates):
             cand.top_rank = idx + 1
         job.top_candidates = top_candidates
 
-        # Default initial table context (Page 1: ranks 4 to 8)
-        job.table_data = get_job_candidates_table_context(job, search_query="", page_number=1)
+        total_apps = job.applicant_count if hasattr(job, "applicant_count") else len(top_candidates)
+        total_table_candidates = max(0, total_apps - 3)
+        total_pages = max(1, math.ceil(total_table_candidates / TABLE_PAGE_SIZE)) if total_table_candidates > 0 else 1
+        
+        table_page = table_candidates_by_job.get(job.id, [])
+        job.table_data = {
+            "job": job,
+            "candidates": table_page,
+            "is_search": False,
+            "search_query": "",
+            "total_count": total_apps,
+            "total_table_candidates": total_table_candidates,
+            "start_index": 4 if total_table_candidates > 0 else 0,
+            "end_index": min(3 + len(table_page), total_apps),
+            "current_page": 1,
+            "total_pages": total_pages,
+            "has_previous": False,
+            "has_next": total_pages > 1,
+            "previous_page": 1,
+            "next_page": 2,
+            "page_range": range(1, total_pages + 1),
+        }
         departments_dict[job.department].append(job)
 
     department_sections = []
@@ -605,11 +692,11 @@ def candidate_detail(request, pk):
 
     interview_session = InterviewSession.objects.filter(
         application=application
-    ).prefetch_related("responses").first()
+    ).prefetch_related(
+        Prefetch("responses", queryset=InterviewResponse.objects.order_by("question_number"))
+    ).first()
 
-    interview_responses = []
-    if interview_session:
-        interview_responses = interview_session.responses.all().order_by("question_number")
+    interview_responses = list(interview_session.responses.all()) if interview_session else []
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
