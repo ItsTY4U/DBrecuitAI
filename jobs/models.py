@@ -94,10 +94,11 @@ def application_resume_upload_path(instance, filename):
 class Application(models.Model):
     STATUS_CHOICES =[
         ("Pending", "Pending"),
-        ("Screening","Screening"),
-        ("Interview","Interview"),
+        ("Screening", "Screening"),
+        ("Interview", "Interview"),
+        ("Evaluation", "Evaluation"),
+        ("Hired", "Hired"),
         ("Rejected", "Rejected"),
-        ("Hired","Hired"),
     ]
     
     application_id = models.CharField(

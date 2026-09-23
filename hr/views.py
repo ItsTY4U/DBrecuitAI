@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from jobs.models import Application, Job, Requirement, Department
-from .models import Interview
+from .models import Interview, CandidateEvaluation
 from video_interview.models import InterviewSession, InterviewResponse
-from django.db.models import Q, Count, Prefetch, F, Window
+from .evaluation_ai import analyze_interview_audio
+from django.db.models import Q, Count, Prefetch, F, Window, Avg
 from django.db.models.functions import RowNumber
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -154,6 +155,7 @@ def dashboard(request):
             screening=Count("id", filter=Q(status="Screening")),
             hired=Count("id", filter=Q(status="Hired")),
             interview=Count("id", filter=Q(status="Interview")),
+            evaluation=Count("id", filter=Q(status="Evaluation")),
             pending=Count("id", filter=Q(status="Pending")),
         )
 
@@ -161,6 +163,7 @@ def dashboard(request):
         screening = app_counts["screening"]
         hired = app_counts["hired"]
         interview = app_counts["interview"]
+        evaluation = app_counts["evaluation"]
         pending_count = app_counts["pending"]
         interview_count = app_counts["interview"]
 
@@ -169,10 +172,12 @@ def dashboard(request):
         if total_applications > 0:
             screening_percent = screening / total_applications * 100
             interview_percent = interview / total_applications * 100
+            evaluation_percent = evaluation / total_applications * 100
             hired_percent = hired / total_applications * 100
         else:
             screening_percent = 0
             interview_percent = 0
+            evaluation_percent = 0
             hired_percent = 0
 
         recent_applications = list(
@@ -186,12 +191,14 @@ def dashboard(request):
             "screening": screening,
             "hired": hired,
             "interview": interview,
+            "evaluation": evaluation,
             "active_jobs": active_jobs,
             "recent_applications": recent_applications,
             "pending_count": pending_count,
             "interview_count": interview_count,
             "screening_percent": screening_percent,
             "interview_percent": interview_percent,
+            "evaluation_percent": evaluation_percent,
             "hired_percent": hired_percent,
         }
         cache.set(cache_key, content, 15)
@@ -512,6 +519,7 @@ def candidates(request):
         total=Count("id"),
         screening=Count("id", filter=Q(status="Screening")),
         interview=Count("id", filter=Q(status="Interview")),
+        evaluation=Count("id", filter=Q(status="Evaluation")),
         hired=Count("id", filter=Q(status="Hired")),
     )
 
@@ -632,6 +640,7 @@ def candidates(request):
         "total_candidates": counts["total"],
         "screening_count": counts["screening"],
         "interview_count": counts["interview"],
+        "evaluation_count": counts["evaluation"],
         "hired_count": counts["hired"],
     })
 
@@ -696,6 +705,15 @@ def candidate_detail(request, pk):
     ).first()
 
     interview_responses = list(interview_session.responses.all()) if interview_session else []
+
+    candidate_evaluation = getattr(application, "evaluation", None)
+    if candidate_evaluation is None:
+        try:
+            candidate_evaluation = CandidateEvaluation.objects.filter(application=application).first()
+        except Exception:
+            candidate_evaluation = None
+
+    scheduled_interviews = list(application.interview.all().order_by("-date", "-time"))
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
@@ -703,6 +721,8 @@ def candidate_detail(request, pk):
         "weaknesses": weaknesses,
         "interview_session": interview_session,
         "interview_responses": interview_responses,
+        "candidate_evaluation": candidate_evaluation,
+        "scheduled_interviews": scheduled_interviews,
     })
 
 
@@ -997,4 +1017,189 @@ def update_interview_status(request, pk):
         "interview_detail",
         pk=interview.id
     )
-    
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def evaluate_candidate(request, pk):
+    """
+    Submits or updates a candidate interview evaluation (F2F, Online, Call),
+    including rubric ratings, notes, audio recording, and AI audio intelligence.
+    Automatically moves candidate to the 'Evaluation' stage.
+    """
+    application = get_object_or_404(
+        Application.objects.select_related("job"),
+        pk=pk
+    )
+
+    if request.method == "POST":
+        evaluation, _ = CandidateEvaluation.objects.get_or_create(application=application)
+
+        evaluator_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = evaluator_name
+        evaluation.interview_mode = request.POST.get("interview_mode", "Face-to-Face")
+
+        if not evaluation.interview:
+            evaluation.interview = application.interview.order_by("-date", "-time").first()
+
+        eval_date_str = request.POST.get("evaluation_date")
+        if eval_date_str:
+            try:
+                evaluation.evaluation_date = eval_date_str
+            except Exception:
+                pass
+
+        try:
+            evaluation.technical_competence = int(request.POST.get("technical_competence", 3))
+            evaluation.communication_skills = int(request.POST.get("communication_skills", 3))
+            evaluation.problem_solving = int(request.POST.get("problem_solving", 3))
+            evaluation.cultural_fit = int(request.POST.get("cultural_fit", 3))
+            evaluation.leadership_potential = int(request.POST.get("leadership_potential", 3))
+        except (ValueError, TypeError):
+            pass
+
+        evaluation.strengths_notes = request.POST.get("strengths_notes", "").strip()
+        evaluation.weaknesses_notes = request.POST.get("weaknesses_notes", "").strip()
+        evaluation.general_notes = request.POST.get("general_notes", "").strip()
+
+        evaluation.expected_salary = request.POST.get("expected_salary", "").strip()
+        evaluation.notice_period = request.POST.get("notice_period", "").strip()
+        evaluation.availability_date = request.POST.get("availability_date", "").strip()
+
+        rec = request.POST.get("recommendation", "Hire")
+        if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
+            evaluation.recommendation = rec
+
+        evaluation.status = "Completed"
+
+        # Handle uploaded audio recording or live recorded audio blob
+        audio_file = request.FILES.get("audio_file")
+        if audio_file:
+            evaluation.audio_file = audio_file
+
+        evaluation.save()
+
+        # Trigger Gemini AI audio analysis if audio is present and requested
+        run_ai = (request.POST.get("run_ai_audio") == "1") or (audio_file is not None)
+        if run_ai and evaluation.audio_file:
+            try:
+                cand_name = f"{application.first_name} {application.last_name}"
+                job_title = application.job.title if application.job else "Role"
+                ai_result = analyze_interview_audio(
+                    audio_path=evaluation.audio_file.path,
+                    candidate_name=cand_name,
+                    job_title=job_title,
+                    interviewer_notes=evaluation.general_notes,
+                )
+                evaluation.ai_audio_transcript = ai_result.get("transcript", "")
+                evaluation.ai_audio_summary = ai_result.get("summary", "")
+                evaluation.ai_audio_score = int(ai_result.get("score", 75))
+                evaluation.ai_audio_insights = {
+                    "key_points": ai_result.get("key_points", []),
+                    "red_flags": ai_result.get("red_flags", []),
+                    "ai_recommendation": ai_result.get("recommendation", "Hire"),
+                }
+                evaluation.save()
+            except Exception as ai_err:
+                import logging
+                logging.getLogger(__name__).warning("Candidate evaluation AI audio analysis failed: %s", ai_err)
+
+        # Move candidate to Evaluation stage if in Screening or Interview stage
+        if application.status in ["Screening", "Interview"]:
+            application.status = "Evaluation"
+            application.save(update_fields=["status"])
+
+        invalidate_hr_cache()
+        messages.success(
+            request,
+            f"Candidate evaluation for {application.first_name} {application.last_name} has been saved successfully."
+        )
+
+        redirect_to = request.POST.get("redirect_to")
+        if redirect_to == "reports":
+            return redirect("reports")
+
+        return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    return redirect("candidate_detail", pk=pk)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def reports_dashboard(request):
+    """
+    Reports Dashboard:
+    Centralized hub for all candidate interview evaluations across Face-to-Face,
+    Online, and Phone Call modes. Displays summary KPI statistics, filters,
+    and detailed candidate evaluation records.
+    """
+    eval_qs = CandidateEvaluation.objects.select_related(
+        "application__job", "evaluator", "interview"
+    ).order_by("-evaluation_date", "-created_at")
+
+    selected_department = request.GET.get("department", "").strip()
+    selected_mode = request.GET.get("mode", "").strip()
+    selected_recommendation = request.GET.get("recommendation", "").strip()
+    search_query = request.GET.get("search", "").strip()
+
+    if selected_department:
+        eval_qs = eval_qs.filter(application__job__department=selected_department)
+    if selected_mode:
+        eval_qs = eval_qs.filter(interview_mode=selected_mode)
+    if selected_recommendation:
+        eval_qs = eval_qs.filter(recommendation=selected_recommendation)
+    if search_query:
+        eval_qs = eval_qs.filter(
+            Q(application__first_name__icontains=search_query) |
+            Q(application__last_name__icontains=search_query) |
+            Q(application__application_id__icontains=search_query) |
+            Q(application__job__title__icontains=search_query)
+        )
+
+    evaluations_list = list(eval_qs)
+
+    # Calculate overall metrics
+    all_evals = CandidateEvaluation.objects.all()
+    total_evaluations = all_evals.count()
+    avg_score_agg = all_evals.aggregate(avg_val=Avg("overall_rating"))
+    avg_score = round(float(avg_score_agg["avg_val"] or 0), 1)
+
+    rec_counts = all_evals.aggregate(
+        strong_hire=Count("id", filter=Q(recommendation="Strong Hire")),
+        hire=Count("id", filter=Q(recommendation="Hire")),
+        hold=Count("id", filter=Q(recommendation="Hold")),
+        no_hire=Count("id", filter=Q(recommendation="No Hire")),
+        audio_analyzed=Count("id", filter=Q(ai_audio_score__gt=0)),
+    )
+
+    all_departments = sorted(list(set(
+        Job.objects.exclude(department="").values_list("department", flat=True)
+    )))
+
+    # Candidates currently in Interview stage who are pending evaluation
+    pending_eval_candidates = list(
+        Application.objects.filter(status="Interview", evaluation__isnull=True)
+        .select_related("job")
+        .order_by("-created_at")[:10]
+    )
+
+    context = {
+        "evaluations": evaluations_list,
+        "total_evaluations": total_evaluations,
+        "avg_score": avg_score,
+        "strong_hire_count": rec_counts["strong_hire"] or 0,
+        "hire_count": rec_counts["hire"] or 0,
+        "hold_count": rec_counts["hold"] or 0,
+        "no_hire_count": rec_counts["no_hire"] or 0,
+        "audio_analyzed_count": rec_counts["audio_analyzed"] or 0,
+        "available_departments": all_departments,
+        "selected_department": selected_department,
+        "selected_mode": selected_mode,
+        "selected_recommendation": selected_recommendation,
+        "search_query": search_query,
+        "pending_eval_candidates": pending_eval_candidates,
+    }
+
+    return render(request, "hr/reports.html", context)
+

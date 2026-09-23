@@ -954,6 +954,141 @@ class CandidateManagementTests(TestCase):
         self.assertEqual(kwargs["subject"], "Interview Invitation - DBRecruitAI")
         self.assertIn("Dear Leo", kwargs["text_content"])
 
+    def test_evaluation_stage_choices_exist(self):
+        """Evaluation stage is present in Application.STATUS_CHOICES."""
+        status_dict = dict(Application.STATUS_CHOICES)
+        self.assertIn("Evaluation", status_dict)
+        self.assertEqual(status_dict["Evaluation"], "Evaluation")
+
+    def test_candidate_detail_interview_stage_shows_evaluate_and_hides_schedule(self):
+        """In Interview stage, Schedule Interview is hidden and Evaluate Candidate is shown."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Ada",
+            last_name="Lovelace",
+            email="ada@computing.org",
+            phone="09181234567",
+            ai_score=95,
+            resume_processed=True,
+            status="Interview",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Stage indicator should show Interview
+        self.assertContains(response, "stage-card-interview")
+
+        # In Interview stage: Schedule button must NOT appear, Evaluate button MUST appear
+        self.assertNotContains(response, "Schedule Interview</span>")
+        self.assertContains(response, "Evaluate Candidate</span>")
+        self.assertContains(response, "btn-evaluate")
+        self.assertContains(response, "#candidate-evaluation-section")
+
+        # Candidate Evaluation section must be present on page
+        self.assertContains(response, "candidate-evaluation-section")
+        self.assertContains(response, "Candidate Interview Evaluation")
+
+    def test_candidate_detail_screening_stage_shows_schedule_interview(self):
+        """In Screening stage, Schedule Interview is shown and Evaluate button is not shown in hero actions."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Grace",
+            last_name="Hopper",
+            email="grace@navy.mil",
+            phone="09187654321",
+            ai_score=92,
+            resume_processed=True,
+            status="Screening",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(response, "stage-card-screening")
+        self.assertContains(response, "Schedule Interview</span>")
+        self.assertNotContains(response, "Evaluate Candidate</span>")
+
+    def test_candidate_detail_evaluation_stage_card(self):
+        """In Evaluation stage, the stage card indicates Evaluation and action shows Update Evaluation."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Alan",
+            last_name="Turing",
+            email="alan@turing.ac.uk",
+            phone="09170001234",
+            ai_score=98,
+            resume_processed=True,
+            status="Evaluation",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(response, "stage-card-evaluation")
+        self.assertContains(response, "Update Evaluation</span>")
+
+    def test_evaluate_candidate_view_post_creates_evaluation_and_advances_stage(self):
+        """Submitting evaluation creates CandidateEvaluation and transitions candidate to Evaluation stage."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Katherine",
+            last_name="Johnson",
+            email="katherine@nasa.gov",
+            phone="09199998888",
+            ai_score=96,
+            resume_processed=True,
+            status="Interview",
+        )
+        url = reverse("evaluate_candidate", kwargs={"pk": app.pk})
+        post_data = {
+            "interview_mode": "Face-to-Face",
+            "evaluation_date": "2026-10-16",
+            "technical_competence": "5",
+            "communication_skills": "4",
+            "problem_solving": "5",
+            "cultural_fit": "5",
+            "leadership_potential": "4",
+            "strengths_notes": "Brilliant analytical thinking and clear communication.",
+            "weaknesses_notes": "None observed.",
+            "general_notes": "Highly recommended for immediate hire.",
+            "expected_salary": "PHP 70,000",
+            "notice_period": "Immediate",
+            "availability_date": "Immediately",
+            "recommendation": "Strong Hire",
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+
+        # Status must advance to Evaluation
+        app.refresh_from_db()
+        self.assertEqual(app.status, "Evaluation")
+
+        # CandidateEvaluation must exist with correct rubric average
+        from hr.models import CandidateEvaluation
+        evaluation = CandidateEvaluation.objects.get(application=app)
+        self.assertEqual(evaluation.interview_mode, "Face-to-Face")
+        self.assertEqual(evaluation.recommendation, "Strong Hire")
+        self.assertEqual(evaluation.technical_competence, 5)
+        # Average: (5 + 4 + 5 + 5 + 4) / 5 = 4.6
+        self.assertEqual(float(evaluation.overall_rating), 4.6)
+
+    def test_reports_sidebar_navigation_and_dashboard_view(self):
+        """Reports navigation link appears in sidebar and reports dashboard renders successfully."""
+        url = reverse("reports")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Reports tab in sidebar
+        self.assertContains(response, 'href="/hr/reports/"')
+        self.assertContains(response, "Reports</span>")
+
+        # Reports dashboard content
+        self.assertContains(response, "Candidate Reports")
+        self.assertContains(response, "Total Evaluated")
+        self.assertContains(response, "Avg Rubric Score")
+
+
 
 
 

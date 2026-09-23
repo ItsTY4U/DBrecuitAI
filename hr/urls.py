@@ -48,9 +48,16 @@ urlpatterns = [
         name="send_candidate_email",
         ),
 
+    path("candidates/applicant/<int:pk>/evaluate/",
+        views.evaluate_candidate,
+        name="evaluate_candidate",
+        ),
+
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),
+
+    path("reports/", views.reports_dashboard, name="reports"),
     
     path("interviews/", views.interviews, name="interviews",),
     path("interviews/schedule/<int:job_id>/", views.schedule_interview, name="schedule_interview"),

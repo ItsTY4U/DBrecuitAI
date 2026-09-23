@@ -2532,6 +2532,18 @@ table .btn-review-applicant {
     box-shadow: 0 6px 18px rgba(45, 90, 39, 0.35);
 }
 
+.hero-action-btn.btn-evaluate {
+    background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28);
+}
+
+.hero-action-btn.btn-evaluate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.38);
+    background: linear-gradient(135deg, #6d28d9 0%, #4c1d95 100%);
+}
+
 .hero-action-btn.btn-email {
     background: #f8fafc;
     border: 1.5px solid #e2e8f0;
@@ -2566,13 +2578,18 @@ table .btn-review-applicant {
 }
 
 .stage-card-screening {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.09) 0%, rgba(217, 119, 6, 0.04) 100%);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%);
     border-color: rgba(245, 158, 11, 0.35);
 }
 
 .stage-card-interview {
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%);
     border-color: rgba(139, 92, 246, 0.35);
+}
+
+.stage-card-evaluation {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(2, 132, 199, 0.05) 100%);
+    border-color: rgba(14, 165, 233, 0.35);
 }
 
 .stage-card-hired {
@@ -2612,6 +2629,11 @@ table .btn-review-applicant {
 .stage-card-interview .stage-badge-pill {
     background: #ede9fe;
     color: #6d28d9;
+}
+
+.stage-card-evaluation .stage-badge-pill {
+    background: #e0f2fe;
+    color: #0369a1;
 }
 
 .stage-card-hired .stage-badge-pill {
@@ -2658,6 +2680,7 @@ table .btn-review-applicant {
 
 .stage-card-screening .stage-cta-footer { color: #b45309; }
 .stage-card-interview .stage-cta-footer { color: #6d28d9; }
+.stage-card-evaluation .stage-cta-footer { color: #0369a1; }
 .stage-card-hired .stage-cta-footer { color: #047857; }
 .stage-card-rejected .stage-cta-footer { color: #b91c1c; }
 

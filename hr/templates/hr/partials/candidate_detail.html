@@ -130,6 +130,20 @@
                     <i class="fas fa-clock"></i> Interview Stage Active
                 </div>
             </div>
+            {% elif application.status == "Evaluation" %}
+            <div class="stage-cta-card stage-card-evaluation">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-clipboard-check"></i> Evaluation
+                        </span>
+                    </div>
+                    <p class="stage-desc">Interview concluded. Candidate is undergoing post-interview evaluation.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-user-check"></i> Evaluation Stage Active
+                </div>
+            </div>
             {% elif application.status == "Hired" %}
             <div class="stage-cta-card stage-card-hired">
                 <div>
@@ -185,10 +199,22 @@
         </span>
 
         <div class="hero-actions-stack">
+            {% if application.status == "Interview" %}
+            <a href="#candidate-evaluation-section" class="hero-action-btn btn-evaluate" title="Evaluate interview performance for {{ application.first_name }}">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Evaluate Candidate</span>
+            </a>
+            {% elif application.status == "Evaluation" %}
+            <a href="#candidate-evaluation-section" class="hero-action-btn btn-evaluate" title="Review or update candidate evaluation">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Update Evaluation</span>
+            </a>
+            {% elif application.status == "Screening" or application.status == "Pending" %}
             <a href="{% url 'schedule_interview' application.job.id %}?applicant_id={{ application.id }}" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
                 <i class="fas fa-calendar-plus"></i>
                 <span>Schedule Interview</span>
             </a>
+            {% endif %}
 
             <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}&su=Update%20regarding%20your%20application%20for%20{{ application.job.title|urlencode }}%20(Ref%20%23{{ application.application_id|urlencode }})&body=Dear%20{{ application.first_name|urlencode }},%0A%0A" target="_blank" rel="noopener noreferrer" class="hero-action-btn btn-email" title="Compose email to {{ application.first_name }} in Gmail">
                 <i class="fas fa-paper-plane"></i>
@@ -617,6 +643,435 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Candidate Evaluation Section -->
+        <div class="content-box ai-eval-box candidate-evaluation-box" id="candidate-evaluation-section">
+            <div class="box-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #edf2f7; flex-wrap: wrap; gap: 12px;">
+                <div class="box-header-title">
+                    <i class="fas fa-clipboard-check header-icon text-green"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1a1a1a;">
+                            Candidate Interview Evaluation
+                        </h3>
+                        <p class="box-subtitle" style="margin: 3px 0 0; font-size: 12.5px; color: #666;">
+                            Live interview assessment, competency rubric, interview notes & audio AI intelligence
+                        </p>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    {% if candidate_evaluation %}
+                    <div class="ai-score-badge-large 
+                        {% if candidate_evaluation.overall_rating >= 4.0 %}score-high
+                        {% elif candidate_evaluation.overall_rating >= 3.0 %}score-mid
+                        {% else %}score-low{% endif %}">
+                        <span class="score-num">{{ candidate_evaluation.overall_rating }} / 5.0</span>
+                        <span class="score-text">
+                            {% if candidate_evaluation.overall_rating >= 4.5 %}Exceptional
+                            {% elif candidate_evaluation.overall_rating >= 3.8 %}Strong Fit
+                            {% elif candidate_evaluation.overall_rating >= 3.0 %}Acceptable
+                            {% else %}Needs Review{% endif %}
+                        </span>
+                    </div>
+                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>
+                    </button>
+                    {% else %}
+                    <span class="status-pill status-screening" style="padding: 6px 14px; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-clock"></i> Ready for Evaluation
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Existing Evaluation View (when available) -->
+            {% if candidate_evaluation %}
+            <div id="eval-view-card" class="eval-view-container" style="display: block;">
+                <!-- Header Meta Strip -->
+                <div class="eval-meta-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(45, 90, 39, 0.04); border: 1px solid rgba(45, 90, 39, 0.12); border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #475569;">
+                        <span><strong style="color: #1e293b;"><i class="fas fa-headset text-green"></i> Mode:</strong> {{ candidate_evaluation.interview_mode }}</span>
+                        <span><strong style="color: #1e293b;"><i class="fas fa-calendar-day text-green"></i> Date:</strong> {{ candidate_evaluation.evaluation_date|date:"M d, Y" }}</span>
+                        <span><strong style="color: #1e293b;"><i class="fas fa-user-tie text-green"></i> Evaluator:</strong> {{ candidate_evaluation.evaluator_name|default:"HR Staff" }}</span>
+                    </div>
+                    <div>
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; padding: 5px 12px; border-radius: 20px;
+                            {% if candidate_evaluation.recommendation == 'Strong Hire' %}background: #dcfce7; color: #15803d;
+                            {% elif candidate_evaluation.recommendation == 'Hire' %}background: #e0f2fe; color: #0369a1;
+                            {% elif candidate_evaluation.recommendation == 'Hold' %}background: #fef3c7; color: #b45309;
+                            {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
+                            <i class="fas {% if candidate_evaluation.recommendation == 'Strong Hire' %}fa-star{% elif candidate_evaluation.recommendation == 'Hire' %}fa-circle-check{% elif candidate_evaluation.recommendation == 'Hold' %}fa-circle-pause{% else %}fa-circle-xmark{% endif %}"></i>
+                            Recommendation: {{ candidate_evaluation.recommendation }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 5-Competency Rubric Rating Cards Grid -->
+                <div style="margin-bottom: 22px;">
+                    <h4 class="ai-section-title" style="margin-bottom: 12px;">
+                        <i class="fas fa-list-check"></i> Standardized Competency Rubric Scores
+                    </h4>
+                    <div class="rubric-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                        <div class="rubric-score-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Technical Fit</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <strong style="font-size: 18px; color: #0f172a;">{{ candidate_evaluation.technical_competence }}</strong>
+                                <span style="font-size: 11px; color: #94a3b8;">/ 5</span>
+                            </div>
+                            <div class="rubric-bar-bg" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                                <div style="height: 100%; width: {% widthratio candidate_evaluation.technical_competence 5 100 %}%; background: #2d5a27;"></div>
+                            </div>
+                        </div>
+
+                        <div class="rubric-score-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Communication</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <strong style="font-size: 18px; color: #0f172a;">{{ candidate_evaluation.communication_skills }}</strong>
+                                <span style="font-size: 11px; color: #94a3b8;">/ 5</span>
+                            </div>
+                            <div class="rubric-bar-bg" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                                <div style="height: 100%; width: {% widthratio candidate_evaluation.communication_skills 5 100 %}%; background: #2d5a27;"></div>
+                            </div>
+                        </div>
+
+                        <div class="rubric-score-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Problem Solving</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <strong style="font-size: 18px; color: #0f172a;">{{ candidate_evaluation.problem_solving }}</strong>
+                                <span style="font-size: 11px; color: #94a3b8;">/ 5</span>
+                            </div>
+                            <div class="rubric-bar-bg" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                                <div style="height: 100%; width: {% widthratio candidate_evaluation.problem_solving 5 100 %}%; background: #2d5a27;"></div>
+                            </div>
+                        </div>
+
+                        <div class="rubric-score-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Cultural & Team Fit</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <strong style="font-size: 18px; color: #0f172a;">{{ candidate_evaluation.cultural_fit }}</strong>
+                                <span style="font-size: 11px; color: #94a3b8;">/ 5</span>
+                            </div>
+                            <div class="rubric-bar-bg" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                                <div style="height: 100%; width: {% widthratio candidate_evaluation.cultural_fit 5 100 %}%; background: #2d5a27;"></div>
+                            </div>
+                        </div>
+
+                        <div class="rubric-score-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                            <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 4px;">Leadership</span>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                                <strong style="font-size: 18px; color: #0f172a;">{{ candidate_evaluation.leadership_potential }}</strong>
+                                <span style="font-size: 11px; color: #94a3b8;">/ 5</span>
+                            </div>
+                            <div class="rubric-bar-bg" style="width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                                <div style="height: 100%; width: {% widthratio candidate_evaluation.leadership_potential 5 100 %}%; background: #2d5a27;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strengths, Weaknesses, General Notes -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px;">
+                        <h5 style="margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-thumbs-up"></i> Observed Strengths
+                        </h5>
+                        <p style="margin: 0; font-size: 13px; color: #14532d; line-height: 1.5; white-space: pre-line;">
+                            {{ candidate_evaluation.strengths_notes|default:"No specific strengths recorded." }}
+                        </p>
+                    </div>
+
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px;">
+                        <h5 style="margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-triangle-exclamation"></i> Areas for Improvement / Concerns
+                        </h5>
+                        <p style="margin: 0; font-size: 13px; color: #78350f; line-height: 1.5; white-space: pre-line;">
+                            {{ candidate_evaluation.weaknesses_notes|default:"No red flags or concerns recorded." }}
+                        </p>
+                    </div>
+                </div>
+
+                {% if candidate_evaluation.general_notes %}
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                    <h5 style="margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-notes-medical text-green"></i> General Interview Discussion & Notes
+                    </h5>
+                    <p style="margin: 0; font-size: 13px; color: #334155; line-height: 1.6; white-space: pre-line;">
+                        {{ candidate_evaluation.general_notes }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Logistics: Salary, Notice, Availability -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="flex: 1; min-width: 140px;">
+                        <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; display: block;">Expected Salary</span>
+                        <strong style="font-size: 13.5px; color: #0f172a;">{{ candidate_evaluation.expected_salary|default:"Not specified" }}</strong>
+                    </div>
+                    <div style="flex: 1; min-width: 140px;">
+                        <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; display: block;">Notice Period</span>
+                        <strong style="font-size: 13.5px; color: #0f172a;">{{ candidate_evaluation.notice_period|default:"Not specified" }}</strong>
+                    </div>
+                    <div style="flex: 1; min-width: 140px;">
+                        <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; display: block;">Earliest Availability</span>
+                        <strong style="font-size: 13.5px; color: #0f172a;">{{ candidate_evaluation.availability_date|default:"Immediate / Negotiable" }}</strong>
+                    </div>
+                </div>
+
+                <!-- Audio Player & Gemini AI Audio Intelligence -->
+                {% if candidate_evaluation.audio_file %}
+                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; margin-bottom: 16px;">
+                    <h5 style="margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-microphone-lines text-green"></i> Recorded Interview Audio & AI Intelligence
+                    </h5>
+                    
+                    <div style="margin-bottom: 14px;">
+                        <audio controls style="width: 100%; max-width: 480px; height: 38px;">
+                            <source src="{{ candidate_evaluation.audio_file.url }}">
+                            Your browser does not support audio playback.
+                        </audio>
+                    </div>
+
+                    {% if candidate_evaluation.ai_audio_score > 0 %}
+                    <div style="background: #f8fafc; border-left: 3px solid #2d5a27; border-radius: 6px; padding: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #2d5a27;">
+                                <i class="fas fa-robot"></i> Gemini Spoken Communication Score
+                            </span>
+                            <span style="background: #dcfce7; color: #15803d; font-weight: 700; font-size: 12.5px; padding: 3px 10px; border-radius: 12px;">
+                                {{ candidate_evaluation.ai_audio_score }}% Confidence
+                            </span>
+                        </div>
+                        <p style="font-size: 13px; color: #334155; margin: 0 0 8px; line-height: 1.5;">
+                            <strong>AI Executive Spoken Summary:</strong> {{ candidate_evaluation.ai_audio_summary }}
+                        </p>
+                        {% if candidate_evaluation.ai_audio_transcript %}
+                        <details style="font-size: 12.5px; color: #64748b; margin-top: 6px;">
+                            <summary style="cursor: pointer; font-weight: 600; color: #2d5a27;">View Spoken Audio Transcript</summary>
+                            <p style="margin: 8px 0 0; padding: 8px 12px; background: #ffffff; border-radius: 4px; border: 1px solid #e2e8f0; line-height: 1.5; color: #333;">
+                                {{ candidate_evaluation.ai_audio_transcript }}
+                            </p>
+                        </details>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Interactive Evaluation Form (Shown when no evaluation or when editing) -->
+            <div id="eval-form-card" class="eval-form-container" style="{% if candidate_evaluation %}display: none;{% else %}display: block;{% endif %}">
+                <form method="POST" action="{% url 'evaluate_candidate' application.pk %}" enctype="multipart/form-data" id="candidateEvaluationForm" onsubmit="return handleEvaluationSubmit(event)">
+                    {% csrf_token %}
+
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                        <!-- Interview Mode & Date Row -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 18px;">
+                            <div>
+                                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                                    <i class="fas fa-headset text-green"></i> Interview Format / Mode *
+                                </label>
+                                <select name="interview_mode" class="toolbar-select" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;" required>
+                                    <option value="Face-to-Face" {% if candidate_evaluation.interview_mode == 'Face-to-Face' %}selected{% endif %}>Face-to-Face (Onsite)</option>
+                                    <option value="Online" {% if candidate_evaluation.interview_mode == 'Online' %}selected{% endif %}>Online (Google Meet / Zoom / Teams)</option>
+                                    <option value="Phone Call" {% if candidate_evaluation.interview_mode == 'Phone Call' %}selected{% endif %}>Phone Call Interview</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                                    <i class="fas fa-calendar-day text-green"></i> Evaluation Date *
+                                </label>
+                                <input type="date" name="evaluation_date" value="{% if candidate_evaluation.evaluation_date %}{{ candidate_evaluation.evaluation_date|date:'Y-m-d' }}{% else %}{% now 'Y-m-d' %}{% endif %}" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; box-sizing: border-box;" required>
+                            </div>
+                        </div>
+
+                        <!-- 5-Competency Rubric Rating Inputs -->
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                                <i class="fas fa-star-half-stroke text-green"></i> Competency Rubric Scoring (1 to 5 Stars)
+                            </label>
+                            
+                            <div class="rubric-form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+                                <!-- Technical -->
+                                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Technical Competence</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" name="technical_competence" min="1" max="5" value="{{ candidate_evaluation.technical_competence|default:3 }}" class="rubric-slider" oninput="updateRubricDisplay(this, 'score-tech')" style="flex: 1; accent-color: #2d5a27;">
+                                        <span id="score-tech" style="font-weight: 700; font-size: 15px; color: #2d5a27; min-width: 24px;">{{ candidate_evaluation.technical_competence|default:3 }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Communication -->
+                                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Communication Skills</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" name="communication_skills" min="1" max="5" value="{{ candidate_evaluation.communication_skills|default:3 }}" class="rubric-slider" oninput="updateRubricDisplay(this, 'score-comm')" style="flex: 1; accent-color: #2d5a27;">
+                                        <span id="score-comm" style="font-weight: 700; font-size: 15px; color: #2d5a27; min-width: 24px;">{{ candidate_evaluation.communication_skills|default:3 }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Problem Solving -->
+                                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Problem Solving</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" name="problem_solving" min="1" max="5" value="{{ candidate_evaluation.problem_solving|default:3 }}" class="rubric-slider" oninput="updateRubricDisplay(this, 'score-prob')" style="flex: 1; accent-color: #2d5a27;">
+                                        <span id="score-prob" style="font-weight: 700; font-size: 15px; color: #2d5a27; min-width: 24px;">{{ candidate_evaluation.problem_solving|default:3 }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Culture Fit -->
+                                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Cultural & Values Fit</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" name="cultural_fit" min="1" max="5" value="{{ candidate_evaluation.cultural_fit|default:3 }}" class="rubric-slider" oninput="updateRubricDisplay(this, 'score-cult')" style="flex: 1; accent-color: #2d5a27;">
+                                        <span id="score-cult" style="font-weight: 700; font-size: 15px; color: #2d5a27; min-width: 24px;">{{ candidate_evaluation.cultural_fit|default:3 }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Leadership -->
+                                <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Leadership Potential</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" name="leadership_potential" min="1" max="5" value="{{ candidate_evaluation.leadership_potential|default:3 }}" class="rubric-slider" oninput="updateRubricDisplay(this, 'score-lead')" style="flex: 1; accent-color: #2d5a27;">
+                                        <span id="score-lead" style="font-weight: 700; font-size: 15px; color: #2d5a27; min-width: 24px;">{{ candidate_evaluation.leadership_potential|default:3 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes: Strengths, Weaknesses, General Notes -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                            <div>
+                                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #166534; margin-bottom: 6px;">
+                                    <i class="fas fa-thumbs-up"></i> Candidate Strengths & Highlights
+                                </label>
+                                <textarea name="strengths_notes" rows="3" placeholder="Key strengths, standout answers, relevant skills demonstrated..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;">{{ candidate_evaluation.strengths_notes }}</textarea>
+                            </div>
+
+                            <div>
+                                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #92400e; margin-bottom: 6px;">
+                                    <i class="fas fa-triangle-exclamation"></i> Areas for Improvement / Concerns
+                                </label>
+                                <textarea name="weaknesses_notes" rows="3" placeholder="Knowledge gaps, hesitation, communication flags or reservations..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;">{{ candidate_evaluation.weaknesses_notes }}</textarea>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                                <i class="fas fa-pen-nib text-green"></i> Detailed Interview Notes & Discussion Record
+                            </label>
+                            <textarea name="general_notes" rows="3" placeholder="Record interview question responses, projects discussed, demeanor, situational answer breakdown..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;">{{ candidate_evaluation.general_notes }}</textarea>
+                        </div>
+
+                        <!-- Logistics: Salary, Notice Period, Availability -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Expected Salary / Rate</label>
+                                <input type="text" name="expected_salary" value="{{ candidate_evaluation.expected_salary }}" placeholder="e.g. $65,000 / PHP 45,000" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Notice Period</label>
+                                <input type="text" name="notice_period" value="{{ candidate_evaluation.notice_period }}" placeholder="e.g. 30 days, 2 weeks" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Earliest Available Start Date</label>
+                                <input type="text" name="availability_date" value="{{ candidate_evaluation.availability_date }}" placeholder="e.g. Immediately / Next Month" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                            </div>
+                        </div>
+
+                        <!-- In-Browser Audio Recorder & Audio File Upload -->
+                        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; margin-bottom: 18px;">
+                            <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                                <i class="fas fa-microphone-lines text-green"></i> Interview Audio Recording (Optional for AI Analysis)
+                            </label>
+                            
+                            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+                                <!-- Live Browser Recorder -->
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button type="button" id="btn-start-record" class="btn" onclick="startInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                                        <i class="fas fa-circle-dot"></i> Record via Mic
+                                    </button>
+                                    <button type="button" id="btn-stop-record" class="btn" onclick="stopInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                                        <i class="fas fa-stop"></i> Stop (<span id="record-timer">00:00</span>)
+                                    </button>
+                                </div>
+
+                                <span style="font-size: 12px; color: #94a3b8;">— OR —</span>
+
+                                <!-- File Upload Fallback -->
+                                <div style="flex: 1; min-width: 200px;">
+                                    <input type="file" name="audio_file" id="interviewAudioFileInput" accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" style="font-size: 12.5px; color: #475569;">
+                                </div>
+                            </div>
+
+                            <!-- Recorded audio playback preview -->
+                            <div id="recorded-audio-preview" style="display: none; margin-top: 10px; align-items: center; gap: 12px;">
+                                <audio id="preview-audio-player" controls style="height: 34px; max-width: 320px;"></audio>
+                                <span style="font-size: 12px; color: #16a34a; font-weight: 600;"><i class="fas fa-check-circle"></i> Audio captured</span>
+                            </div>
+
+                            <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" name="run_ai_audio" id="run_ai_audio" value="1" checked style="accent-color: #2d5a27; width: 16px; height: 16px;">
+                                <label for="run_ai_audio" style="font-size: 12.5px; color: #334155; cursor: pointer;">
+                                    <strong>Run Gemini Multimodal AI Analysis</strong> (Speech transcription, communication clarity score & executive synthesis)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Hiring Recommendation Radio Pills -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                                <i class="fas fa-award text-green"></i> Talent Team Recommendation *
+                            </label>
+
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <label style="cursor: pointer;">
+                                    <input type="radio" name="recommendation" value="Strong Hire" {% if candidate_evaluation.recommendation == 'Strong Hire' %}checked{% endif %} style="display: none;" onchange="updateRecHighlight(this)">
+                                    <span class="rec-pill rec-pill-strong" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; border: 2px solid #22c55e; color: #15803d; background: {% if candidate_evaluation.recommendation == 'Strong Hire' %}#dcfce7{% else %}#ffffff{% endif %};">
+                                        <i class="fas fa-star"></i> Strong Hire
+                                    </span>
+                                </label>
+
+                                <label style="cursor: pointer;">
+                                    <input type="radio" name="recommendation" value="Hire" {% if not candidate_evaluation or candidate_evaluation.recommendation == 'Hire' %}checked{% endif %} style="display: none;" onchange="updateRecHighlight(this)">
+                                    <span class="rec-pill rec-pill-hire" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; border: 2px solid #3b82f6; color: #1d4ed8; background: {% if not candidate_evaluation or candidate_evaluation.recommendation == 'Hire' %}#dbeafe{% else %}#ffffff{% endif %};">
+                                        <i class="fas fa-circle-check"></i> Hire
+                                    </span>
+                                </label>
+
+                                <label style="cursor: pointer;">
+                                    <input type="radio" name="recommendation" value="Hold" {% if candidate_evaluation.recommendation == 'Hold' %}checked{% endif %} style="display: none;" onchange="updateRecHighlight(this)">
+                                    <span class="rec-pill rec-pill-hold" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; border: 2px solid #f59e0b; color: #b45309; background: {% if candidate_evaluation.recommendation == 'Hold' %}#fef3c7{% else %}#ffffff{% endif %};">
+                                        <i class="fas fa-circle-pause"></i> Hold / Review
+                                    </span>
+                                </label>
+
+                                <label style="cursor: pointer;">
+                                    <input type="radio" name="recommendation" value="No Hire" {% if candidate_evaluation.recommendation == 'No Hire' %}checked{% endif %} style="display: none;" onchange="updateRecHighlight(this)">
+                                    <span class="rec-pill rec-pill-nohire" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; border: 2px solid #ef4444; color: #b91c1c; background: {% if candidate_evaluation.recommendation == 'No Hire' %}#fee2e2{% else %}#ffffff{% endif %};">
+                                        <i class="fas fa-circle-xmark"></i> Do Not Hire
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                            {% if candidate_evaluation %}
+                            <button type="button" class="btn btn-secondary" onclick="toggleEvaluationForm()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600;">
+                                Cancel
+                            </button>
+                            {% endif %}
+                            <button type="submit" id="btn-submit-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-floppy-disk"></i>
+                                <span>Save & Record Evaluation</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
 </div>
 
 <script>
@@ -657,5 +1112,127 @@ function copyCandidateContact(text, btn) {
         }
         document.body.removeChild(ta);
     }
+}
+
+// Candidate Evaluation Form & Audio Recording Scripts
+var mediaRecorder = null;
+var recordedChunks = [];
+var recordInterval = null;
+var recordSeconds = 0;
+var recordedAudioBlob = null;
+
+function toggleEvaluationForm() {
+    var viewCard = document.getElementById("eval-view-card");
+    var formCard = document.getElementById("eval-form-card");
+    var toggleText = document.getElementById("toggle-eval-text");
+    if (!formCard) return;
+    if (formCard.style.display === "none") {
+        formCard.style.display = "block";
+        if (viewCard) viewCard.style.display = "none";
+        if (toggleText) toggleText.textContent = "Cancel Edit";
+    } else {
+        formCard.style.display = "none";
+        if (viewCard) viewCard.style.display = "block";
+        if (toggleText) toggleText.textContent = "Edit Evaluation";
+    }
+}
+
+function updateRubricDisplay(slider, targetId) {
+    var el = document.getElementById(targetId);
+    if (el) el.textContent = slider.value;
+}
+
+function updateRecHighlight(radio) {
+    document.querySelectorAll('.rec-pill').forEach(function(pill) {
+        pill.style.background = '#ffffff';
+    });
+    var parentSpan = radio.parentElement.querySelector('.rec-pill');
+    if (!parentSpan) return;
+    if (radio.value === 'Strong Hire') parentSpan.style.background = '#dcfce7';
+    else if (radio.value === 'Hire') parentSpan.style.background = '#dbeafe';
+    else if (radio.value === 'Hold') parentSpan.style.background = '#fef3c7';
+    else if (radio.value === 'No Hire') parentSpan.style.background = '#fee2e2';
+}
+
+function startInterviewAudioRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Audio recording is not supported on this browser or requires a secure (HTTPS/localhost) context.");
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+        try {
+            var mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                else mimeType = '';
+            }
+            mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
+        } catch (e) {
+            mediaRecorder = new MediaRecorder(stream);
+        }
+
+        recordedChunks = [];
+        mediaRecorder.ondataavailable = function(e) {
+            if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+        };
+        mediaRecorder.onstop = function() {
+            var type = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+            recordedAudioBlob = new Blob(recordedChunks, { type: type });
+            var audioUrl = URL.createObjectURL(recordedAudioBlob);
+            var player = document.getElementById("preview-audio-player");
+            var container = document.getElementById("recorded-audio-preview");
+            if (player && container) {
+                player.src = audioUrl;
+                container.style.display = "flex";
+            }
+        };
+        mediaRecorder.start();
+        document.getElementById("btn-start-record").style.display = "none";
+        document.getElementById("btn-stop-record").style.display = "inline-flex";
+        recordSeconds = 0;
+        recordInterval = setInterval(function() {
+            recordSeconds++;
+            var m = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+            var s = String(recordSeconds % 60).padStart(2, '0');
+            var timerEl = document.getElementById("record-timer");
+            if (timerEl) timerEl.textContent = m + ":" + s;
+        }, 1000);
+    }).catch(function(err) {
+        console.error("Microphone access error:", err);
+        alert("Could not access microphone: " + (err.message || err));
+    });
+}
+
+function stopInterviewAudioRecording() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(function(track) { track.stop(); });
+    }
+    clearInterval(recordInterval);
+    document.getElementById("btn-start-record").style.display = "inline-flex";
+    document.getElementById("btn-stop-record").style.display = "none";
+}
+
+function handleEvaluationSubmit(event) {
+    if (recordedAudioBlob) {
+        var fileInput = document.getElementById("interviewAudioFileInput");
+        if (fileInput && !fileInput.files.length) {
+            try {
+                var ext = recordedAudioBlob.type.indexOf('mp4') !== -1 ? '.mp4' : '.webm';
+                var file = new File([recordedAudioBlob], "live_interview_audio" + ext, { type: recordedAudioBlob.type });
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+            } catch (err) {
+                console.warn("Could not attach recorded blob to input file list:", err);
+            }
+        }
+    }
+    var submitBtn = document.getElementById("btn-submit-eval");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Evaluation...';
+    }
+    return true;
 }
 </script>

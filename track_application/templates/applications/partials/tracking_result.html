@@ -19,7 +19,7 @@
                 <p>We have successfully received your application.</p>
             </div>
         </div>
-        {% if application.status == "Screening" or application.status == "Interview" or application.status == "Hired" %}
+        {% if application.status == "Screening" or application.status == "Interview" or application.status == "Evaluation" or application.status == "Hired" %}
         <div class="t-node completed">
         {% else %}
         <div class="t-node">
@@ -30,7 +30,7 @@
                 <p>Your application is being reviewed.</p>
             </div>
         </div>
-        {% if application.status == "Interview" or application.status == "Hired" %}
+        {% if application.status == "Interview" or application.status == "Evaluation" or application.status == "Hired" %}
         <div class="t-node completed">
         {% else %}
         <div class="t-node">
@@ -39,6 +39,17 @@
             <div class="t-info">
                 <h3>Interview</h3>
                 <p>Interview process.</p>
+            </div>
+        </div>
+        {% if application.status == "Evaluation" or application.status == "Hired" %}
+        <div class="t-node completed">
+        {% else %}
+        <div class="t-node">
+        {% endif %}
+            <div class="t-icon"></div>
+            <div class="t-info">
+                <h3>Evaluation</h3>
+                <p>Post-interview assessment & review.</p>
             </div>
         </div>
         {% if application.status == "Hired" %}
