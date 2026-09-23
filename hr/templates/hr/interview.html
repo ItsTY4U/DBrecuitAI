@@ -117,7 +117,13 @@
         </div>
     </div>
 
+    <!-- Candidates Ready for Evaluation Section (Organized by Department & Position) -->
+    {% include "hr/partials/interview_evaluations.html" %}
+
     <!-- Full Scheduled Sessions List -->
     {% include "hr/partials/interview_cards.html" %}
+
+    <!-- Candidate Evaluation Modal -->
+    {% include "hr/partials/evaluation_modal.html" %}
 </main>
 {% endblock %}

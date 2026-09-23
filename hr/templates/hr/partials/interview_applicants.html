@@ -91,6 +91,57 @@
                 </button>
 
 
+                <!-- Evaluate Candidate Button -->
+                {% if interview.status == 'Ongoing' %}
+                <button
+                    type="button"
+                    style="padding: 7px 12px; font-size: 12px; border-radius: 6px; border: none; background: #eab308; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;"
+                    onclick="openEvaluationModal(
+                        {{ applicant.id }},
+                        '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                        '{{ applicant.job.title|escapejs }}',
+                        '{{ applicant.job.department|escapejs }}',
+                        '{{ interview.interview_type|escapejs }}',
+                        '{{ interview.status }}'
+                    )"
+                >
+                    <i class="fas fa-pen-to-square"></i>
+                    <span>Continue Evaluation</span>
+                </button>
+                {% elif interview.status == 'Completed' %}
+                <button
+                    type="button"
+                    style="padding: 7px 12px; font-size: 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;"
+                    onclick="openEvaluationModal(
+                        {{ applicant.id }},
+                        '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                        '{{ applicant.job.title|escapejs }}',
+                        '{{ applicant.job.department|escapejs }}',
+                        '{{ interview.interview_type|escapejs }}',
+                        '{{ interview.status }}'
+                    )"
+                >
+                    <i class="fas fa-eye"></i>
+                    <span>View Evaluation</span>
+                </button>
+                {% else %}
+                <button
+                    type="button"
+                    style="padding: 7px 12px; font-size: 12px; border-radius: 6px; border: none; background: #2d5a27; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 700;"
+                    onclick="openEvaluationModal(
+                        {{ applicant.id }},
+                        '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                        '{{ applicant.job.title|escapejs }}',
+                        '{{ applicant.job.department|escapejs }}',
+                        '{{ interview.interview_type|escapejs }}',
+                        '{{ interview.status }}'
+                    )"
+                >
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Evaluate Candidate</span>
+                </button>
+                {% endif %}
+
                 <!-- Profile -->
 
                 <a

@@ -53,6 +53,16 @@ urlpatterns = [
         name="evaluate_candidate",
         ),
 
+    path("candidates/applicant/<int:pk>/start-evaluation/",
+        views.start_candidate_evaluation,
+        name="start_candidate_evaluation",
+        ),
+
+    path("candidates/applicant/<int:pk>/cancel-evaluation/",
+        views.cancel_candidate_evaluation,
+        name="cancel_candidate_evaluation",
+        ),
+
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),

@@ -1088,6 +1088,266 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, "Total Evaluated")
         self.assertContains(response, "Avg Rubric Score")
 
+    def test_interview_tab_renders_evaluation_section_grouped_by_department(self):
+        """Interviews tab renders candidates ready for evaluation grouped by department and position."""
+        from hr.models import Interview
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Ada",
+            last_name="Lovelace",
+            email="ada@computing.org",
+            phone="09112223333",
+            ai_score=95,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        interview = Interview.objects.create(
+            interview_type="Technical Interview",
+            interviewer="Grace Hopper",
+            date="2026-10-20",
+            time="10:00:00",
+            location="Room 401",
+            status="Scheduled",
+        )
+        interview.applicants.add(app)
+
+        url = reverse("interviews")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Section header and content
+        self.assertContains(response, "Candidates Ready for Evaluation")
+        self.assertContains(response, f"{self.job_sales_staff.department} Department")
+        self.assertContains(response, self.job_sales_staff.title)
+        self.assertContains(response, "Ada")
+        self.assertContains(response, "Lovelace")
+        self.assertContains(response, "Evaluate Candidate")
+
+    def test_start_candidate_evaluation_transitions_interview_to_ongoing(self):
+        """Starting candidate evaluation transitions scheduled interview to Ongoing."""
+        from hr.models import Interview
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Alan",
+            last_name="Turing",
+            email="alan@turing.ac.uk",
+            phone="09123456789",
+            ai_score=92,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="HR Staff",
+            date="2026-10-21",
+            time="14:00:00",
+            status="Scheduled",
+        )
+        interview.applicants.add(app)
+
+        url = reverse("start_candidate_evaluation", kwargs={"pk": app.pk})
+        response = self.client.post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("status"), "Ongoing")
+
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Ongoing")
+
+    def test_cancel_candidate_evaluation_reverts_interview_to_scheduled(self):
+        """Canceling candidate evaluation modal reverts ongoing interview back to Scheduled."""
+        from hr.models import Interview
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Margaret",
+            last_name="Hamilton",
+            email="margaret@mit.edu",
+            phone="09133334444",
+            ai_score=99,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        interview = Interview.objects.create(
+            interview_type="Final Interview",
+            interviewer="Lead Architect",
+            date="2026-10-22",
+            time="11:00:00",
+            status="Ongoing",
+        )
+        interview.applicants.add(app)
+
+        url = reverse("cancel_candidate_evaluation", kwargs={"pk": app.pk})
+        response = self.client.post(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("status"), "Scheduled")
+
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Scheduled")
+
+    def test_saving_evaluation_transitions_interview_to_completed_and_redirects_to_interviews(self):
+        """Saving evaluation transitions interview status to Completed and redirects to interviews."""
+        from hr.models import Interview, CandidateEvaluation
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Claude",
+            last_name="Shannon",
+            email="claude@belllabs.com",
+            phone="09144445555",
+            ai_score=97,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        interview = Interview.objects.create(
+            interview_type="Technical Interview",
+            interviewer="Senior Evaluator",
+            date="2026-10-23",
+            time="09:30:00",
+            status="Ongoing",
+        )
+        interview.applicants.add(app)
+
+        url = reverse("evaluate_candidate", kwargs={"pk": app.pk})
+        post_data = {
+            "redirect_to": "interviews",
+            "interview_mode": "Online",
+            "evaluation_date": "2026-10-23",
+            "technical_competence": "5",
+            "communication_skills": "5",
+            "problem_solving": "5",
+            "cultural_fit": "4",
+            "leadership_potential": "4",
+            "strengths_notes": "Exceptional mathematical and logic skills.",
+            "weaknesses_notes": "None.",
+            "general_notes": "Outstanding evaluation session.",
+            "recommendation": "Strong Hire",
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("interviews"))
+
+        # Interview status must be Completed
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Completed")
+
+        # Application status must be Evaluation
+        app.refresh_from_db()
+        self.assertEqual(app.status, "Evaluation")
+
+        # CandidateEvaluation must be recorded with Completed status
+        evaluation = CandidateEvaluation.objects.get(application=app)
+        self.assertEqual(evaluation.status, "Completed")
+        self.assertEqual(evaluation.interview, interview)
+        self.assertEqual(float(evaluation.overall_rating), 4.6)
+
+    def test_multi_candidate_session_evaluates_candidates_independently(self):
+        """When an interview session has multiple candidates, evaluating one does not affect the others."""
+        from hr.models import Interview, CandidateEvaluation
+        app1 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Gabriel",
+            last_name="Navarro",
+            email="gabriel@example.com",
+            phone="09111111111",
+            ai_score=94,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        app2 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Francis",
+            last_name="Tan",
+            email="francis@example.com",
+            phone="09222222222",
+            ai_score=94,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        # Shared interview session
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Maria Santos",
+            date="2026-10-25",
+            time="08:30:00",
+            location="HR Conference Area",
+            status="Scheduled",
+        )
+        interview.applicants.set([app1, app2])
+
+        # 1. Initially both are Scheduled
+        resp = self.client.get(reverse("interviews"))
+        self.assertEqual(resp.status_code, 200)
+
+        # 2. Start evaluating Gabriel (app1)
+        start_resp = self.client.post(reverse("start_candidate_evaluation", kwargs={"pk": app1.pk}), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(start_resp.status_code, 200)
+
+        # Shared interview session is now Ongoing
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Ongoing")
+
+        # In interviews view, app1 must be Ongoing, but app2 MUST STILL BE Scheduled!
+        resp2 = self.client.get(reverse("interviews"))
+        dept_data = resp2.context["evaluation_departments"]
+        sales_job = next(j for d in dept_data for j in d["jobs"] if j["job"].id == self.job_sales_staff.id)
+        cand1 = next(a for a in sales_job["applicants"] if a.id == app1.id)
+        cand2 = next(a for a in sales_job["applicants"] if a.id == app2.id)
+
+        self.assertEqual(cand1.candidate_status, "Ongoing")
+        self.assertEqual(cand2.candidate_status, "Scheduled")
+
+        # 3. Complete evaluation for Gabriel (app1)
+        eval_post = {
+            "redirect_to": "interviews",
+            "interview_mode": "Face-to-Face",
+            "evaluation_date": "2026-10-25",
+            "technical_competence": "4",
+            "communication_skills": "4",
+            "problem_solving": "4",
+            "cultural_fit": "4",
+            "leadership_potential": "4",
+            "recommendation": "Hire",
+        }
+        self.client.post(reverse("evaluate_candidate", kwargs={"pk": app1.pk}), eval_post)
+
+        # Interview session is STILL Ongoing because Francis (app2) is not completed yet!
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Ongoing")
+
+        resp3 = self.client.get(reverse("interviews"))
+        dept_data3 = resp3.context["evaluation_departments"]
+        sales_job3 = next(j for d in dept_data3 for j in d["jobs"] if j["job"].id == self.job_sales_staff.id)
+        cand1_after = next(a for a in sales_job3["applicants"] if a.id == app1.id)
+        cand2_after = next(a for a in sales_job3["applicants"] if a.id == app2.id)
+
+        self.assertEqual(cand1_after.candidate_status, "Completed")
+        self.assertEqual(cand2_after.candidate_status, "Scheduled")
+
+        # 4. Now complete evaluation for Francis (app2)
+        self.client.post(reverse("evaluate_candidate", kwargs={"pk": app2.pk}), eval_post)
+
+        # Now that ALL applicants in this interview are completed, interview session is Completed!
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Completed")
+
+        resp4 = self.client.get(reverse("interviews"))
+        dept_data4 = resp4.context["evaluation_departments"]
+        sales_job4 = next(j for d in dept_data4 for j in d["jobs"] if j["job"].id == self.job_sales_staff.id)
+        cand1_final = next(a for a in sales_job4["applicants"] if a.id == app1.id)
+        cand2_final = next(a for a in sales_job4["applicants"] if a.id == app2.id)
+
+        self.assertEqual(cand1_final.candidate_status, "Completed")
+        self.assertEqual(cand2_final.candidate_status, "Completed")
+
+
 
 
 

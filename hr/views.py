@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from jobs.models import Application, Job, Requirement, Department
 from .models import Interview, CandidateEvaluation
 from video_interview.models import InterviewSession, InterviewResponse
@@ -891,6 +892,87 @@ def interviews(request):
             "interviews": job_interviews_list,
         })
 
+    # 7. Collect scheduled applications grouped by Department and Position for the Evaluation section
+    scheduled_applications = list(
+        Application.objects.filter(interview__isnull=False)
+        .select_related("job", "evaluation")
+        .prefetch_related(
+            Prefetch(
+                "interview",
+                queryset=Interview.objects.order_by("-date", "-time"),
+                to_attr="ordered_interviews"
+            )
+        )
+        .distinct()
+        .order_by("job__department", "job__title", "-ai_score")
+    )
+
+    evaluation_dept_dict = defaultdict(lambda: defaultdict(list))
+    eval_ready_total = 0
+    eval_ongoing_total = 0
+    eval_completed_total = 0
+
+    for app in scheduled_applications:
+        if not hasattr(app, "ordered_interviews") or not app.ordered_interviews:
+            continue
+        latest_intv = app.ordered_interviews[0]
+        app.active_interview = latest_intv
+
+        # Determine individual candidate evaluation status
+        has_eval = hasattr(app, "evaluation") and app.evaluation is not None
+        if has_eval and app.evaluation.status == "Completed":
+            app.candidate_status = "Completed"
+        elif has_eval and app.evaluation.status == "Draft":
+            app.candidate_status = "Ongoing"
+        else:
+            app.candidate_status = "Scheduled"
+
+        dept_name = app.job.department if (app.job and app.job.department) else "General"
+        job_obj = app.job
+        evaluation_dept_dict[dept_name][job_obj].append(app)
+
+        if app.candidate_status == "Scheduled":
+            eval_ready_total += 1
+        elif app.candidate_status == "Ongoing":
+            eval_ongoing_total += 1
+        elif app.candidate_status == "Completed":
+            eval_completed_total += 1
+
+    evaluation_departments = []
+    for dept_name in sorted(evaluation_dept_dict.keys()):
+        job_map = evaluation_dept_dict[dept_name]
+        dept_jobs = []
+        dept_total = 0
+        dept_ready = 0
+        dept_ongoing = 0
+        dept_completed = 0
+        for job_obj, app_list in job_map.items():
+            job_ready = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Scheduled")
+            job_ongoing = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Ongoing")
+            job_completed = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Completed")
+            dept_jobs.append({
+                "job": job_obj,
+                "applicants": app_list,
+                "total_count": len(app_list),
+                "ready_count": job_ready,
+                "ongoing_count": job_ongoing,
+                "completed_count": job_completed,
+            })
+            dept_total += len(app_list)
+            dept_ready += job_ready
+            dept_ongoing += job_ongoing
+            dept_completed += job_completed
+
+        evaluation_departments.append({
+            "name": dept_name,
+            "jobs": dept_jobs,
+            "job_count": len(dept_jobs),
+            "total_applicants": dept_total,
+            "ready_count": dept_ready,
+            "ongoing_count": dept_ongoing,
+            "completed_count": dept_completed,
+        })
+
     context = {
         "total": counts["total"],
         "scheduled": counts["scheduled"],
@@ -905,6 +987,12 @@ def interviews(request):
         "todays_schedule": todays_schedule,
         "upcoming_interviews": upcoming_interviews,
         "overdue_interviews": overdue_interviews,
+
+        "evaluation_departments": evaluation_departments,
+        "eval_ready_total": eval_ready_total,
+        "eval_ongoing_total": eval_ongoing_total,
+        "eval_completed_total": eval_completed_total,
+        "eval_total": len(scheduled_applications),
     }
 
     return render(request, "hr/interview.html", context)
@@ -1110,6 +1198,22 @@ def evaluate_candidate(request, pk):
             application.status = "Evaluation"
             application.save(update_fields=["status"])
 
+        # Update interview session status:
+        # If all applicants in the session have completed evaluations, session is Completed.
+        # Otherwise, session is Ongoing.
+        interview = evaluation.interview or application.interview.order_by("-date", "-time").first()
+        if interview:
+            all_apps = list(interview.applicants.all())
+            all_completed = all(
+                hasattr(a, "evaluation") and a.evaluation and a.evaluation.status == "Completed"
+                for a in all_apps
+            ) if all_apps else True
+            if all_completed:
+                interview.status = "Completed"
+            else:
+                interview.status = "Ongoing"
+            interview.save(update_fields=["status"])
+
         invalidate_hr_cache()
         messages.success(
             request,
@@ -1119,10 +1223,89 @@ def evaluate_candidate(request, pk):
         redirect_to = request.POST.get("redirect_to")
         if redirect_to == "reports":
             return redirect("reports")
+        if redirect_to == "interviews":
+            return redirect("interviews")
 
         return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
 
     return redirect("candidate_detail", pk=pk)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def start_candidate_evaluation(request, pk):
+    """
+    Called when HR initiates evaluation on an applicant.
+    Creates or sets a Draft evaluation for this specific candidate (Ongoing).
+    Also sets the shared interview session status to Ongoing.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    interview = application.interview.order_by("-date", "-time").first()
+
+    # 1. Candidate-specific evaluation state
+    evaluation, created = CandidateEvaluation.objects.get_or_create(
+        application=application,
+        defaults={
+            "status": "Draft",
+            "interview": interview,
+        }
+    )
+    if not created and evaluation.status != "Completed":
+        evaluation.status = "Draft"
+        if not evaluation.interview and interview:
+            evaluation.interview = interview
+        evaluation.save(update_fields=["status", "interview"] if not evaluation.interview else ["status"])
+
+    # 2. Update session status to Ongoing if it was Scheduled
+    if interview and interview.status == "Scheduled":
+        interview.status = "Ongoing"
+        interview.save(update_fields=["status"])
+
+    invalidate_hr_cache()
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.accepts("application/json"):
+        return JsonResponse({
+            "success": True,
+            "status": "Ongoing",
+            "applicant_id": application.id,
+            "message": "Candidate evaluation set to Ongoing."
+        })
+
+    return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def cancel_candidate_evaluation(request, pk):
+    """
+    Called when HR cancels the candidate evaluation modal without saving.
+    Reverts this candidate's Draft evaluation, making them Scheduled again.
+    If no other candidate in the session has an active evaluation, reverts session to Scheduled.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    # 1. Delete Draft evaluation for this candidate so they become Scheduled
+    if hasattr(application, "evaluation") and application.evaluation and application.evaluation.status == "Draft":
+        application.evaluation.delete()
+
+    # 2. Check if the shared interview session still has any remaining evaluations
+    interview = application.interview.order_by("-date", "-time").first()
+    if interview:
+        has_active_evals = CandidateEvaluation.objects.filter(interview=interview).exists()
+        if not has_active_evals and interview.status == "Ongoing":
+            interview.status = "Scheduled"
+            interview.save(update_fields=["status"])
+
+    invalidate_hr_cache()
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest" or request.accepts("application/json"):
+        return JsonResponse({
+            "success": True,
+            "status": "Scheduled",
+            "applicant_id": application.id,
+            "message": "Candidate evaluation reverted to Scheduled."
+        })
+
+    return redirect("interviews")
 
 
 @never_cache

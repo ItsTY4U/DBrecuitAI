@@ -1130,10 +1130,24 @@ function toggleEvaluationForm() {
         formCard.style.display = "block";
         if (viewCard) viewCard.style.display = "none";
         if (toggleText) toggleText.textContent = "Cancel Edit";
+        fetch("{% url 'start_candidate_evaluation' application.pk %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        }).catch(function(e) {});
     } else {
         formCard.style.display = "none";
         if (viewCard) viewCard.style.display = "block";
         if (toggleText) toggleText.textContent = "Edit Evaluation";
+        fetch("{% url 'cancel_candidate_evaluation' application.pk %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        }).catch(function(e) {});
     }
 }
 

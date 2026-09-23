@@ -211,13 +211,65 @@
 
                             <td class="action-column">
 
-                                <a
-                                    href="{% url 'candidate_detail' applicant.id %}"
-                                    class="btn-review-applicant interview-candidate-profile-btn"
-                                >
-                                    <span>Candidate Profile</span>
-                                    <i class="fas fa-arrow-right"></i>
-                                </a>
+                                <div style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                    {% if interview.status == 'Ongoing' %}
+                                    <button
+                                        type="button"
+                                        style="padding: 6px 10px; font-size: 11px; border-radius: 6px; border: none; background: #eab308; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 700;"
+                                        onclick="triggerEvaluationModal(
+                                            {{ applicant.id }},
+                                            '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                                            '{{ item.job.title|escapejs }}',
+                                            '{{ item.job.department|escapejs }}',
+                                            '{{ interview.interview_type|escapejs }}',
+                                            '{{ interview.status }}'
+                                        )"
+                                    >
+                                        <i class="fas fa-pen-to-square"></i>
+                                        <span>Continue Eval</span>
+                                    </button>
+                                    {% elif interview.status == 'Completed' %}
+                                    <button
+                                        type="button"
+                                        style="padding: 6px 10px; font-size: 11px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 700;"
+                                        onclick="triggerEvaluationModal(
+                                            {{ applicant.id }},
+                                            '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                                            '{{ item.job.title|escapejs }}',
+                                            '{{ item.job.department|escapejs }}',
+                                            '{{ interview.interview_type|escapejs }}',
+                                            '{{ interview.status }}'
+                                        )"
+                                    >
+                                        <i class="fas fa-eye"></i>
+                                        <span>View Eval</span>
+                                    </button>
+                                    {% else %}
+                                    <button
+                                        type="button"
+                                        style="padding: 6px 10px; font-size: 11px; border-radius: 6px; border: none; background: #2d5a27; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 700;"
+                                        onclick="triggerEvaluationModal(
+                                            {{ applicant.id }},
+                                            '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
+                                            '{{ item.job.title|escapejs }}',
+                                            '{{ item.job.department|escapejs }}',
+                                            '{{ interview.interview_type|escapejs }}',
+                                            '{{ interview.status }}'
+                                        )"
+                                    >
+                                        <i class="fas fa-clipboard-check"></i>
+                                        <span>Evaluate</span>
+                                    </button>
+                                    {% endif %}
+
+                                    <a
+                                        href="{% url 'candidate_detail' applicant.id %}"
+                                        class="btn-review-applicant interview-candidate-profile-btn"
+                                    >
+                                        <span>Profile</span>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
 
                             </td>
 
