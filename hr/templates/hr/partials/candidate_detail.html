@@ -78,7 +78,14 @@
         <div class="hero-detail-list">
             <div class="hero-detail-item">
                 <span class="detail-label">Role:</span>
-                <strong>{{ application.job.title }}</strong>
+                <div class="detail-role-wrap" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <strong>{{ application.job.title }}</strong>
+                    {% if candidate_rank %}
+                    <span class="applicant-ai-rank-badge" title="AI Ranking among all {{ total_job_applicants }} applicant{{ total_job_applicants|pluralize }} for this role">
+                        <i class="fas fa-trophy"></i> Rank #{{ candidate_rank }} <small style="font-size: 11px; opacity: 0.85; font-weight: 500;">of {{ total_job_applicants }}</small>
+                    </span>
+                    {% endif %}
+                </div>
             </div>
             <div class="hero-detail-item">
                 <span class="detail-label">Ref ID:</span>
@@ -124,10 +131,43 @@
                             <i class="fas fa-calendar-check"></i> Interview
                         </span>
                     </div>
-                    <p class="stage-desc">Candidate is scheduled or participating in the interview round.</p>
+                    {% if scheduled_interview %}
+                    <div class="stage-interview-schedule-box" style="margin: 8px 0 6px 0; padding: 8px 12px; background: rgba(255, 255, 255, 0.85); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px;">
+                        <div style="font-size: 13px; font-weight: 700; color: #4c1d95; display: flex; align-items: center; gap: 6px;">
+                            <i class="far fa-calendar-alt" style="color: #7c3aed;"></i>
+                            <span>{{ scheduled_interview.date|date:"M d, Y" }}</span>
+                            <span style="color: #94a3b8;">&bull;</span>
+                            <i class="far fa-clock" style="color: #7c3aed;"></i>
+                            <span>{{ scheduled_interview.time|time:"g:i A" }}</span>
+                        </div>
+                        <div style="font-size: 11.5px; color: #6d28d9; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <span style="font-weight: 600;">{{ scheduled_interview.interview_type }}</span>
+                            {% if scheduled_interview.location %}
+                            <span>&bull;</span>
+                            <span><i class="fas fa-location-dot" style="font-size: 10px;"></i> {{ scheduled_interview.location }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="stage-desc">Candidate is participating in the interview round. Session details pending.</p>
+                    {% endif %}
                 </div>
                 <div class="stage-cta-footer">
                     <i class="fas fa-clock"></i> Interview Stage Active
+                </div>
+            </div>
+            {% elif application.status == "Shortlisted" %}
+            <div class="stage-cta-card stage-card-shortlisted">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-user-check"></i> Shortlisted
+                        </span>
+                    </div>
+                    <p class="stage-desc">Candidate has been shortlisted for interview. Waiting for session scheduling.</p>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-clock"></i> Waiting for Schedule
                 </div>
             </div>
             {% elif application.status == "Evaluation" %}
@@ -185,7 +225,7 @@
                     <p class="stage-desc">Application is under review and AI screening assessment.</p>
                 </div>
                 <div class="stage-cta-footer">
-                    <i class="fas fa-arrow-right"></i> Next: Schedule Interview
+                    <i class="fas fa-arrow-right"></i> Next: Shortlist & Schedule
                 </div>
             </div>
             {% endif %}
@@ -200,17 +240,22 @@
 
         <div class="hero-actions-stack">
             {% if application.status == "Interview" %}
-            <a href="#candidate-evaluation-section" class="hero-action-btn btn-evaluate" title="Evaluate interview performance for {{ application.first_name }}">
+            <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" title="Evaluate interview performance for {{ application.first_name }}">
                 <i class="fas fa-clipboard-check"></i>
                 <span>Evaluate Candidate</span>
-            </a>
+            </button>
             {% elif application.status == "Evaluation" %}
-            <a href="#candidate-evaluation-section" class="hero-action-btn btn-evaluate" title="Review or update candidate evaluation">
+            <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" title="Review or update candidate evaluation">
                 <i class="fas fa-clipboard-check"></i>
                 <span>Update Evaluation</span>
+            </button>
+            {% elif application.status == "Shortlisted" %}
+            <a href="{% url 'interviews' %}?tab=waiting" class="hero-action-btn btn-schedule" title="Configure and schedule interview session for {{ application.first_name }}">
+                <i class="fas fa-calendar-plus"></i>
+                <span>Schedule Session</span>
             </a>
             {% elif application.status == "Screening" or application.status == "Pending" %}
-            <button type="button" onclick="openConfirmScheduleModal()" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
+            <button type="button" onclick="openConfirmScheduleModal()" class="hero-action-btn btn-schedule" title="Shortlist and schedule interview for {{ application.first_name }}">
                 <i class="fas fa-calendar-plus"></i>
                 <span>Schedule Interview</span>
             </button>
@@ -660,7 +705,7 @@
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    {% if candidate_evaluation %}
+                    {% if candidate_evaluation and candidate_evaluation.status == "Completed" %}
                     <div class="ai-score-badge-large 
                         {% if candidate_evaluation.overall_rating >= 4.0 %}score-high
                         {% elif candidate_evaluation.overall_rating >= 3.0 %}score-mid
@@ -677,15 +722,15 @@
                         <i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>
                     </button>
                     {% else %}
-                    <span class="status-pill status-screening" style="padding: 6px 14px; font-size: 12px; font-weight: 600;">
-                        <i class="fas fa-clock"></i> Ready for Evaluation
+                    <span class="status-pill status-screening" id="eval-status-badge" style="padding: 6px 14px; font-size: 12px; font-weight: 600;">
+                        <i class="fas fa-clock"></i> {% if candidate_evaluation and candidate_evaluation.status == "Draft" %}Evaluation in Progress{% else %}Evaluation Pending{% endif %}
                     </span>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Existing Evaluation View (when available) -->
-            {% if candidate_evaluation %}
+            <!-- Existing Evaluation View (when completed) -->
+            {% if candidate_evaluation and candidate_evaluation.status == "Completed" %}
             <div id="eval-view-card" class="eval-view-container" style="display: block;">
                 <!-- Header Meta Strip -->
                 <div class="eval-meta-strip" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: rgba(45, 90, 39, 0.04); border: 1px solid rgba(45, 90, 39, 0.12); border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
@@ -859,8 +904,29 @@
             </div>
             {% endif %}
 
-            <!-- Interactive Evaluation Form (Shown when no evaluation or when editing) -->
-            <div id="eval-form-card" class="eval-form-container" style="{% if candidate_evaluation %}display: none;{% else %}display: block;{% endif %}">
+            {% if not candidate_evaluation or candidate_evaluation.status != "Completed" %}
+            <!-- Candidate Evaluation Not Yet Initiated Placeholder Banner -->
+            <div id="eval-pending-card" class="eval-pending-box" style="{% if show_eval_form %}display: none;{% else %}display: block;{% endif %} background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 32px 24px; text-align: center; margin-bottom: 20px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(45, 90, 39, 0.08); color: #2d5a27; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                    <i class="fas fa-clipboard-question"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #1e293b;">
+                    Candidate Interview Evaluation Not Yet Initiated
+                </h4>
+                <p style="margin: 0 auto 18px auto; max-width: 520px; font-size: 13px; color: #64748b; line-height: 1.5;">
+                    Live candidate interview assessment, structured competency rubric scoring, interviewer notes, and audio intelligence have not been performed yet for this applicant.
+                </p>
+                {% if application.status == "Interview" or application.status == "Evaluation" or application.status == "Shortlisted" %}
+                <button type="button" class="btn btn-primary" onclick="openEvaluationForm()" style="background: #2d5a27; color: #ffffff; border: none; padding: 9px 22px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin: 0 auto; box-shadow: 0 4px 12px rgba(45,90,39,0.2);">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Evaluate Candidate</span>
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Interactive Evaluation Form (Shown when evaluate requested or when editing) -->
+            <div id="eval-form-card" class="eval-form-container" style="{% if show_eval_form %}display: block;{% else %}display: none;{% endif %}">
                 <form method="POST" action="{% url 'evaluate_candidate' application.pk %}" enctype="multipart/form-data" id="candidateEvaluationForm" onsubmit="return handleEvaluationSubmit(event)">
                     {% csrf_token %}
 
@@ -1058,11 +1124,9 @@
 
                         <!-- Form Actions -->
                         <div style="display: flex; justify-content: flex-end; gap: 10px; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                            {% if candidate_evaluation %}
-                            <button type="button" class="btn btn-secondary" onclick="toggleEvaluationForm()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600;">
+                            <button type="button" class="btn btn-secondary" onclick="cancelEvaluationForm()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
                                 Cancel
                             </button>
-                            {% endif %}
                             <button type="submit" id="btn-submit-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-floppy-disk"></i>
                                 <span>Save & Record Evaluation</span>
@@ -1121,6 +1185,45 @@ var recordInterval = null;
 var recordSeconds = 0;
 var recordedAudioBlob = null;
 
+function openEvaluationForm() {
+    var pendingCard = document.getElementById("eval-pending-card");
+    if (pendingCard) pendingCard.style.display = "none";
+    var formCard = document.getElementById("eval-form-card");
+    if (formCard) formCard.style.display = "block";
+    var viewCard = document.getElementById("eval-view-card");
+    if (viewCard) viewCard.style.display = "none";
+    var section = document.getElementById("candidate-evaluation-section");
+    if (section) section.scrollIntoView({ behavior: "smooth" });
+    fetch("{% url 'start_candidate_evaluation' application.pk %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+    }).catch(function(e) {});
+}
+
+function cancelEvaluationForm() {
+    var formCard = document.getElementById("eval-form-card");
+    if (formCard) formCard.style.display = "none";
+    var viewCard = document.getElementById("eval-view-card");
+    var pendingCard = document.getElementById("eval-pending-card");
+    if (viewCard) {
+        viewCard.style.display = "block";
+    } else if (pendingCard) {
+        pendingCard.style.display = "block";
+    }
+    var toggleText = document.getElementById("toggle-eval-text");
+    if (toggleText) toggleText.textContent = "Edit Evaluation";
+    fetch("{% url 'cancel_candidate_evaluation' application.pk %}", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "X-Requested-With": "XMLHttpRequest",
+        }
+    }).catch(function(e) {});
+}
+
 function toggleEvaluationForm() {
     var viewCard = document.getElementById("eval-view-card");
     var formCard = document.getElementById("eval-form-card");
@@ -1138,18 +1241,20 @@ function toggleEvaluationForm() {
             }
         }).catch(function(e) {});
     } else {
-        formCard.style.display = "none";
-        if (viewCard) viewCard.style.display = "block";
-        if (toggleText) toggleText.textContent = "Edit Evaluation";
-        fetch("{% url 'cancel_candidate_evaluation' application.pk %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "X-Requested-With": "XMLHttpRequest",
-            }
-        }).catch(function(e) {});
+        cancelEvaluationForm();
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('evaluate') === '1' || window.location.hash === '#candidate-evaluation-section') {
+        var formCard = document.getElementById("eval-form-card");
+        var viewCard = document.getElementById("eval-view-card");
+        if (!viewCard && formCard) {
+            openEvaluationForm();
+        }
+    }
+});
 
 function updateRubricDisplay(slider, targetId) {
     var el = document.getElementById(targetId);
@@ -1269,8 +1374,8 @@ function closeConfirmScheduleModal() {
                     <i class="fas fa-calendar-plus"></i>
                 </div>
                 <div>
-                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">Schedule Interview Confirmation</h3>
-                    <p style="margin: 2px 0 0; font-size: 12.5px; color: #166534;">Advance applicant to interview pipeline</p>
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">Shortlist Candidate &amp; Schedule Interview</h3>
+                    <p style="margin: 2px 0 0; font-size: 12.5px; color: #166534;">Candidate will advance to Shortlisted stage</p>
                 </div>
             </div>
             <button type="button" onclick="closeConfirmScheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #64748b; cursor: pointer; padding: 4px;">
@@ -1279,7 +1384,7 @@ function closeConfirmScheduleModal() {
         </div>
 
         <div style="padding: 24px;">
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; align-items: center; gap: 14px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px;">
                 <div style="width: 44px; height: 44px; border-radius: 50%; background: #2d5a27; color: #ffffff; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center;">
                     {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
                 </div>
@@ -1292,8 +1397,13 @@ function closeConfirmScheduleModal() {
                 </span>
             </div>
 
-            <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin: 0 0 16px 0;">
-                By confirming, <strong>{{ application.first_name }} {{ application.last_name }}</strong> will be advanced to the <strong>Interview stage</strong> and listed in <strong>Candidates Waiting for Interview</strong> inside the Interview Management tab, where you can configure their session schedule.
+            <div style="background: rgba(14, 165, 233, 0.08); border-left: 4px solid #0284c7; padding: 11px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; color: #0369a1; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-user-check"></i>
+                <span>Candidate stage will advance from Screening to <strong>Shortlisted</strong>.</span>
+            </div>
+
+            <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin: 0 0 18px 0;">
+                By confirming, <strong>{{ application.first_name }} {{ application.last_name }}</strong> will be marked as <strong>Shortlisted</strong> and advanced to <strong>Candidates Waiting for Interview</strong> inside the Interview Management tab, where you can configure their session schedule.
             </p>
 
             <form method="POST" action="{% url 'move_to_interview_waiting' application.id %}">
@@ -1303,8 +1413,8 @@ function closeConfirmScheduleModal() {
                         Cancel
                     </button>
                     <button type="submit" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-                        <i class="fas fa-check"></i>
-                        <span>Confirm & List for Scheduling</span>
+                        <i class="fas fa-user-check"></i>
+                        <span>Confirm &amp; Shortlist Candidate</span>
                     </button>
                 </div>
             </form>

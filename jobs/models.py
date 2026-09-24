@@ -95,6 +95,7 @@ class Application(models.Model):
     STATUS_CHOICES =[
         ("Pending", "Pending"),
         ("Screening", "Screening"),
+        ("Shortlisted", "Shortlisted"),
         ("Interview", "Interview"),
         ("Evaluation", "Evaluation"),
         ("Hired", "Hired"),

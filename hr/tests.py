@@ -1431,7 +1431,7 @@ class CandidateManagementTests(TestCase):
         self.assertRedirects(post_resp, f"{reverse('interviews')}?tab=waiting")
 
         app.refresh_from_db()
-        self.assertEqual(app.status, "Interview")
+        self.assertEqual(app.status, "Shortlisted")
         self.assertFalse(app.interview_scheduled)
 
         # 3. Interviews GET now shows Katherine under Candidates Waiting for Interview
@@ -1652,6 +1652,119 @@ class CandidateManagementTests(TestCase):
         self.assertContains(resp, "<span>Cancel</span>")
         self.assertContains(resp, "rescheduleApplicantModal")
         self.assertContains(resp, "cancelApplicantModal")
+
+    def test_job_candidate_search_displays_true_rank_number(self):
+        """HTMX search for a candidate displays their true overall rank in the job, not renumbered #1."""
+        # self.sales_apps has 10 applicants sorted 99 down to 90.
+        # Index 5 has score 94, which is Rank 6 among all 10 applicants.
+        target_app = self.sales_apps[5]
+        url = reverse("candidate_job_table", args=[self.job_sales_staff.id])
+        resp = self.client.get(f"{url}?search={target_app.first_name}")
+        self.assertEqual(resp.status_code, 200)
+
+        table_data = resp.context["table_data"]
+        self.assertTrue(table_data["is_search"])
+        self.assertEqual(len(table_data["candidates"]), 1)
+        # Verify the candidate's table_rank is true rank 6, not 1
+        self.assertEqual(table_data["candidates"][0].table_rank, 6)
+        # Check rendered HTML contains #6
+        self.assertContains(resp, "#6")
+        self.assertNotContains(resp, "#1</span>")
+
+    def test_candidate_detail_displays_ai_ranking_beside_role(self):
+        """Candidate detail page renders candidate AI rank beside Role in Application Details."""
+        # self.sales_apps has 10 applicants; index 0 has score 99 (Rank #1)
+        top_app = self.sales_apps[0]
+        url = reverse("candidate_detail", kwargs={"pk": top_app.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertEqual(resp.context["candidate_rank"], 1)
+        self.assertEqual(resp.context["total_job_applicants"], 10)
+        self.assertContains(resp, "applicant-ai-rank-badge")
+        self.assertContains(resp, "Rank #1")
+        self.assertContains(resp, "of 10")
+
+    def test_candidate_detail_displays_interview_schedule_in_stage_card(self):
+        """For candidate in Interview stage with scheduled session, date and time appear in Candidate Stage."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Rosalind",
+            last_name="Franklin",
+            email="rosalind@dna.org",
+            phone="09181112233",
+            ai_score=97,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="Panel Interview",
+            interviewer="Admin User",
+            date="2026-11-15",
+            time="14:30:00",
+            location="Room 303 / Google Meet",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertIsNotNone(resp.context["scheduled_interview"])
+        self.assertContains(resp, "Nov 15, 2026")
+        self.assertContains(resp, "2:30 PM")
+        self.assertContains(resp, "Panel Interview")
+        self.assertContains(resp, "Room 303 / Google Meet")
+
+    def test_candidate_detail_evaluation_form_visibility_toggle(self):
+        """Evaluation form is hidden with placeholder shown by default, and displayed with ?evaluate=1."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Dorothy",
+            last_name="Vaughan",
+            email="dorothy@nasa.gov",
+            phone="09183334455",
+            ai_score=94,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+
+        # Default GET: form is hidden, placeholder banner is displayed
+        resp_default = self.client.get(url)
+        self.assertEqual(resp_default.status_code, 200)
+        self.assertFalse(resp_default.context["show_eval_form"])
+        self.assertContains(resp_default, "Candidate Interview Evaluation Not Yet Initiated")
+        self.assertContains(resp_default, 'id="eval-pending-card" class="eval-pending-box" style="display: block;')
+        self.assertContains(resp_default, 'id="eval-form-card" class="eval-form-container" style="display: none;"')
+
+        # GET with ?evaluate=1: form is displayed
+        resp_eval = self.client.get(f"{url}?evaluate=1")
+        self.assertEqual(resp_eval.status_code, 200)
+        self.assertTrue(resp_eval.context["show_eval_form"])
+        self.assertContains(resp_eval, 'id="eval-pending-card" class="eval-pending-box" style="display: none;')
+        self.assertContains(resp_eval, 'id="eval-form-card" class="eval-form-container" style="display: block;"')
+
+    def test_candidate_detail_shortlisted_stage_card(self):
+        """Shortlisted candidate displays Shortlisted stage card and waiting schedule footer."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Hedy",
+            last_name="Lamarr",
+            email="hedy@inventor.org",
+            phone="09185556677",
+            ai_score=93,
+            status="Shortlisted",
+        )
+        url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertContains(resp, "stage-card-shortlisted")
+        self.assertContains(resp, "Candidate has been shortlisted for interview. Waiting for session scheduling.")
+        self.assertContains(resp, "Waiting for Schedule")
+
 
 
 

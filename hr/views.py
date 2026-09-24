@@ -441,7 +441,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
                 Q(email__icontains=search_query)
             )
             .only(*base_fields)
-            .order_by("-ai_score", "-created_at")
+            .order_by("-ai_score", "-created_at", "id")
         )
         total_matching = search_qs.count()
         total_pages = max(1, math.ceil(total_matching / TABLE_PAGE_SIZE)) if total_matching > 0 else 1
@@ -450,8 +450,15 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         offset = (page_number - 1) * TABLE_PAGE_SIZE
         candidates_page = list(search_qs[offset : offset + TABLE_PAGE_SIZE])
 
-        for idx, cand in enumerate(candidates_page):
-            cand.table_rank = offset + idx + 1
+        if candidates_page:
+            all_job_app_ids = list(
+                Application.objects.filter(job=job)
+                .order_by("-ai_score", "-created_at", "id")
+                .values_list("id", flat=True)
+            )
+            rank_map = {app_id: idx + 1 for idx, app_id in enumerate(all_job_app_ids)}
+            for cand in candidates_page:
+                cand.table_rank = rank_map.get(cand.id, 1)
 
         start_idx = offset + 1 if total_matching > 0 else 0
         end_idx = min(offset + TABLE_PAGE_SIZE, total_matching)
@@ -482,7 +489,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         candidates_page = list(
             Application.objects.filter(job=job)
             .only(*base_fields)
-            .order_by("-ai_score", "-created_at")[offset : offset + TABLE_PAGE_SIZE]
+            .order_by("-ai_score", "-created_at", "id")[offset : offset + TABLE_PAGE_SIZE]
         )
 
         for idx, cand in enumerate(candidates_page):
@@ -519,7 +526,7 @@ def candidates(request):
     counts = Application.objects.aggregate(
         total=Count("id"),
         screening=Count("id", filter=Q(status="Screening")),
-        interview=Count("id", filter=Q(status="Interview")),
+        interview=Count("id", filter=Q(status__in=["Interview", "Shortlisted"])),
         evaluation=Count("id", filter=Q(status="Evaluation")),
         hired=Count("id", filter=Q(status="Hired")),
     )
@@ -559,7 +566,7 @@ def candidates(request):
                 row_num=Window(
                     expression=RowNumber(),
                     partition_by=[F("job_id")],
-                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                    order_by=[F("ai_score").desc(), F("created_at").desc(), F("id").asc()]
                 )
             )
             .filter(row_num__lte=3)
@@ -575,7 +582,7 @@ def candidates(request):
                 row_num=Window(
                     expression=RowNumber(),
                     partition_by=[F("job_id")],
-                    order_by=[F("ai_score").desc(), F("created_at").desc()]
+                    order_by=[F("ai_score").desc(), F("created_at").desc(), F("id").asc()]
                 )
             )
             .filter(row_num__gte=4, row_num__lte=8)
@@ -715,6 +722,24 @@ def candidate_detail(request, pk):
             candidate_evaluation = None
 
     scheduled_interviews = list(application.interview.all().order_by("-date", "-time"))
+    scheduled_interview = scheduled_interviews[0] if scheduled_interviews else None
+
+    # Calculate true AI match rank of the candidate within this job role
+    all_job_app_ids = list(
+        Application.objects.filter(job=application.job)
+        .order_by("-ai_score", "-created_at", "id")
+        .values_list("id", flat=True)
+    )
+    try:
+        candidate_rank = all_job_app_ids.index(application.id) + 1
+    except ValueError:
+        candidate_rank = None
+    total_job_applicants = len(all_job_app_ids)
+
+    # Determine whether the evaluation form should be open or show the "not initiated" banner
+    evaluate_param = request.GET.get("evaluate") == "1"
+    is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
+    show_eval_form = evaluate_param or is_draft
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
@@ -724,6 +749,10 @@ def candidate_detail(request, pk):
         "interview_responses": interview_responses,
         "candidate_evaluation": candidate_evaluation,
         "scheduled_interviews": scheduled_interviews,
+        "scheduled_interview": scheduled_interview,
+        "candidate_rank": candidate_rank,
+        "total_job_applicants": total_job_applicants,
+        "show_eval_form": show_eval_form,
     })
 
 
@@ -851,8 +880,7 @@ def interviews(request):
         Prefetch(
             "application",
             queryset=Application.objects.filter(
-                status="Interview",
-                interview__isnull=True
+                Q(status="Shortlisted") | Q(status="Interview", interview__isnull=True)
             ).order_by("-ai_score"),
             to_attr="waiting_applicants"
         )
@@ -979,8 +1007,7 @@ def interviews(request):
     # 8. Collect applications waiting for interview scheduling grouped by Department and Position
     waiting_applications = list(
         Application.objects.filter(
-            status="Interview",
-            interview__isnull=True
+            Q(status="Shortlisted") | Q(status="Interview", interview__isnull=True)
         )
         .select_related("job", "applicant")
         .order_by("job__department", "job__title", "-ai_score")
@@ -1124,16 +1151,17 @@ def move_to_interview_waiting(request, pk):
     """
     Called from candidate profile confirmation popup when HR decides to advance
     a candidate from Screening stage into Interview scheduling pipeline.
+    Marks candidate as Shortlisted and moves them to Candidates Waiting for Interview scheduling.
     """
     application = get_object_or_404(Application, pk=pk)
     if request.method == "POST":
-        application.status = "Interview"
+        application.status = "Shortlisted"
         application.interview_scheduled = False
         application.save(update_fields=["status", "interview_scheduled"])
         invalidate_hr_cache()
         messages.success(
             request,
-            f"{application.first_name} {application.last_name} has been moved to Candidates Waiting for Interview scheduling."
+            f"{application.first_name} {application.last_name} has been shortlisted and moved to Candidates Waiting for Interview scheduling."
         )
     return redirect(f"{reverse('interviews')}?tab=waiting")
 
@@ -1271,7 +1299,7 @@ def cancel_candidate_interview(request, pk):
         if cancel_action == "reject":
             application.status = "Rejected"
         else:
-            application.status = "Interview"
+            application.status = "Shortlisted"
         application.interview_scheduled = False
         application.save(update_fields=["status", "interview_scheduled"])
         invalidate_hr_cache()
@@ -1421,8 +1449,8 @@ def evaluate_candidate(request, pk):
                 import logging
                 logging.getLogger(__name__).warning("Candidate evaluation AI audio analysis failed: %s", ai_err)
 
-        # Move candidate to Evaluation stage if in Screening or Interview stage
-        if application.status in ["Screening", "Interview"]:
+        # Move candidate to Evaluation stage if in Screening, Shortlisted, or Interview stage
+        if application.status in ["Screening", "Shortlisted", "Interview"]:
             application.status = "Evaluation"
             application.save(update_fields=["status"])
 
@@ -1499,7 +1527,7 @@ def start_candidate_evaluation(request, pk):
             "message": "Candidate evaluation set to Ongoing."
         })
 
-    return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+    return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}?evaluate=1#candidate-evaluation-section")
 
 
 @never_cache

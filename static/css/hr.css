@@ -708,6 +708,60 @@ body.hr-loading .sidebar-logo .loader,
     margin-bottom: 28px; 
 }
 
+/* 5-Column Stats Grid (Candidates Page - All 5 Cards Fit in One Row) */
+.stats-grid-5 {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 14px !important;
+    margin-bottom: 24px !important;
+}
+
+.stats-grid-5 .stat-card {
+    padding: 16px 18px !important;
+    height: 125px !important;
+    border-radius: 15px !important;
+}
+
+.stats-grid-5 .stat-header {
+    margin-bottom: 8px !important;
+}
+
+.stats-grid-5 .stat-icon-wrapper {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 15px !important;
+    border-radius: 10px !important;
+}
+
+.stats-grid-5 .stat-value {
+    font-size: 1.6rem !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+}
+
+.stats-grid-5 .stat-label {
+    font-size: 12px !important;
+    margin-top: 3px !important;
+}
+
+@media (max-width: 1200px) {
+    .stats-grid-5 {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid-5 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid-5 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
 .stat-card { 
     background: rgba(255, 255, 255, 0.88); 
     backdrop-filter: blur(14px);
@@ -1041,6 +1095,7 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .status-screening { background: #fef3c7; color: #92400e; }
+.status-shortlisted { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
 .status-interview { background: #ede9fe; color: #5b21b6; }
 .status-hired { background: #d1fae5; color: #065f46; }
 .status-rejected { background: #ffe4e6; color: #9f1239; }
@@ -2453,6 +2508,27 @@ table .btn-review-applicant {
     word-break: break-word;
 }
 
+.applicant-ai-rank-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.applicant-ai-rank-badge i {
+    color: #d97706;
+    font-size: 11px;
+}
+
 .hero-resume-pills {
     display: flex;
     flex-direction: column;
@@ -2582,6 +2658,11 @@ table .btn-review-applicant {
     border-color: rgba(245, 158, 11, 0.35);
 }
 
+.stage-card-shortlisted {
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(14, 165, 233, 0.05) 100%);
+    border-color: rgba(2, 132, 199, 0.35);
+}
+
 .stage-card-interview {
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%);
     border-color: rgba(139, 92, 246, 0.35);
@@ -2624,6 +2705,11 @@ table .btn-review-applicant {
 .stage-card-screening .stage-badge-pill {
     background: #fef3c7;
     color: #b45309;
+}
+
+.stage-card-shortlisted .stage-badge-pill {
+    background: #e0f2fe;
+    color: #0369a1;
 }
 
 .stage-card-interview .stage-badge-pill {
@@ -2679,6 +2765,7 @@ table .btn-review-applicant {
 }
 
 .stage-card-screening .stage-cta-footer { color: #b45309; }
+.stage-card-shortlisted .stage-cta-footer { color: #0284c7; }
 .stage-card-interview .stage-cta-footer { color: #6d28d9; }
 .stage-card-evaluation .stage-cta-footer { color: #0369a1; }
 .stage-card-hired .stage-cta-footer { color: #047857; }
