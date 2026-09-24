@@ -63,6 +63,11 @@ urlpatterns = [
         name="cancel_candidate_evaluation",
         ),
 
+    path("candidates/applicant/<int:pk>/move-to-waiting/",
+        views.move_to_interview_waiting,
+        name="move_to_interview_waiting",
+        ),
+
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),
@@ -71,6 +76,9 @@ urlpatterns = [
     
     path("interviews/", views.interviews, name="interviews",),
     path("interviews/schedule/<int:job_id>/", views.schedule_interview, name="schedule_interview"),
+    path("interviews/schedule-applicant/", views.schedule_candidate_interview, name="schedule_candidate_interview"),
+    path("interviews/reschedule-applicant/<int:pk>/", views.reschedule_candidate_interview, name="reschedule_candidate_interview"),
+    path("interviews/cancel-applicant/<int:pk>/", views.cancel_candidate_interview, name="cancel_candidate_interview"),
     path("interviews/<int:pk>/", views.interview_detail, name="interview_detail"),
     path("interviews/<int:pk>/status/", views.update_interview_status, name="update_interview_status"),
 ]

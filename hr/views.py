@@ -947,6 +947,8 @@ def interviews(request):
         dept_ongoing = 0
         dept_completed = 0
         for job_obj, app_list in job_map.items():
+            for idx, a in enumerate(app_list):
+                a.table_rank = idx + 1
             job_ready = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Scheduled")
             job_ongoing = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Ongoing")
             job_completed = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Completed")
@@ -966,12 +968,78 @@ def interviews(request):
         evaluation_departments.append({
             "name": dept_name,
             "jobs": dept_jobs,
+            "all_jobs": [{"id": j["job"].id, "title": j["job"].title} for j in dept_jobs],
             "job_count": len(dept_jobs),
             "total_applicants": dept_total,
             "ready_count": dept_ready,
             "ongoing_count": dept_ongoing,
             "completed_count": dept_completed,
         })
+
+    # 8. Collect applications waiting for interview scheduling grouped by Department and Position
+    waiting_applications = list(
+        Application.objects.filter(
+            status="Interview",
+            interview__isnull=True
+        )
+        .select_related("job", "applicant")
+        .order_by("job__department", "job__title", "-ai_score")
+    )
+
+    waiting_dept_dict = defaultdict(lambda: defaultdict(list))
+    waiting_total = 0
+    for app in waiting_applications:
+        dept_name = app.job.department if (app.job and app.job.department) else "General"
+        waiting_dept_dict[dept_name][app.job].append(app)
+        waiting_total += 1
+
+    waiting_departments = []
+    for dept_name in sorted(waiting_dept_dict.keys()):
+        job_map = waiting_dept_dict[dept_name]
+        dept_jobs = []
+        dept_total = 0
+        for job_obj, app_list in job_map.items():
+            for idx, a in enumerate(app_list):
+                a.table_rank = idx + 1
+            dept_jobs.append({
+                "job": job_obj,
+                "applicants": app_list,
+                "total_count": len(app_list),
+            })
+            dept_total += len(app_list)
+        waiting_departments.append({
+            "name": dept_name,
+            "jobs": dept_jobs,
+            "all_jobs": [{"id": j["job"].id, "title": j["job"].title} for j in dept_jobs],
+            "job_count": len(dept_jobs),
+            "total_applicants": dept_total,
+        })
+
+    # 9. Aggregate today's interviews by Department and Position for Today's Schedule view
+    today_dept_map = defaultdict(lambda: {"job": None, "department": "", "count": 0, "applicants": [], "interviews": []})
+    for interview in todays_schedule:
+        job = interview.primary_job
+        if not job:
+            continue
+        dept = job.department or "General"
+        key = (dept, job.id)
+        today_dept_map[key]["job"] = job
+        today_dept_map[key]["department"] = dept
+        apps = list(interview.applicants.all())
+        today_dept_map[key]["count"] += len(apps)
+        today_dept_map[key]["applicants"].extend(apps)
+        today_dept_map[key]["interviews"].append(interview)
+
+    today_dept_positions = list(today_dept_map.values())
+
+    # 10. HR Staff list for scheduling panel selection
+    hr_staff = list(User.objects.filter(groups__name="HR", is_active=True).order_by("first_name", "last_name"))
+    if not hr_staff:
+        hr_staff = list(User.objects.filter(is_staff=True, is_active=True).order_by("first_name", "last_name"))
+
+    active_tab = request.GET.get("tab", "schedules")
+    if active_tab not in ("schedules", "waiting", "evaluations"):
+        active_tab = "schedules"
 
     context = {
         "total": counts["total"],
@@ -985,14 +1053,21 @@ def interviews(request):
         "today": today,
 
         "todays_schedule": todays_schedule,
+        "today_dept_positions": today_dept_positions,
         "upcoming_interviews": upcoming_interviews,
         "overdue_interviews": overdue_interviews,
+
+        "waiting_departments": waiting_departments,
+        "waiting_total": waiting_total,
 
         "evaluation_departments": evaluation_departments,
         "eval_ready_total": eval_ready_total,
         "eval_ongoing_total": eval_ongoing_total,
         "eval_completed_total": eval_completed_total,
         "eval_total": len(scheduled_applications),
+
+        "hr_staff": hr_staff,
+        "active_tab": active_tab,
     }
 
     return render(request, "hr/interview.html", context)
@@ -1003,58 +1078,211 @@ def interviews(request):
 def schedule_interview(request, job_id):
     job = get_object_or_404(Job, pk=job_id)
 
-    applicants = Application.objects.filter(
-        job=job,
-        status__in=["Screening", "Interview", "Pending"],
-        interview__isnull=True,
-    ).order_by("-ai_score")
-    
-    hr_staff = User.objects.filter(
-        groups__name="HR",
-        is_active=True
-        ).order_by("first_name", "last_name")
-
-    preselected_applicant_id = None
-    raw_app_id = request.GET.get("applicant_id")
-    if raw_app_id:
-        try:
-            preselected_applicant_id = int(raw_app_id)
-        except (ValueError, TypeError):
-            preselected_applicant_id = None
-
     if request.method == "POST":
+        ids = request.POST.getlist("applicants")
+        if not ids:
+            messages.warning(request, "No candidates were selected for batch scheduling.")
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        interview_type = request.POST.get("interview_type", "HR Interview")
+        interviewer = request.POST.get("interviewer", "").strip() or (request.user.get_full_name() or request.user.username)
+        date = request.POST.get("date")
+        time = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
         interview = Interview.objects.create(
-            interview_type=request.POST["interview_type"],
-            interviewer=request.POST["interviewer"],
-            date=request.POST["date"],
-            time=request.POST["time"],
-            location=request.POST["location"],
-            notes=request.POST["notes"],
+            interview_type=interview_type,
+            interviewer=interviewer,
+            date=date,
+            time=time,
+            location=location,
+            notes=notes,
+            status="Scheduled",
         )
 
-        ids = request.POST.getlist("applicants")
         interview.applicants.set(ids)
         # Automatically move scheduled applicants to Interview stage
-        if ids:
-            Application.objects.filter(id__in=ids).update(
-                status="Interview",
-                interview_scheduled=True
-            )
+        Application.objects.filter(id__in=ids).update(
+            status="Interview",
+            interview_scheduled=True
+        )
         invalidate_hr_cache()
 
-        return redirect("interviews")
+        messages.success(
+            request,
+            f"Successfully batch scheduled interview for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
+        )
+        return redirect(f"{reverse('interviews')}?tab=evaluations")
 
-    return render(
-        request,
-        "hr/schedule_interview.html",
-        {
-            "job": job,
-            "applicants": applicants,
-            "interview": Interview,
-            "hr_staff": hr_staff,
-            "preselected_applicant_id": preselected_applicant_id,
-        },
-    )
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def move_to_interview_waiting(request, pk):
+    """
+    Called from candidate profile confirmation popup when HR decides to advance
+    a candidate from Screening stage into Interview scheduling pipeline.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        application.status = "Interview"
+        application.interview_scheduled = False
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+        messages.success(
+            request,
+            f"{application.first_name} {application.last_name} has been moved to Candidates Waiting for Interview scheduling."
+        )
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def schedule_candidate_interview(request):
+    """
+    Called from Candidates Waiting for Interview tab to schedule an interview session
+    for one or more candidates applying for a position.
+    """
+    if request.method == "POST":
+        interview_type = request.POST.get("interview_type", "HR Interview")
+        interviewer = request.POST.get("interviewer", "").strip()
+        date_str = request.POST.get("date")
+        time_str = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
+        applicant_ids = request.POST.getlist("applicants")
+        if not applicant_ids and request.POST.get("applicant_id"):
+            applicant_ids = [request.POST.get("applicant_id")]
+
+        if not date_str or not time_str or not applicant_ids:
+            messages.error(request, "Please provide the interview date, time, and select at least one candidate.")
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        interviewer_name = interviewer or request.user.get_full_name() or request.user.username
+        interview = Interview.objects.create(
+            interview_type=interview_type,
+            interviewer=interviewer_name,
+            date=date_str,
+            time=time_str,
+            location=location,
+            notes=notes,
+            status="Scheduled",
+        )
+        interview.applicants.set(applicant_ids)
+        Application.objects.filter(id__in=applicant_ids).update(
+            status="Interview",
+            interview_scheduled=True
+        )
+        invalidate_hr_cache()
+        messages.success(
+            request,
+            f"Interview successfully scheduled for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
+        )
+        return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def reschedule_candidate_interview(request, pk):
+    """
+    Called from Candidates Waiting for Interview tab to reschedule an interview
+    with updated date, time, logistics, and timestamped per-applicant notes.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        new_date = request.POST.get("date")
+        new_time = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        interviewer = request.POST.get("interviewer", "").strip()
+        reschedule_notes = request.POST.get("reschedule_notes", "").strip()
+
+        interview = application.interview.order_by("-date", "-time").first()
+        interviewer_name = interviewer or (interview.interviewer if interview else (request.user.get_full_name() or request.user.username))
+
+        if not interview:
+            interview = Interview.objects.create(
+                interview_type=request.POST.get("interview_type", "HR Interview"),
+                interviewer=interviewer_name,
+                date=new_date,
+                time=new_time,
+                location=location,
+                notes=f"Rescheduled: {reschedule_notes}" if reschedule_notes else "",
+                status="Scheduled",
+            )
+            interview.applicants.add(application)
+        else:
+            if new_date:
+                interview.date = new_date
+            if new_time:
+                interview.time = new_time
+            if location:
+                interview.location = location
+            if interviewer:
+                interview.interviewer = interviewer
+            interview.status = "Scheduled"
+            if reschedule_notes:
+                stamp = timezone.localtime().strftime("%b %d, %Y %I:%M %p")
+                note_entry = f"[Rescheduled on {stamp}]: {reschedule_notes}"
+                interview.notes = f"{interview.notes}\n{note_entry}".strip() if interview.notes else note_entry
+            interview.save()
+
+        application.interview_scheduled = True
+        application.status = "Interview"
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+        messages.success(
+            request,
+            f"Interview for {application.first_name} {application.last_name} has been rescheduled to {new_date}."
+        )
+
+        next_tab = request.POST.get("next_tab", "waiting")
+        return redirect(f"{reverse('interviews')}?tab={next_tab}")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def cancel_candidate_interview(request, pk):
+    """
+    Called to cancel an interview,
+    recording cancellation notes per applicant and handling status transition.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        cancel_notes = request.POST.get("cancel_notes", "").strip()
+        cancel_action = request.POST.get("cancel_action", "cancel_interview")
+
+        interview = application.interview.order_by("-date", "-time").first()
+        if interview:
+            stamp = timezone.localtime().strftime("%b %d, %Y %I:%M %p")
+            note_entry = f"[Cancelled on {stamp} for {application.first_name} {application.last_name}]: {cancel_notes}".strip()
+            interview.notes = f"{interview.notes}\n{note_entry}".strip() if interview.notes else note_entry
+            if interview.applicants.count() <= 1:
+                interview.status = "Cancelled"
+            interview.applicants.remove(application)
+            interview.save()
+
+        if cancel_action == "reject":
+            application.status = "Rejected"
+        else:
+            application.status = "Interview"
+        application.interview_scheduled = False
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+        messages.info(
+            request,
+            f"Interview for {application.first_name} {application.last_name} has been cancelled with recorded notes."
+        )
+        next_tab = request.POST.get("next_tab", "waiting")
+        return redirect(f"{reverse('interviews')}?tab={next_tab}")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
 
 
 @never_cache

@@ -64,66 +64,226 @@
         </div>
     </section>
 
-    <!-- Overdue Alert if any -->
-    {% include "hr/partials/overdue_interviews.html" %}
+    <!-- Horizontal Sub-Navigation Tabs (Equal border-radius on all corners, no bottom underline) -->
+    <div class="interview-subnav-container" style="margin: 28px 0 24px 0;">
+        <div class="interview-subnav-tabs" style="display: flex; gap: 12px; padding-bottom: 0; flex-wrap: wrap;">
+            <button type="button" 
+                    id="tab-btn-schedules" 
+                    class="interview-subnav-tab {% if active_tab == 'schedules' %}active{% endif %}" 
+                    onclick="switchInterviewTab('schedules')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'schedules' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'schedules' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'schedules' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'schedules' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-calendar-days"></i>
+                <span>Schedules &amp; Overview</span>
+                {% if overdue_interviews %}
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: #fee2e2; color: #b91c1c;">
+                    {{ overdue_interviews|length }}
+                </span>
+                {% endif %}
+            </button>
 
-    <!-- Schedules Grid -->
-    <div class="dashboard-grid">
-        <div class="dash-column">
-            {% include "hr/partials/today_schedule.html" %}
-            
-            <!-- Positions Waiting for Scheduling -->
-            <div class="content-box">
-                <div class="box-header">
-                    <div class="box-header-title">
-                        <i class="fas fa-user-clock header-icon text-amber"></i>
-                        <div>
-                            <h3>Candidates Waiting for Interview</h3>
-                            <p class="box-subtitle">Positions with qualified candidates ready for scheduling</p>
-                        </div>
-                    </div>
-                </div>
+            <button type="button" 
+                    id="tab-btn-waiting" 
+                    class="interview-subnav-tab {% if active_tab == 'waiting' %}active{% endif %}" 
+                    onclick="switchInterviewTab('waiting')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'waiting' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'waiting' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'waiting' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'waiting' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-user-clock"></i>
+                <span>Candidates Waiting for Interview</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: #fef3c7; color: #b45309;">
+                    {{ waiting_total }}
+                </span>
+            </button>
 
-                <div class="waiting-jobs-grid">
-                    {% for item in job_interviews %}
-                        {% if item.waiting > 0 %}
-                        <div class="waiting-job-card">
-                            <div class="waiting-job-info">
-                                <span class="a-dept-badge">{{ item.job.department }}</span>
-                                <h4>{{ item.job.title }}</h4>
-                                <span class="waiting-badge">
-                                    <i class="fas fa-users"></i>
-                                    <strong>{{ item.waiting }}</strong> applicant{{ item.waiting|pluralize }} waiting
-                                </span>
-                            </div>
-                            <a href="{% url 'schedule_interview' item.job.id %}" class="btn-schedule-action">
-                                <i class="fas fa-calendar-plus"></i> Schedule
-                            </a>
-                        </div>
-                        {% endif %}
-                    {% empty %}
-                        <div class="empty-state-box">
-                            <i class="fas fa-check-circle text-green" style="font-size: 28px; margin-bottom: 8px;"></i>
-                            <h4>No candidates waiting</h4>
-                            <p>All candidates in the interview stage have been scheduled.</p>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <div class="dash-column">
-            {% include "hr/partials/interview_schedule.html" %}
+            <button type="button" 
+                    id="tab-btn-evaluations" 
+                    class="interview-subnav-tab {% if active_tab == 'evaluations' %}active{% endif %}" 
+                    onclick="switchInterviewTab('evaluations')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'evaluations' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'evaluations' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'evaluations' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'evaluations' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-clipboard-user"></i>
+                <span>Candidates Ready for Evaluation</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: #dcfce7; color: #166534;">
+                    {{ eval_ready_total }}
+                </span>
+            </button>
         </div>
     </div>
 
-    <!-- Candidates Ready for Evaluation Section (Organized by Department & Position) -->
-    {% include "hr/partials/interview_evaluations.html" %}
+    <!-- Tab 1 Pane: Schedules & Overview (Action Required, Today's Schedule, and Upcoming stacked inside 1 unified section) -->
+    <div id="tab-pane-schedules" class="interview-tab-pane" style="display: {% if active_tab == 'schedules' %}block{% else %}none{% endif %};">
+        <section class="dept-section-block schedules-overview-section" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 22px;">
+            <!-- 1. Top: Action Required (Overdue Interviews Outcome Alert) -->
+            {% include "hr/partials/overdue_interviews.html" %}
 
-    <!-- Full Scheduled Sessions List -->
-    {% include "hr/partials/interview_cards.html" %}
+            <!-- 2. Middle: Today's Interview Schedule -->
+            {% include "hr/partials/today_schedule.html" %}
 
-    <!-- Candidate Evaluation Modal -->
-    {% include "hr/partials/evaluation_modal.html" %}
+            <!-- 3. Bottom: Upcoming (Next 3 Days) -->
+            {% include "hr/partials/interview_schedule.html" %}
+        </section>
+    </div>
+
+    <!-- Tab 2 Pane: Candidates Waiting for Interview (Uniformed to /hr/candidates/ layout) -->
+    <div id="tab-pane-waiting" class="interview-tab-pane" style="display: {% if active_tab == 'waiting' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/interview_waiting.html" %}
+    </div>
+
+    <!-- Tab 3 Pane: Candidates Ready for Evaluation (Uniformed to /hr/candidates/ layout) -->
+    <div id="tab-pane-evaluations" class="interview-tab-pane" style="display: {% if active_tab == 'evaluations' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/interview_evaluations.html" %}
+    </div>
 </main>
+
+<script>
+function switchInterviewTab(tabKey) {
+    var tabs = ['schedules', 'waiting', 'evaluations'];
+    tabs.forEach(function(t) {
+        var pane = document.getElementById('tab-pane-' + t);
+        var btn = document.getElementById('tab-btn-' + t);
+        if (pane) {
+            pane.style.display = (t === tabKey) ? 'block' : 'none';
+        }
+        if (btn) {
+            if (t === tabKey) {
+                btn.classList.add('active');
+                btn.style.background = '#2d5a27';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#2d5a27';
+                btn.style.boxShadow = '0 4px 12px rgba(45,90,39,0.2)';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+            }
+            btn.style.borderRadius = '12px';
+        }
+    });
+
+    try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', tabKey);
+        window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+        console.warn("Could not update history state", e);
+    }
+}
+
+function goToEvaluation(deptSlug, jobId) {
+    // 1. Switch to evaluations tab
+    switchInterviewTab('evaluations');
+
+    // 2. Filter department dropdown if needed
+    var deptSelect = document.getElementById('evalDeptSelect');
+    if (deptSelect && deptSlug) {
+        deptSelect.value = deptSlug;
+        if (typeof filterDepartmentBlocks === 'function') {
+            filterDepartmentBlocks(deptSelect, 'eval-dept-sections');
+        }
+    }
+
+    // 3. Scroll to specific job card
+    setTimeout(function() {
+        var jobCard = document.getElementById('eval-job-card-' + jobId);
+        if (jobCard) {
+            jobCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            var origBorder = jobCard.style.border;
+            jobCard.style.border = '2px solid #2d5a27';
+            jobCard.style.boxShadow = '0 0 0 4px rgba(45,90,39,0.15)';
+            setTimeout(function() {
+                jobCard.style.border = origBorder;
+                jobCard.style.boxShadow = '';
+            }, 3000);
+        }
+    }, 150);
+}
+
+function filterDepartmentBlocks(selectEl, containerId) {
+    const selectedDept = selectEl.value;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const deptBlocks = container.querySelectorAll('.dept-section-block');
+    deptBlocks.forEach(block => {
+        if (selectedDept === 'all' || block.getAttribute('data-dept') === selectedDept) {
+            block.style.display = '';
+        } else {
+            block.style.display = 'none';
+        }
+    });
+}
+
+function filterDeptJobs(selectEl, deptBlockId) {
+    const selectedJobId = selectEl.value;
+    const deptBlock = document.getElementById(deptBlockId);
+    if (!deptBlock) return;
+    const jobCards = deptBlock.querySelectorAll('.job-section-card');
+    jobCards.forEach(card => {
+        if (selectedJobId === 'all' || card.getAttribute('data-job-id') === selectedJobId) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function filterCandidateTable(inputEl, tableId) {
+    const query = (inputEl.value || '').toLowerCase().trim();
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const rows = table.querySelectorAll('tbody tr.candidate-row');
+    rows.forEach(row => {
+        const searchTarget = (row.getAttribute('data-search-target') || '').toLowerCase();
+        const matchesQuery = !query || searchTarget.indexOf(query) !== -1;
+
+        // Check evaluation status filter if present
+        const rowStatus = row.getAttribute('data-status');
+        const statusSelect = document.getElementById('evalStatusSelect');
+        const selectedStatus = statusSelect ? statusSelect.value : 'all';
+        const matchesStatus = !rowStatus || selectedStatus === 'all' || rowStatus === selectedStatus;
+
+        if (matchesQuery && matchesStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function filterEvaluationStatus(selectEl, containerId) {
+    const selectedStatus = selectEl.value;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const rows = container.querySelectorAll('tbody tr.eval-cand-row');
+    rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        const matchesStatus = (selectedStatus === 'all' || rowStatus === selectedStatus);
+
+        const table = row.closest('table');
+        let matchesQuery = true;
+        if (table) {
+            const card = table.closest('.job-section-card');
+            const searchInput = card ? card.querySelector('.job-search-input') : null;
+            if (searchInput && searchInput.value) {
+                const query = searchInput.value.toLowerCase().trim();
+                const searchTarget = (row.getAttribute('data-search-target') || '').toLowerCase();
+                matchesQuery = searchTarget.indexOf(query) !== -1;
+            }
+        }
+
+        if (matchesStatus && matchesQuery) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Auto-switch to tab from URL param or hash on load
+document.addEventListener('DOMContentLoaded', function() {
+    var params = new URLSearchParams(window.location.search);
+    var tabParam = params.get('tab');
+    if (tabParam && ['schedules', 'waiting', 'evaluations'].indexOf(tabParam) !== -1) {
+        switchInterviewTab(tabParam);
+    }
+});
+</script>
 {% endblock %}

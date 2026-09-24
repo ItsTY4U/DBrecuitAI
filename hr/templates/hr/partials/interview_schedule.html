@@ -1,47 +1,66 @@
-<div class="content-box">
-    <div class="box-header">
-        <div class="box-header-title">
-            <i class="fas fa-clock-rotate-left header-icon text-blue"></i>
+<div class="content-box" style="background: #ffffff; border-radius: 16px; border: 1.5px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.02); overflow: hidden;">
+    <div class="box-header" style="padding: 18px 24px; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div class="box-header-title" style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 40px; height: 40px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                <i class="fas fa-clock-rotate-left"></i>
+            </div>
             <div>
-                <h3>Upcoming (Next 3 Days)</h3>
-                <p class="box-subtitle">Scheduled candidate pipeline</p>
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #0f172a;">Upcoming (Next 3 Days)</h3>
+                <p class="box-subtitle" style="margin: 2px 0 0; font-size: 12.5px; color: #64748b;">Scheduled candidate pipeline for upcoming sessions</p>
             </div>
         </div>
-        <span class="dept-count-badge">
+        <span class="dept-count-badge" style="font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; background: #e0e7ff; color: #3730a3;">
             {{ upcoming_interviews|length }} Upcoming
         </span>
     </div>
 
-    <div class="upcoming-interview-list">
+    <div class="upcoming-interview-list" style="padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;">
         {% for interview in upcoming_interviews %}
-        <div class="upcoming-interview-card">
-            <div class="upcoming-top-row">
-                <span class="interview-type-pill">{{ interview.interview_type }}</span>
-                <span class="status-pill status-{{ interview.status|lower }}">{{ interview.status }}</span>
+        {% with job=interview.primary_job %}
+        <div class="upcoming-interview-card" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;">
+            <div class="upcoming-top-row" style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="interview-type-pill" style="font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 6px; background: #e0f2fe; color: #0284c7;">
+                    {{ interview.interview_type }}
+                </span>
+                <span class="status-pill status-{{ interview.status|lower }}" style="font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;">
+                    {{ interview.status }}
+                </span>
             </div>
             
-            <h4 class="upcoming-job-title">{{ interview.primary_job.title|default:"Job Position" }}</h4>
+            <div>
+                <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">{{ job.department }} Department</span>
+                <h4 class="upcoming-job-title" style="margin: 2px 0 0; font-size: 15.5px; font-weight: 700; color: #0f172a;">{{ job.title|default:"Job Position" }}</h4>
+            </div>
             
-            <div class="upcoming-meta-row">
-                <span class="meta-item"><i class="fas fa-calendar"></i> {{ interview.date|date:"M d, Y" }}</span>
-                <span class="meta-item"><i class="fas fa-clock"></i> {{ interview.time|time:"g:i A" }}</span>
-                <span class="meta-item"><i class="fas fa-user-group"></i> {{ interview.applicants.all|length }}</span>
+            <div class="upcoming-meta-row" style="display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: #475569;">
+                <span class="meta-item"><i class="fas fa-calendar text-blue"></i> {{ interview.date|date:"M d, Y" }}</span>
+                <span class="meta-item"><i class="fas fa-clock text-blue"></i> {{ interview.time|time:"g:i A" }}</span>
+                <span class="meta-item"><i class="fas fa-user-group text-blue"></i> {{ interview.applicants.all|length }} Candidate{{ interview.applicants.all|length|pluralize }}</span>
+                {% if interview.interviewer %}
+                <span class="meta-item"><i class="fas fa-user-tie text-blue"></i> {{ interview.interviewer }}</span>
+                {% endif %}
             </div>
 
-            <div class="upcoming-footer-action">
-                <a href="{% url 'interview_detail' interview.pk %}" class="btn-review-applicant">
-                    <span>Manage Session</span>
-                    <i class="fas fa-arrow-right"></i>
+            <div class="upcoming-footer-action" style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #e2e8f0; padding-top: 10px; margin-top: 4px;">
+                {% if job %}
+                <button type="button" class="btn btn-sm" onclick="goToEvaluation('{{ job.department|slugify }}', '{{ job.id }}')" style="background: #2d5a27; color: #ffffff; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <i class="fas fa-clipboard-user"></i> View Candidates
+                </button>
+                {% endif %}
+                <a href="{% url 'interview_detail' interview.pk %}" class="btn btn-sm btn-secondary" style="padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                    <span>Session Details</span>
+                    <i class="fas fa-arrow-right" style="font-size: 10px;"></i>
                 </a>
             </div>
         </div>
+        {% endwith %}
         {% empty %}
-        <div class="empty-state-box">
-            <div class="empty-state-icon">
+        <div class="empty-state-box" style="padding: 36px 20px; text-align: center; background: #fafafa; border-radius: 12px; border: 1px dashed #cbd5e1;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 22px; margin-bottom: 12px;">
                 <i class="fas fa-calendar-plus"></i>
             </div>
-            <h4>No upcoming sessions</h4>
-            <p>No interviews scheduled within the next 3 days.</p>
+            <h4 style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1e293b;">No upcoming sessions</h4>
+            <p style="margin: 0; font-size: 13px; color: #64748b;">No interviews scheduled within the next 3 days.</p>
         </div>
         {% endfor %}
     </div>

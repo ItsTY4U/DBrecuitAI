@@ -861,7 +861,8 @@ class CandidateManagementTests(TestCase):
         # Actions present in Col 4
         self.assertContains(response, "btn-schedule")
         self.assertContains(response, "btn-email")
-        self.assertContains(response, f"?applicant_id={app.id}")
+        self.assertContains(response, "openConfirmScheduleModal")
+        self.assertContains(response, "confirmScheduleModal")
         self.assertContains(response, "mail.google.com/mail/?view=cm")
         self.assertNotContains(response, "Updated Profile CV")
 
@@ -1122,7 +1123,7 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, self.job_sales_staff.title)
         self.assertContains(response, "Ada")
         self.assertContains(response, "Lovelace")
-        self.assertContains(response, "Evaluate Candidate")
+        self.assertContains(response, "Evaluate")
 
     def test_start_candidate_evaluation_transitions_interview_to_ongoing(self):
         """Starting candidate evaluation transitions scheduled interview to Ongoing."""
@@ -1346,6 +1347,311 @@ class CandidateManagementTests(TestCase):
 
         self.assertEqual(cand1_final.candidate_status, "Completed")
         self.assertEqual(cand2_final.candidate_status, "Completed")
+
+    def test_interview_sub_navigation_renders_all_three_tabs_and_removes_old_manage_sessions(self):
+        """Interviews page renders the 3 horizontal sub-nav tabs and does not contain the old manage sessions section."""
+        response = self.client.get(reverse("interviews"))
+        self.assertEqual(response.status_code, 200)
+
+        # 3 horizontal sub-nav tabs
+        self.assertContains(response, "interview-subnav-tabs")
+        self.assertContains(response, "Schedules & Overview")
+        self.assertContains(response, "Candidates Waiting for Interview")
+        self.assertContains(response, "Candidates Ready for Evaluation")
+
+        # 3 tab panes
+        self.assertContains(response, "tab-pane-schedules")
+        self.assertContains(response, "tab-pane-waiting")
+        self.assertContains(response, "tab-pane-evaluations")
+
+        # Old Manage sessions section is removed
+        self.assertNotContains(response, "interview-session-box")
+        self.assertNotContains(response, "interview-manage-btn")
+
+    def test_today_schedule_lists_only_departments_and_positions_with_redirect_button(self):
+        """Today's Interview Schedule lists only Department and Positions with a button redirecting to Evaluation."""
+        from django.utils import timezone
+        today = timezone.localdate()
+
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Margaret",
+            last_name="Hamilton",
+            email="margaret@nasa.gov",
+            phone="09199887766",
+            ai_score=97,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="Technical Interview",
+            interviewer="Grace Hopper",
+            date=today,
+            time="14:00:00",
+            location="Apollo Room",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        response = self.client.get(reverse("interviews"))
+        self.assertEqual(response.status_code, 200)
+
+        # Today's schedule should list Department & Position
+        self.assertContains(response, "Today's Interview Schedule")
+        self.assertContains(response, f"{self.job_sales_staff.department} Department")
+        self.assertContains(response, self.job_sales_staff.title)
+        self.assertContains(response, "Go to Evaluation")
+        self.assertContains(response, f"goToEvaluation('{self.job_sales_staff.department.lower()}', '{self.job_sales_staff.id}')")
+
+    def test_screening_stage_candidate_profile_confirmation_modal_and_move_to_waiting(self):
+        """Clicking Schedule Interview on screening candidate opens confirmation modal, and confirming lists applicant in waiting."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Katherine",
+            last_name="Johnson",
+            email="katherine@nasa.gov",
+            phone="09195554433",
+            ai_score=99,
+            resume_processed=True,
+            status="Screening",
+        )
+
+        # 1. Profile GET contains modal trigger
+        detail_url = reverse("candidate_detail", kwargs={"pk": app.pk})
+        resp = self.client.get(detail_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "openConfirmScheduleModal()")
+        self.assertContains(resp, "confirmScheduleModal")
+        self.assertContains(resp, reverse("move_to_interview_waiting", kwargs={"pk": app.pk}))
+
+        # 2. POST to move_to_interview_waiting
+        move_url = reverse("move_to_interview_waiting", kwargs={"pk": app.pk})
+        post_resp = self.client.post(move_url)
+        self.assertRedirects(post_resp, f"{reverse('interviews')}?tab=waiting")
+
+        app.refresh_from_db()
+        self.assertEqual(app.status, "Interview")
+        self.assertFalse(app.interview_scheduled)
+
+        # 3. Interviews GET now shows Katherine under Candidates Waiting for Interview
+        intv_resp = self.client.get(f"{reverse('interviews')}?tab=waiting")
+        self.assertContains(intv_resp, "Katherine")
+        self.assertContains(intv_resp, "Johnson")
+        self.assertContains(intv_resp, "Ready to Schedule")
+
+    def test_candidates_waiting_for_interview_schedule_action(self):
+        """HR can schedule an interview for an applicant waiting in Candidates Waiting for Interview."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Dorothy",
+            last_name="Vaughan",
+            email="dorothy@nasa.gov",
+            phone="09191112233",
+            ai_score=96,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=False,
+        )
+
+        schedule_post_data = {
+            "applicant_id": app.id,
+            "interview_type": "Technical Interview",
+            "interviewer": "Admin User",
+            "date": "2026-10-25",
+            "time": "11:00",
+            "location": "Google Meet Link: https://meet.google.com/abc-defg-hij",
+            "notes": "Bring portfolio",
+        }
+
+        resp = self.client.post(reverse("schedule_candidate_interview"), schedule_post_data)
+        self.assertRedirects(resp, f"{reverse('interviews')}?tab=evaluations")
+
+        app.refresh_from_db()
+        self.assertTrue(app.interview_scheduled)
+        self.assertEqual(app.status, "Interview")
+
+        # Newly scheduled interview exists and links Dorothy
+        intv = Interview.objects.filter(applicants=app).first()
+        self.assertIsNotNone(intv)
+        self.assertEqual(intv.interview_type, "Technical Interview")
+        self.assertEqual(intv.location, "Google Meet Link: https://meet.google.com/abc-defg-hij")
+
+        # Dorothy now appears in Candidates Ready for Evaluation
+        eval_resp = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertContains(eval_resp, "Dorothy")
+        self.assertContains(eval_resp, "Vaughan")
+        self.assertContains(eval_resp, "Evaluate")
+
+    def test_reschedule_and_cancel_candidate_interview_with_notes(self):
+        """HR can reschedule or cancel an interview recording notes per applicant."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Mary",
+            last_name="Jackson",
+            email="mary@nasa.gov",
+            phone="09194445566",
+            ai_score=95,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2026-10-22",
+            time="10:00:00",
+            location="Room 101",
+            notes="Initial slot",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        # 1. Reschedule with notes
+        resched_url = reverse("reschedule_candidate_interview", kwargs={"pk": app.pk})
+        resched_data = {
+            "date": "2026-10-26",
+            "time": "14:30",
+            "location": "Room 202",
+            "interviewer": "Admin User",
+            "reschedule_notes": "Candidate requested postponement due to travel.",
+        }
+        resched_resp = self.client.post(resched_url, resched_data)
+        self.assertRedirects(resched_resp, f"{reverse('interviews')}?tab=waiting")
+
+        intv.refresh_from_db()
+        self.assertEqual(str(intv.date), "2026-10-26")
+        self.assertEqual(str(intv.time), "14:30:00")
+        self.assertIn("Candidate requested postponement", intv.notes)
+
+        # 2. Cancel interview with notes
+        cancel_url = reverse("cancel_candidate_interview", kwargs={"pk": app.pk})
+        cancel_data = {
+            "cancel_notes": "Candidate declined the position due to distance.",
+            "cancel_action": "cancel_interview",
+        }
+        cancel_resp = self.client.post(cancel_url, cancel_data)
+        self.assertRedirects(cancel_resp, f"{reverse('interviews')}?tab=waiting")
+
+        app.refresh_from_db()
+        self.assertFalse(app.interview_scheduled)
+        intv.refresh_from_db()
+        self.assertIn("Candidate declined the position", intv.notes)
+
+    def test_evaluate_candidate_button_links_directly_to_candidate_evaluation_section(self):
+        """In Candidates Ready for Evaluation, Evaluate Candidate links directly to candidate profile evaluation section."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Hedy",
+            last_name="Lamarr",
+            email="hedy@patents.gov",
+            phone="09193332211",
+            ai_score=94,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2026-10-24",
+            time="09:00:00",
+            location="Room 303",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        resp = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertEqual(resp.status_code, 200)
+
+        # Evaluate button links to start_candidate_evaluation
+        self.assertContains(resp, reverse("start_candidate_evaluation", kwargs={"pk": app.pk}))
+        # Profile link is also present
+        self.assertContains(resp, reverse("candidate_detail", kwargs={"pk": app.pk}))
+
+    def test_batch_schedule_interview_by_job_modal_action(self):
+        """Batch scheduling by job position schedules all selected applicants and redirects to evaluations."""
+        app1 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Katherine",
+            last_name="Johnson",
+            email="katherine@nasa.gov",
+            phone="09191112233",
+            ai_score=97,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=False,
+        )
+        app2 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Annie",
+            last_name="Easley",
+            email="annie@nasa.gov",
+            phone="09192223344",
+            ai_score=93,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=False,
+        )
+
+        batch_url = reverse("schedule_interview", kwargs={"job_id": self.job_sales_staff.pk})
+        post_data = {
+            "interview_type": "Technical Interview",
+            "interviewer": "Admin User",
+            "date": "2026-10-28",
+            "time": "11:00",
+            "location": "Google Meet Link: https://meet.google.com/test-batch",
+            "notes": "Group screening session",
+            "applicants": [app1.pk, app2.pk],
+        }
+        response = self.client.post(batch_url, post_data)
+        self.assertRedirects(response, f"{reverse('interviews')}?tab=evaluations")
+
+        app1.refresh_from_db()
+        app2.refresh_from_db()
+        self.assertTrue(app1.interview_scheduled)
+        self.assertTrue(app2.interview_scheduled)
+        self.assertEqual(app1.status, "Interview")
+        self.assertEqual(app2.status, "Interview")
+
+        intv = Interview.objects.filter(applicants=app1).first()
+        self.assertIsNotNone(intv)
+        self.assertIn(app2, intv.applicants.all())
+        self.assertEqual(intv.interview_type, "Technical Interview")
+
+    def test_evaluations_tab_shows_reschedule_cancel_and_evaluate_buttons(self):
+        """In Candidates Ready for Evaluation, candidates have Evaluate, Reschedule, and Cancel buttons."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Margaret",
+            last_name="Hamilton",
+            email="margaret@mit.edu",
+            phone="09198887766",
+            ai_score=99,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="Initial Interview",
+            interviewer="Admin User",
+            date="2026-10-25",
+            time="10:00:00",
+            location="Room 401",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        resp = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertEqual(resp.status_code, 200)
+
+        # Evaluate button
+        self.assertContains(resp, "<span>Evaluate</span>")
+        # Reschedule & Cancel buttons and modals
+        self.assertContains(resp, "<span>Reschedule</span>")
+        self.assertContains(resp, "<span>Cancel</span>")
+        self.assertContains(resp, "rescheduleApplicantModal")
+        self.assertContains(resp, "cancelApplicantModal")
 
 
 

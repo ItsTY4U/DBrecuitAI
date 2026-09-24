@@ -1,363 +1,514 @@
-<section class="content-box evaluation-dashboard-section" id="interview-evaluations-section" style="margin-top: 24px;">
-    <!-- Section Header -->
-    <div class="box-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div class="box-header-title">
-            <i class="fas fa-clipboard-user header-icon text-green"></i>
-            <div>
-                <h3>Candidates Ready for Evaluation</h3>
-                <p class="box-subtitle">Review, conduct interviews, and record candidate ratings organized by department and position</p>
-            </div>
-        </div>
-
-        <!-- Quick Summary Badges -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <span class="status-pill status-scheduled" style="font-size: 11px; padding: 5px 12px; border-radius: 20px; font-weight: 700; background: #dbeafe; color: #1e40af;">
-                <i class="fas fa-clock"></i> <strong>{{ eval_ready_total }}</strong> Ready to Evaluate
-            </span>
-            <span class="status-pill status-ongoing" style="font-size: 11px; padding: 5px 12px; border-radius: 20px; font-weight: 700; background: #fef3c7; color: #b45309;">
-                <i class="fas fa-spinner fa-spin"></i> <strong>{{ eval_ongoing_total }}</strong> In Progress
-            </span>
-            <span class="status-pill status-completed" style="font-size: 11px; padding: 5px 12px; border-radius: 20px; font-weight: 700; background: #dcfce7; color: #15803d;">
-                <i class="fas fa-circle-check"></i> <strong>{{ eval_completed_total }}</strong> Completed
-            </span>
-        </div>
-    </div>
-
-    <!-- Toolbar Filters -->
-    <div class="eval-toolbar-bar" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-            <!-- Department Dropdown Filter -->
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <label for="evalDeptSelect" style="font-size: 12.5px; font-weight: 700; color: #475569;">
-                    <i class="fas fa-building text-green"></i> Department:
+<!-- Candidates Ready for Evaluation (Aligned with /hr/candidates/ layout, table design, and department-by-job hierarchy) -->
+<div class="interview-evaluations-container">
+    <!-- Global Top Toolbar: Department Filter & Evaluation Status Filter -->
+    <div class="candidates-top-toolbar" style="margin-bottom: 24px;">
+        <div class="toolbar-filter-form">
+            <!-- Filter by Department -->
+            <div class="toolbar-filter-group">
+                <label for="evalDeptSelect" class="toolbar-filter-label">
+                    <i class="fas fa-building"></i> Filter by Department:
                 </label>
-                <select id="evalDeptSelect" class="form-control-custom" onchange="filterEvaluationCards()" style="height: 36px; padding: 0 10px; font-size: 12.5px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
-                    <option value="all">All Departments ({{ evaluation_departments|length }})</option>
+                <select id="evalDeptSelect" class="toolbar-select" onchange="filterDepartmentBlocks(this, 'eval-dept-sections')">
+                    <option value="all">All Available Departments</option>
                     {% for dept in evaluation_departments %}
-                    <option value="{{ dept.name|slugify }}">{{ dept.name }} ({{ dept.total_applicants }})</option>
+                    <option value="{{ dept.name|slugify }}">{{ dept.name }} Department ({{ dept.total_applicants }})</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <!-- Status Filter Pills -->
-            <div class="eval-status-filters" style="display: flex; gap: 6px;">
-                <button type="button" class="eval-filter-tab active" data-status-filter="all" onclick="setEvalStatusFilter('all', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #2d5a27; color: #ffffff; cursor: pointer;">
-                    All ({{ eval_total }})
-                </button>
-                <button type="button" class="eval-filter-tab" data-status-filter="scheduled" onclick="setEvalStatusFilter('scheduled', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #1e40af; cursor: pointer;">
-                    Ready for Evaluation ({{ eval_ready_total }})
-                </button>
-                <button type="button" class="eval-filter-tab" data-status-filter="ongoing" onclick="setEvalStatusFilter('ongoing', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #b45309; cursor: pointer;">
-                    Ongoing ({{ eval_ongoing_total }})
-                </button>
-                <button type="button" class="eval-filter-tab" data-status-filter="completed" onclick="setEvalStatusFilter('completed', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #15803d; cursor: pointer;">
-                    Completed ({{ eval_completed_total }})
-                </button>
+            <!-- Filter by Evaluation Status -->
+            <div class="toolbar-filter-group">
+                <label for="evalStatusSelect" class="toolbar-filter-label">
+                    <i class="fas fa-filter"></i> Filter by Status:
+                </label>
+                <select id="evalStatusSelect" class="toolbar-select" onchange="filterEvaluationStatus(this, 'eval-dept-sections')">
+                    <option value="all">All Statuses ({{ eval_total }})</option>
+                    <option value="scheduled">Ready for Evaluation ({{ eval_ready_total }})</option>
+                    <option value="ongoing">Ongoing ({{ eval_ongoing_total }})</option>
+                    <option value="completed">Completed ({{ eval_completed_total }})</option>
+                </select>
             </div>
-        </div>
-
-        <!-- Search Filter -->
-        <div style="position: relative; min-width: 220px;">
-            <i class="fas fa-search" style="position: absolute; left: 10px; top: 11px; font-size: 12px; color: #94a3b8;"></i>
-            <input type="text" id="evalSearchInput" onkeyup="filterEvaluationCards()" placeholder="Search candidate or position..." style="width: 100%; height: 36px; padding: 0 10px 0 32px; font-size: 12.5px; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box;">
         </div>
     </div>
 
-    <!-- Department Sections List -->
-    <div class="eval-departments-container" style="padding: 20px;">
+    <!-- Department Sections Container -->
+    <div class="department-sections-container" id="eval-dept-sections">
         {% for dept in evaluation_departments %}
-        <div class="eval-dept-block" id="eval-dept-{{ dept.name|slugify }}" data-dept="{{ dept.name|slugify }}" style="margin-bottom: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <section class="dept-section-block eval-dept-block" id="eval-dept-block-{{ forloop.counter }}" data-dept="{{ dept.name|slugify }}">
             <!-- Department Section Header -->
-            <div class="eval-dept-header" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 14px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 14px;">
+            <div class="dept-section-header">
+                <div class="dept-title-left">
+                    <div class="dept-icon-badge" style="background: linear-gradient(135deg, #15803d 0%, #14532d 100%);">
                         <i class="fas fa-building"></i>
                     </div>
                     <div>
-                        <h4 style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">{{ dept.name }} Department</h4>
-                        <span style="font-size: 12px; color: #64748b;">
+                        <h2 class="dept-title-text">{{ dept.name }} Department</h2>
+                        <span class="dept-sub-info">
                             <strong>{{ dept.job_count }}</strong> Position{{ dept.job_count|pluralize }} &bull;
-                            <strong>{{ dept.total_applicants }}</strong> Scheduled Candidate{{ dept.total_applicants|pluralize }}
+                            <strong>{{ dept.total_applicants }}</strong> Scheduled Candidate{{ dept.total_applicants|pluralize }} &bull;
+                            <strong style="color: #15803d;">{{ dept.ready_count }}</strong> Ready for Evaluation
                         </span>
                     </div>
                 </div>
 
-                <span class="dept-count-badge" style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #e2e8f0; color: #334155;">
-                    {{ dept.ready_count }} Ready for Evaluation
-                </span>
+                <!-- Dropdown Filter by Job positioned on top right of Department section -->
+                <div class="dept-job-filter-box">
+                    <label for="eval-job-filter-{{ forloop.counter }}" class="dept-job-filter-label">
+                        <i class="fas fa-briefcase"></i> Filter by Job:
+                    </label>
+                    <select id="eval-job-filter-{{ forloop.counter }}" 
+                            class="dept-job-select" 
+                            onchange="filterDeptJobs(this, 'eval-dept-block-{{ forloop.counter }}')">
+                        <option value="all">All {{ dept.name }} Jobs ({{ dept.all_jobs|length }})</option>
+                        {% for j in dept.all_jobs %}
+                        <option value="{{ j.id }}">{{ j.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
-            <!-- Jobs List within Department -->
-            <div class="eval-jobs-list" style="padding: 16px 20px;">
+            <!-- Jobs List Inside Department -->
+            <div class="dept-jobs-wrapper">
                 {% for item in dept.jobs %}
-                <div class="eval-job-card" id="eval-job-{{ item.job.id }}" style="margin-bottom: 18px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                <div class="job-section-card eval-job-card" id="eval-job-card-{{ item.job.id }}" data-job-id="{{ item.job.id }}">
                     <!-- Job Header Row -->
-                    <div class="eval-job-header" style="background: #ffffff; padding: 12px 18px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-briefcase text-green" style="font-size: 14px;"></i>
-                            <h5 style="margin: 0; font-size: 14.5px; font-weight: 700; color: #1e293b;">{{ item.job.title }}</h5>
-                            <span class="job-badge-type" style="font-size: 10.5px; padding: 2px 8px; border-radius: 12px; background: #f1f5f9; color: #475569; font-weight: 700;">
-                                {{ item.job.job_type }}
-                            </span>
+                    <div class="job-card-header-bar">
+                        <div class="job-header-left">
+                            <div class="job-title-row">
+                                <h3 class="job-title-name">{{ item.job.title }}</h3>
+                                <span class="job-badge-type">{{ item.job.job_type }}</span>
+                            </div>
+                            <div class="job-details-meta">
+                                <span><i class="far fa-calendar-alt"></i> Posted {{ item.job.posted_date|date:"M d, Y"|default:"Recently" }}</span>
+                                <span><i class="fas fa-users"></i> {{ item.total_count }} Scheduled Candidate{{ item.total_count|pluralize }}</span>
+                                <span><i class="fas fa-clipboard-user text-green"></i> <strong>{{ item.ready_count }}</strong> Ready to Evaluate</span>
+                            </div>
                         </div>
-                        <span style="font-size: 12px; color: #64748b; font-weight: 600;">
-                            <i class="fas fa-users"></i> {{ item.total_count }} Candidate{{ item.total_count|pluralize }}
-                        </span>
+
+                        <!-- Search Field for this Job Table -->
+                        <div class="job-search-container">
+                            <div class="job-search-group">
+                                <i class="fas fa-search job-search-icon"></i>
+                                <input type="text"
+                                       id="search-input-eval-{{ item.job.id }}"
+                                       class="job-search-input"
+                                       placeholder="Search by ID, Name, Email…"
+                                       autocomplete="off"
+                                       onkeyup="filterCandidateTable(this, 'eval-table-{{ item.job.id }}')">
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Applicants Table for this Job -->
-                    <div class="table-responsive" style="overflow-x: auto;">
-                        <table class="recent-table interview-applicant-table" style="width: 100%; margin: 0; border: none;">
-                            <thead>
-                                <tr style="background: #f8fafc; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;">
-                                    <th style="padding: 10px 16px;">Candidate</th>
-                                    <th style="padding: 10px 16px;">Interview Details</th>
-                                    <th style="padding: 10px 16px;">Interviewer</th>
-                                    <th style="padding: 10px 16px;">Status</th>
-                                    <th style="padding: 10px 16px;">Evaluation Rating</th>
-                                    <th style="padding: 10px 16px; text-align: right;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for applicant in item.applicants %}
-                                <tr class="eval-applicant-row" 
-                                    id="eval-applicant-row-{{ applicant.id }}"
-                                    data-dept="{{ dept.name|slugify }}"
-                                    data-job="{{ item.job.id }}"
-                                    data-status="{{ applicant.candidate_status|lower }}"
-                                    data-name="{{ applicant.first_name|lower }} {{ applicant.last_name|lower }} {{ item.job.title|lower }}"
-                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
-                                    
-                                    <!-- Candidate Info -->
-                                    <td style="padding: 12px 16px;">
-                                        <div class="interview-candidate-cell" style="display: flex; align-items: center; gap: 12px;">
-                                            <div class="avatar interview-candidate-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: #2d5a27; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">
-                                                {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
-                                            </div>
-                                            <div class="interview-candidate-info">
-                                                <div class="applicant-name" style="font-weight: 700; font-size: 13.5px; color: #0f172a;">
-                                                    {{ applicant.first_name }}
-                                                    {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
-                                                    {{ applicant.last_name }}
+                    <!-- Table Section: Candidate Rankings & Applications for Evaluation -->
+                    <div class="job-table-outer">
+                        <div class="job-table-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <span class="table-section-title">
+                                <i class="fas fa-list-ol"></i> Candidate Rankings &amp; Interview Evaluations
+                            </span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="font-size: 11.5px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 4px 10px; border-radius: 12px;">
+                                    {{ item.ready_count }} Ready
+                                </span>
+                                {% if item.ongoing_count %}
+                                <span style="font-size: 11.5px; font-weight: 700; color: #b45309; background: #fef3c7; padding: 4px 10px; border-radius: 12px;">
+                                    {{ item.ongoing_count }} Ongoing
+                                </span>
+                                {% endif %}
+                                {% if item.completed_count %}
+                                <span style="font-size: 11.5px; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 4px 10px; border-radius: 12px;">
+                                    {{ item.completed_count }} Completed
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="candidate-data-table" id="eval-table-{{ item.job.id }}">
+                                <thead>
+                                    <tr>
+                                        <th class="th-rank" style="width: 60px;">Rank</th>
+                                        <th class="th-candidate">Candidate</th>
+                                        <th class="th-schedule">Interview Schedule</th>
+                                        <th class="th-interviewer">Interviewer &amp; Location</th>
+                                        <th class="th-score" style="width: 105px;">AI Score</th>
+                                        <th class="th-status" style="width: 140px;">Interview Status</th>
+                                        <th class="th-rating" style="width: 170px;">Evaluation Rating</th>
+                                        <th class="th-action text-right" style="width: 290px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for applicant in item.applicants %}
+                                    <tr class="candidate-row eval-cand-row" 
+                                        id="eval-cand-row-{{ applicant.id }}"
+                                        data-status="{{ applicant.candidate_status|lower }}" 
+                                        data-search-target="{{ applicant.first_name|lower }} {{ applicant.last_name|lower }} {{ applicant.email|lower }} {{ applicant.application_id|lower }}">
+                                        <td class="td-rank">
+                                            <span class="rank-badge rank-sub">#{{ applicant.table_rank|default:forloop.counter }}</span>
+                                        </td>
+                                        <td class="td-candidate">
+                                            <div class="table-applicant-info">
+                                                <div class="table-avatar" style="background: linear-gradient(135deg, #15803d 0%, #14532d 100%); color: #ffffff;">
+                                                    {{ applicant.first_name|first|upper }}{{ applicant.last_name|first|upper }}
                                                 </div>
-                                                <span class="applicant-email-sub" style="font-size: 11.5px; color: #64748b; display: block;">
-                                                    {{ applicant.email }}
+                                                <div class="applicant-meta">
+                                                    <span class="table-candidate-name">
+                                                        <a href="{% url 'candidate_detail' applicant.id %}" style="color: inherit; text-decoration: none;">
+                                                            {{ applicant.first_name }}
+                                                            {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
+                                                            {{ applicant.last_name }}
+                                                        </a>
+                                                    </span>
+                                                    <span class="table-candidate-sub">
+                                                        {{ applicant.email }}{% if applicant.phone %} &bull; {{ applicant.phone }}{% endif %}
+                                                    </span>
+                                                    <span class="app-id-tag" style="margin-top: 3px; display: inline-block;">
+                                                        <i class="fas fa-hashtag"></i> {{ applicant.application_id }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="td-schedule">
+                                            {% if applicant.active_interview %}
+                                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b;">
+                                                <i class="far fa-calendar-alt text-green" style="margin-right: 4px;"></i>
+                                                {{ applicant.active_interview.date|date:"M d, Y" }}
+                                            </div>
+                                            <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+                                                <i class="far fa-clock" style="margin-right: 4px;"></i>
+                                                {{ applicant.active_interview.time|time:"g:i A" }} &bull; 
+                                                <span style="font-weight: 600; color: #334155;">{{ applicant.active_interview.interview_type }}</span>
+                                            </div>
+                                            {% else %}
+                                            <span style="font-size: 12px; color: #94a3b8;">Pending Schedule</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="td-interviewer">
+                                            {% if applicant.active_interview %}
+                                            <div style="font-size: 12.5px; font-weight: 600; color: #1e293b;">
+                                                <i class="fas fa-user-tie" style="color: #94a3b8; margin-right: 4px;"></i>
+                                                {{ applicant.active_interview.interviewer|default:"HR Lead" }}
+                                            </div>
+                                            <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+                                                <i class="fas fa-location-dot" style="color: #94a3b8; margin-right: 4px;"></i>
+                                                {{ applicant.active_interview.location|default:"HR Office" }}
+                                            </div>
+                                            {% else %}
+                                            <span style="font-size: 12px; color: #94a3b8;">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="td-score">
+                                            <span class="ai-score-pill {% if applicant.ai_score >= 90 %}score-high{% elif applicant.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
+                                                <i class="fas fa-bolt"></i> {{ applicant.ai_score }}%
+                                            </span>
+                                        </td>
+                                        <td class="td-status">
+                                            {% if applicant.candidate_status == 'Ongoing' %}
+                                            <span class="status-pill status-ongoing" style="background: #fef3c7; color: #b45309; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-spinner fa-spin"></i> Ongoing
+                                            </span>
+                                            {% elif applicant.candidate_status == 'Completed' %}
+                                            <span class="status-pill status-completed" style="background: #dcfce7; color: #15803d; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-check-circle"></i> Completed
+                                            </span>
+                                            {% else %}
+                                            <span class="status-pill status-scheduled" style="background: #dbeafe; color: #1e40af; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-clock"></i> Scheduled
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="td-rating">
+                                            {% if applicant.candidate_status == 'Completed' and applicant.evaluation %}
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="font-weight: 800; font-size: 13px; color: #2d5a27;">
+                                                    <i class="fas fa-star" style="color: #eab308;"></i> {{ applicant.evaluation.overall_rating }}/5.0
                                                 </span>
-                                                <span class="mini-score {% if applicant.ai_score >= 90 %}score-high{% elif applicant.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}" style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; margin-top: 2px;">
-                                                    <i class="fas fa-robot"></i> {{ applicant.ai_score }}% Match
+                                                <span style="font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+                                                    {% if applicant.evaluation.recommendation == 'Strong Hire' %}background: #dcfce7; color: #15803d;
+                                                    {% elif applicant.evaluation.recommendation == 'Hire' %}background: #dbeafe; color: #1d4ed8;
+                                                    {% elif applicant.evaluation.recommendation == 'Hold' %}background: #fef3c7; color: #b45309;
+                                                    {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
+                                                    {{ applicant.evaluation.recommendation }}
                                                 </span>
                                             </div>
-                                        </div>
-                                    </td>
-
-                                    <!-- Interview Schedule Details -->
-                                    <td style="padding: 12px 16px;">
-                                        <div style="font-size: 12.5px; font-weight: 600; color: #334155;">
-                                            <i class="fas fa-calendar text-green" style="margin-right: 4px;"></i>
-                                            {{ applicant.active_interview.date|date:"M d, Y" }}
-                                        </div>
-                                        <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
-                                            <i class="fas fa-clock" style="margin-right: 4px;"></i>
-                                            {{ applicant.active_interview.time|time:"g:i A" }}
-                                            &bull;
-                                            <span style="font-weight: 600; color: #475569;">{{ applicant.active_interview.interview_type }}</span>
-                                        </div>
-                                    </td>
-
-                                    <!-- Interviewer -->
-                                    <td style="padding: 12px 16px;">
-                                        <div style="font-size: 12.5px; color: #334155; font-weight: 600;">
-                                            <i class="fas fa-user-tie" style="color: #94a3b8; margin-right: 4px;"></i>
-                                            {{ applicant.active_interview.interviewer|default:"HR Lead" }}
-                                        </div>
-                                        <div style="font-size: 11px; color: #94a3b8;">
-                                            {{ applicant.active_interview.location|default:"HR Office" }}
-                                        </div>
-                                    </td>
-
-                                    <!-- Status Pill -->
-                                    <td style="padding: 12px 16px;">
-                                        <span id="applicant-status-pill-{{ applicant.id }}" 
-                                              class="status-pill status-{{ applicant.candidate_status|lower }}"
-                                              style="font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;
-                                              {% if applicant.candidate_status == 'Ongoing' %}background: #fef3c7; color: #b45309;
-                                              {% elif applicant.candidate_status == 'Completed' %}background: #dcfce7; color: #15803d;
-                                              {% else %}background: #dbeafe; color: #1e40af;{% endif %}">
-                                            {% if applicant.candidate_status == 'Ongoing' %}
-                                                <i class="fas fa-spinner fa-spin"></i> Ongoing
-                                            {% elif applicant.candidate_status == 'Completed' %}
-                                                <i class="fas fa-check-circle"></i> Completed
+                                            {% elif applicant.candidate_status == 'Ongoing' %}
+                                            <span style="font-size: 11.5px; color: #b45309; font-weight: 600;">
+                                                <i class="fas fa-pen-to-square"></i> Evaluation in progress
+                                            </span>
                                             {% else %}
-                                                <i class="fas fa-clock"></i> Scheduled
+                                            <span style="font-size: 11.5px; color: #94a3b8;">
+                                                Ready for evaluation
+                                            </span>
                                             {% endif %}
-                                        </span>
-                                    </td>
-
-                                    <!-- Evaluation Rating -->
-                                    <td style="padding: 12px 16px;">
-                                        {% if applicant.candidate_status == 'Completed' and applicant.evaluation %}
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <span style="font-weight: 800; font-size: 13.5px; color: #2d5a27;">
-                                                <i class="fas fa-star" style="color: #eab308;"></i> {{ applicant.evaluation.overall_rating }}/5.0
-                                            </span>
-                                            <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
-                                                {% if applicant.evaluation.recommendation == 'Strong Hire' %}background: #dcfce7; color: #15803d;
-                                                {% elif applicant.evaluation.recommendation == 'Hire' %}background: #dbeafe; color: #1d4ed8;
-                                                {% elif applicant.evaluation.recommendation == 'Hold' %}background: #fef3c7; color: #b45309;
-                                                {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
-                                                {{ applicant.evaluation.recommendation }}
-                                            </span>
-                                        </div>
-                                        {% elif applicant.candidate_status == 'Ongoing' %}
-                                        <span style="font-size: 11.5px; color: #b45309; font-weight: 600;">
-                                            <i class="fas fa-pen-to-square"></i> Evaluation in progress
-                                        </span>
-                                        {% else %}
-                                        <span style="font-size: 11.5px; color: #94a3b8;">
-                                            Ready for evaluation
-                                        </span>
-                                        {% endif %}
-                                    </td>
-
-                                    <!-- Action Buttons -->
-                                    <td style="padding: 12px 16px; text-align: right;">
-                                        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                                            <!-- Evaluate Candidate Primary Button -->
-                                            <button type="button" 
-                                                    id="applicant-eval-btn-{{ applicant.id }}"
-                                                    class="btn-evaluate-candidate"
-                                                    data-status="{{ applicant.candidate_status }}"
-                                                    onclick="triggerEvaluationModal(
-                                                        {{ applicant.id }},
-                                                        '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}',
-                                                        '{{ item.job.title|escapejs }}',
-                                                        '{{ dept.name|escapejs }}',
-                                                        '{{ applicant.active_interview.interview_type|escapejs }}',
-                                                        '{{ applicant.candidate_status }}',
-                                                        {
-                                                            mode: '{{ applicant.evaluation.interview_mode|default:applicant.active_interview.interview_type|escapejs }}',
-                                                            date: '{{ applicant.evaluation.evaluation_date|date:'Y-m-d'|default:applicant.active_interview.date|date:'Y-m-d' }}',
-                                                            tech: {{ applicant.evaluation.technical_competence|default:3 }},
-                                                            comm: {{ applicant.evaluation.communication_skills|default:3 }},
-                                                            prob: {{ applicant.evaluation.problem_solving|default:3 }},
-                                                            cult: {{ applicant.evaluation.cultural_fit|default:3 }},
-                                                            lead: {{ applicant.evaluation.leadership_potential|default:3 }},
-                                                            strengths: '{{ applicant.evaluation.strengths_notes|escapejs }}',
-                                                            weaknesses: '{{ applicant.evaluation.weaknesses_notes|escapejs }}',
-                                                            notes: '{{ applicant.evaluation.general_notes|escapejs }}',
-                                                            salary: '{{ applicant.evaluation.expected_salary|escapejs }}',
-                                                            notice: '{{ applicant.evaluation.notice_period|escapejs }}',
-                                                            avail: '{{ applicant.evaluation.availability_date|escapejs }}',
-                                                            rec: '{{ applicant.evaluation.recommendation|default:'Hire'|escapejs }}'
-                                                        }
-                                                    )"
-                                                    style="padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: none; transition: all 0.2s;
-                                                    {% if applicant.candidate_status == 'Ongoing' %}background: #eab308; color: #ffffff;
-                                                    {% elif applicant.candidate_status == 'Completed' %}background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1;
-                                                    {% else %}background: #2d5a27; color: #ffffff; box-shadow: 0 2px 4px rgba(45,90,39,0.2);{% endif %}">
-                                                
-                                                {% if applicant.candidate_status == 'Ongoing' %}
-                                                    <i class="fas fa-pen-to-square"></i>
-                                                    <span>Continue Evaluation</span>
-                                                {% elif applicant.candidate_status == 'Completed' %}
+                                        </td>
+                                        <td class="td-action text-right">
+                                            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                {% if applicant.candidate_status == 'Completed' %}
+                                                <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
+                                                   class="btn-table-review"
+                                                   style="background: #dcfce7; color: #15803d !important; border-color: #bbf7d0;"
+                                                   title="View recorded candidate evaluation">
                                                     <i class="fas fa-eye"></i>
                                                     <span>View Evaluation</span>
+                                                </a>
+                                                {% elif applicant.candidate_status == 'Ongoing' %}
+                                                <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
+                                                   class="btn-table-review"
+                                                   style="background: #fef3c7; color: #b45309 !important; border-color: #fde68a;"
+                                                   title="Continue recording candidate evaluation">
+                                                    <i class="fas fa-play"></i>
+                                                    <span>Continue Evaluation</span>
+                                                </a>
                                                 {% else %}
+                                                <a href="{% url 'start_candidate_evaluation' applicant.id %}"
+                                                   class="btn-table-review"
+                                                   style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
+                                                   title="Start recording candidate evaluation">
                                                     <i class="fas fa-clipboard-check"></i>
-                                                    <span>Evaluate Candidate</span>
+                                                    <span>Evaluate</span>
+                                                </a>
                                                 {% endif %}
-                                            </button>
 
-                                            <!-- Candidate Profile Link -->
-                                            <a href="{% url 'candidate_detail' applicant.id %}" 
-                                               class="btn-review-applicant interview-candidate-profile-btn"
-                                               title="View full candidate profile and resume"
-                                               style="padding: 7px 10px; font-size: 11px; border-radius: 6px; border: 1px solid #cbd5e1; color: #475569; background: #ffffff; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                                <i class="fas fa-id-badge"></i>
-                                                <span>Profile</span>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                                {% if applicant.candidate_status != 'Completed' and applicant.active_interview %}
+                                                <!-- Re-schedule Interview Button (Per Applicant) -->
+                                                <button type="button" 
+                                                        class="btn-table-review"
+                                                        onclick="openRescheduleModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
+                                                        style="background: #ffffff; color: #b45309 !important; border-color: #fde68a;"
+                                                        title="Re-schedule candidate interview with HR notes">
+                                                    <i class="fas fa-calendar-clock"></i>
+                                                    <span>Reschedule</span>
+                                                </button>
+
+                                                <!-- Cancel Interview Button (Per Applicant) -->
+                                                <button type="button" 
+                                                        class="btn-table-review"
+                                                        onclick="openCancelModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}')"
+                                                        style="background: #ffffff; color: #b91c1c !important; border-color: #fecaca;"
+                                                        title="Cancel candidate interview with HR notes">
+                                                    <i class="fas fa-calendar-xmark"></i>
+                                                    <span>Cancel</span>
+                                                </button>
+                                                {% endif %}
+
+                                                <a href="{% url 'candidate_detail' applicant.id %}" 
+                                                   class="btn-table-review" 
+                                                   title="View Full Profile">
+                                                    <i class="fas fa-user"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8">
+                                            <div class="empty-table-state">
+                                                <i class="fas fa-users-slash empty-table-icon"></i>
+                                                <h5>No Candidates</h5>
+                                                <p>No candidates scheduled for this position yet.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+                </div>
+                {% empty %}
+                <div class="dept-empty-box" style="padding: 24px; text-align: center; background: #ffffff; border-radius: 12px; border: 1px dashed #cbd5e1;">
+                    <p style="margin: 0; color: #64748b; font-size: 13px;">No positions with scheduled candidates in this department.</p>
                 </div>
                 {% endfor %}
             </div>
-        </div>
+        </section>
         {% empty %}
-        <div class="empty-state-box" style="padding: 40px 20px; text-align: center; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
-            <i class="fas fa-calendar-check text-green" style="font-size: 36px; margin-bottom: 12px; display: block;"></i>
-            <h4 style="font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">No candidates currently scheduled for interview</h4>
-            <p style="font-size: 13px; color: #64748b; max-width: 480px; margin: 0 auto 16px;">
-                Once you schedule candidates using the position cards above, they will appear here organized by department and position ready for scoring and feedback.
+        <div class="empty-state-box full-grid-empty" style="padding: 48px 24px; text-align: center; background: #ffffff; border-radius: 16px; border: 1.5px dashed #cbd5e1; margin-top: 10px;">
+            <div class="empty-state-icon" style="font-size: 32px; color: #94a3b8; margin-bottom: 12px;">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f172a;">No candidates currently scheduled for interview</h4>
+            <p style="margin: 0; font-size: 13px; color: #64748b;">
+                Candidates scheduled from the "Candidates Waiting for Interview" tab will appear here organized by department and position ready for scoring and feedback.
             </p>
         </div>
         {% endfor %}
     </div>
-</section>
+</div>
+
+<!-- Re-schedule Interview Modal (Per Applicant) -->
+<div id="rescheduleApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+        <div style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-calendar-clock"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">Re-schedule Candidate Interview</h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #fde68a;">Update interview logistics and record timestamped HR note</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeRescheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #ffffff; cursor: pointer; padding: 4px;">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="POST" id="rescheduleForm" action="" style="padding: 22px 24px;">
+            {% csrf_token %}
+            <input type="hidden" name="next_tab" value="evaluations">
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+                <strong id="reschedApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
+                <span id="reschedJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        New Date <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="date" name="date" id="reschedDate" required min="{{ today|date:'Y-m-d' }}" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        New Time <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="time" name="time" id="reschedTime" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Interviewer / Panel Lead
+                </label>
+                <select name="interviewer" id="reschedInterviewer" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
+                    {% for staff in hr_staff %}
+                    <option value="{{ staff.get_full_name|default:staff.username }}">
+                        {{ staff.get_full_name|default:staff.username }}
+                    </option>
+                    {% empty %}
+                    <option value="HR Panel">HR Panel</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Meeting Location / Link
+                </label>
+                <input type="text" name="location" id="reschedLocation" placeholder="e.g. Google Meet link or Conference Room" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13px; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Reschedule Reason &amp; HR Note <span style="color: #ef4444;">*</span>
+                </label>
+                <textarea name="reschedule_notes" rows="3" placeholder="Reason for rescheduling (e.g. Candidate requested schedule adjustment, interviewer conflict)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <button type="button" onclick="closeRescheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" style="background: #b45309; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Confirm Reschedule</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel Candidate Modal (Per Applicant) -->
+<div id="cancelApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+        <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-bottom: 1px solid #fca5a5; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: #dc2626; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-triangle-exclamation"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #991b1b;">Cancel Interview</h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #b91c1c;">Record cancellation notes and update candidate status</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeCancelModal()" style="background: transparent; border: none; font-size: 18px; color: #64748b; cursor: pointer; padding: 4px;">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="POST" id="cancelForm" action="" style="padding: 22px 24px;">
+            {% csrf_token %}
+            <input type="hidden" name="next_tab" value="evaluations">
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+                <strong id="cancelApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
+                <span id="cancelJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Cancellation Action
+                </label>
+                <select name="cancel_action" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
+                    <option value="cancel_interview">Return to Candidates Waiting for Interview (Unschedule)</option>
+                    <option value="reject">Reject Application (Discontinue candidate)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Cancellation Notes &amp; HR Reason <span style="color: #ef4444;">*</span>
+                </label>
+                <textarea name="cancel_notes" rows="3" placeholder="Provide notes regarding cancellation (e.g. Candidate withdrew, conflict, or scheduling cancelled by HR)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <button type="button" onclick="closeCancelModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Keep Interview
+                </button>
+                <button type="submit" class="btn btn-primary" style="background: #dc2626; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Confirm Cancellation</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
-let activeStatusFilter = "all";
-
-function setEvalStatusFilter(status, btn) {
-    activeStatusFilter = status;
-    document.querySelectorAll(".eval-filter-tab").forEach(tab => {
-        tab.style.background = "#ffffff";
-        tab.style.color = "#475569";
-    });
-    if (btn) {
-        btn.style.background = "#2d5a27";
-        btn.style.color = "#ffffff";
+function openRescheduleModal(appId, appName, jobTitle, date, time, interviewer, location) {
+    document.getElementById('reschedApplicantName').textContent = appName;
+    document.getElementById('reschedJobTitle').textContent = jobTitle;
+    if (date) document.getElementById('reschedDate').value = date;
+    if (time) document.getElementById('reschedTime').value = time;
+    if (interviewer) {
+        var sel = document.getElementById('reschedInterviewer');
+        if (sel) sel.value = interviewer;
     }
-    filterEvaluationCards();
+    if (location) document.getElementById('reschedLocation').value = location;
+
+    var form = document.getElementById('rescheduleForm');
+    if (form) form.action = '/hr/interviews/reschedule-applicant/' + appId + '/';
+    var modal = document.getElementById('rescheduleApplicantModal');
+    if (modal) modal.style.display = 'flex';
 }
 
-function filterEvaluationCards() {
-    const selectedDept = document.getElementById("evalDeptSelect")?.value || "all";
-    const searchQuery = (document.getElementById("evalSearchInput")?.value || "").toLowerCase().trim();
-
-    const rows = document.querySelectorAll(".eval-applicant-row");
-    rows.forEach(row => {
-        const rowDept = row.getAttribute("data-dept");
-        const rowStatus = row.getAttribute("data-status");
-        const rowName = row.getAttribute("data-name") || "";
-
-        let matchDept = (selectedDept === "all" || rowDept === selectedDept);
-        let matchStatus = true;
-        if (activeStatusFilter === "scheduled") {
-            matchStatus = (rowStatus === "scheduled");
-        } else if (activeStatusFilter === "ongoing") {
-            matchStatus = (rowStatus === "ongoing");
-        } else if (activeStatusFilter === "completed") {
-            matchStatus = (rowStatus === "completed");
-        }
-
-        let matchSearch = (!searchQuery || rowName.includes(searchQuery));
-
-        if (matchDept && matchStatus && matchSearch) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-
-    // Hide department block if all rows inside are hidden
-    document.querySelectorAll(".eval-dept-block").forEach(block => {
-        const visibleRows = block.querySelectorAll(".eval-applicant-row:not([style*='display: none'])");
-        if (visibleRows.length === 0) {
-            block.style.display = "none";
-        } else {
-            block.style.display = "";
-        }
-    });
+function closeRescheduleModal() {
+    var modal = document.getElementById('rescheduleApplicantModal');
+    if (modal) modal.style.display = 'none';
 }
 
-function triggerEvaluationModal(appId, candName, jobTitle, deptName, intvType, currentStatus, currentData) {
-    if (typeof openEvaluationModal === "function") {
-        openEvaluationModal(appId, candName, jobTitle, deptName, intvType, currentStatus, currentData);
-    }
+function openCancelModal(appId, appName, jobTitle) {
+    document.getElementById('cancelApplicantName').textContent = appName;
+    document.getElementById('cancelJobTitle').textContent = jobTitle;
+    var form = document.getElementById('cancelForm');
+    if (form) form.action = '/hr/interviews/cancel-applicant/' + appId + '/';
+    var modal = document.getElementById('cancelApplicantModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeCancelModal() {
+    var modal = document.getElementById('cancelApplicantModal');
+    if (modal) modal.style.display = 'none';
 }
 </script>

@@ -210,10 +210,10 @@
                 <span>Update Evaluation</span>
             </a>
             {% elif application.status == "Screening" or application.status == "Pending" %}
-            <a href="{% url 'schedule_interview' application.job.id %}?applicant_id={{ application.id }}" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
+            <button type="button" onclick="openConfirmScheduleModal()" class="hero-action-btn btn-schedule" title="Schedule Interview for {{ application.first_name }}">
                 <i class="fas fa-calendar-plus"></i>
                 <span>Schedule Interview</span>
-            </a>
+            </button>
             {% endif %}
 
             <a href="https://mail.google.com/mail/?view=cm&fs=1&to={{ application.email|urlencode }}&su=Update%20regarding%20your%20application%20for%20{{ application.job.title|urlencode }}%20(Ref%20%23{{ application.application_id|urlencode }})&body=Dear%20{{ application.first_name|urlencode }},%0A%0A" target="_blank" rel="noopener noreferrer" class="hero-action-btn btn-email" title="Compose email to {{ application.first_name }} in Gmail">
@@ -1249,4 +1249,65 @@ function handleEvaluationSubmit(event) {
     }
     return true;
 }
+
+function openConfirmScheduleModal() {
+    var modal = document.getElementById('confirmScheduleModal');
+    if (modal) modal.style.display = 'flex';
+}
+function closeConfirmScheduleModal() {
+    var modal = document.getElementById('confirmScheduleModal');
+    if (modal) modal.style.display = 'none';
+}
 </script>
+
+<!-- Modal Confirm Moving to Waiting for Interview Scheduling -->
+<div id="confirmScheduleModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-bottom: 1px solid #bbf7d0; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: #2d5a27; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">Schedule Interview Confirmation</h3>
+                    <p style="margin: 2px 0 0; font-size: 12.5px; color: #166534;">Advance applicant to interview pipeline</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeConfirmScheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #64748b; cursor: pointer; padding: 4px;">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <div style="padding: 24px;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; display: flex; align-items: center; gap: 14px;">
+                <div style="width: 44px; height: 44px; border-radius: 50%; background: #2d5a27; color: #ffffff; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center;">
+                    {{ application.first_name|first|upper }}{{ application.last_name|first|upper }}
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0f172a;">{{ application.first_name }} {{ application.last_name }}</h4>
+                    <span style="font-size: 12.5px; color: #64748b;">Applying for <strong>{{ application.job.title }}</strong></span>
+                </div>
+                <span class="status-pill status-screening" style="font-size: 12px; font-weight: 700;">
+                    <i class="fas fa-robot"></i> {{ application.ai_score }}% Match
+                </span>
+            </div>
+
+            <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin: 0 0 16px 0;">
+                By confirming, <strong>{{ application.first_name }} {{ application.last_name }}</strong> will be advanced to the <strong>Interview stage</strong> and listed in <strong>Candidates Waiting for Interview</strong> inside the Interview Management tab, where you can configure their session schedule.
+            </p>
+
+            <form method="POST" action="{% url 'move_to_interview_waiting' application.id %}">
+                {% csrf_token %}
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+                    <button type="button" onclick="closeConfirmScheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <i class="fas fa-check"></i>
+                        <span>Confirm & List for Scheduling</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

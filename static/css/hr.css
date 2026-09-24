@@ -3270,7 +3270,7 @@ table .btn-review-applicant {
     margin-top: 10px;
 }
 
-.waiting-job-card {
+.waiting-jobs-grid .waiting-job-card {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -3281,7 +3281,7 @@ table .btn-review-applicant {
     transition: all 0.2s ease;
 }
 
-.waiting-job-card:hover {
+.waiting-jobs-grid .waiting-job-card:hover {
     background: #ffffff;
     border-color: rgba(45, 90, 39, 0.2);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
