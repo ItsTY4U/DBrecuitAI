@@ -7,6 +7,166 @@
     </a>
 </div>
 
+<!-- Candidate Recruitment Pipeline (5 Stages) -->
+<div class="pipeline-stepper-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b;">
+                <i class="fas fa-route text-green"></i> Recruitment Stage Pipeline
+            </span>
+            <span style="font-size: 11px; background: #f1f5f9; color: #475569; font-weight: 700; padding: 2px 8px; border-radius: 10px;">
+                5 Stages
+            </span>
+        </div>
+        <div>
+            <span style="font-size: 12.5px; font-weight: 700; color: #334155;">
+                Current Stage:
+                {% if candidate_evaluation and candidate_evaluation.final_decision == 'Hired' or application.status == 'Hired' %}
+                <span style="color: #15803d; font-weight: 800;"><i class="fas fa-award"></i> Stage 5: Final Decision (Hired)</span>
+                {% elif candidate_evaluation and candidate_evaluation.final_decision == 'Not Hired' or application.status == 'Rejected' and candidate_evaluation and candidate_evaluation.final_decision %}
+                <span style="color: #b91c1c; font-weight: 800;"><i class="fas fa-ban"></i> Stage 5: Final Decision (Not Hired)</span>
+                {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}
+                <span style="color: #b45309; font-weight: 800;"><i class="fas fa-gavel"></i> Stage 5: Final Decision (Pending Review)</span>
+                {% elif application.status == 'Interview' %}
+                <span style="color: #6d28d9; font-weight: 800;"><i class="fas fa-calendar-check"></i> Stage 3: Interview</span>
+                {% elif application.status == 'Shortlisted' %}
+                <span style="color: #0369a1; font-weight: 800;"><i class="fas fa-user-check"></i> Stage 2: Shortlisted</span>
+                {% elif application.status == 'Evaluation' %}
+                <span style="color: #0284c7; font-weight: 800;"><i class="fas fa-clipboard-check"></i> Stage 4: Evaluation</span>
+                {% elif application.status == 'Rejected' %}
+                <span style="color: #b91c1c; font-weight: 800;"><i class="fas fa-ban"></i> Disqualified</span>
+                {% else %}
+                <span style="color: #b45309; font-weight: 800;"><i class="fas fa-filter"></i> Stage 1: Screening</span>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <!-- Stepper Track & Nodes -->
+    <div class="pipeline-stepper-track" style="display: flex; align-items: center; justify-content: space-between; position: relative;">
+        <!-- Background Track Line -->
+        <div style="position: absolute; top: 18px; left: 30px; right: 30px; height: 3px; background: #e2e8f0; z-index: 1;"></div>
+        <!-- Active Progress Line -->
+        <div style="position: absolute; top: 18px; left: 30px; height: 3px; background: #2d5a27; z-index: 2; transition: width 0.3s ease;
+            width: {% if candidate_evaluation and candidate_evaluation.final_decision or application.status == 'Hired' %}calc(100% - 60px)
+                   {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}calc(100% - 60px)
+                   {% elif application.status == 'Evaluation' %}75%
+                   {% elif application.status == 'Interview' %}50%
+                   {% elif application.status == 'Shortlisted' %}25%
+                   {% else %}0%{% endif %};">
+        </div>
+
+        <!-- Node 1: Screening -->
+        <div class="stepper-node" style="position: relative; z-index: 3; text-align: center; flex: 1;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+                {% if application.status in 'Shortlisted Interview Evaluation Hired Rejected' or candidate_evaluation %}background: #2d5a27; color: #fff; box-shadow: 0 0 0 4px #dcfce7;
+                {% else %}background: #f59e0b; color: #fff; box-shadow: 0 0 0 4px #fef3c7;{% endif %}">
+                {% if application.status in 'Shortlisted Interview Evaluation Hired Rejected' or candidate_evaluation %}
+                <i class="fas fa-check"></i>
+                {% else %}
+                1
+                {% endif %}
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">1. Screening</span>
+                <span style="font-size: 11px; color: #64748b;">AI Match {{ application.ai_score }}%</span>
+            </div>
+        </div>
+
+        <!-- Node 2: Shortlisted -->
+        <div class="stepper-node" style="position: relative; z-index: 3; text-align: center; flex: 1;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+                {% if application.status in 'Interview Evaluation Hired' or candidate_evaluation or scheduled_interview %}background: #2d5a27; color: #fff; box-shadow: 0 0 0 4px #dcfce7;
+                {% elif application.status == 'Shortlisted' %}background: #0284c7; color: #fff; box-shadow: 0 0 0 4px #e0f2fe;
+                {% else %}background: #e2e8f0; color: #64748b;{% endif %}">
+                {% if application.status in 'Interview Evaluation Hired' or candidate_evaluation or scheduled_interview %}
+                <i class="fas fa-check"></i>
+                {% else %}
+                2
+                {% endif %}
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">2. Shortlisted</span>
+                <span style="font-size: 11px; color: #64748b;">
+                    {% if scheduled_interview %}Session Booked{% elif application.status == 'Shortlisted' %}Pending Schedule{% else %}Pre-screened{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Node 3: Interview -->
+        <div class="stepper-node" style="position: relative; z-index: 3; text-align: center; flex: 1;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+                {% if candidate_evaluation and candidate_evaluation.status == 'Completed' or application.status == 'Hired' %}background: #2d5a27; color: #fff; box-shadow: 0 0 0 4px #dcfce7;
+                {% elif application.status == 'Interview' %}background: #6d28d9; color: #fff; box-shadow: 0 0 0 4px #ede9fe;
+                {% else %}background: #e2e8f0; color: #64748b;{% endif %}">
+                {% if candidate_evaluation and candidate_evaluation.status == 'Completed' or application.status == 'Hired' %}
+                <i class="fas fa-check"></i>
+                {% else %}
+                3
+                {% endif %}
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">3. Interview</span>
+                <span style="font-size: 11px; color: #64748b;">
+                    {% if scheduled_interview %}{{ scheduled_interview.interview_type }}{% else %}Live / Video{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Node 4: Evaluation -->
+        <div class="stepper-node" style="position: relative; z-index: 3; text-align: center; flex: 1;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+                {% if candidate_evaluation and candidate_evaluation.status == 'Completed' or application.status == 'Hired' %}background: #2d5a27; color: #fff; box-shadow: 0 0 0 4px #dcfce7;
+                {% elif application.status == 'Evaluation' %}background: #0284c7; color: #fff; box-shadow: 0 0 0 4px #e0f2fe;
+                {% else %}background: #e2e8f0; color: #64748b;{% endif %}">
+                {% if candidate_evaluation and candidate_evaluation.status == 'Completed' or application.status == 'Hired' %}
+                <i class="fas fa-check"></i>
+                {% else %}
+                4
+                {% endif %}
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">4. Evaluation</span>
+                <span style="font-size: 11px; color: #64748b;">
+                    {% if candidate_evaluation and candidate_evaluation.status == 'Completed' %}{{ candidate_evaluation.overall_rating }}/5.0 Rubric{% else %}Rubric Assessment{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- Node 5: Final Decision -->
+        <div class="stepper-node" style="position: relative; z-index: 3; text-align: center; flex: 1;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+                {% if candidate_evaluation and candidate_evaluation.final_decision == 'Hired' or application.status == 'Hired' %}background: #15803d; color: #fff; box-shadow: 0 0 0 4px #dcfce7;
+                {% elif candidate_evaluation and candidate_evaluation.final_decision == 'Not Hired' %}background: #b91c1c; color: #fff; box-shadow: 0 0 0 4px #fee2e2;
+                {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}background: #f59e0b; color: #fff; box-shadow: 0 0 0 4px #fef3c7;
+                {% else %}background: #e2e8f0; color: #64748b;{% endif %}">
+                {% if candidate_evaluation and candidate_evaluation.final_decision == 'Hired' or application.status == 'Hired' %}
+                <i class="fas fa-award"></i>
+                {% elif candidate_evaluation and candidate_evaluation.final_decision == 'Not Hired' %}
+                <i class="fas fa-ban"></i>
+                {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}
+                <i class="fas fa-gavel"></i>
+                {% else %}
+                5
+                {% endif %}
+            </div>
+            <div style="margin-top: 8px;">
+                <span style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: block;">5. Final Decision</span>
+                <span style="font-size: 11px; font-weight: 600;
+                    {% if candidate_evaluation and candidate_evaluation.final_decision == 'Hired' or application.status == 'Hired' %}color: #15803d;
+                    {% elif candidate_evaluation and candidate_evaluation.final_decision == 'Not Hired' %}color: #b91c1c;
+                    {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}color: #b45309;
+                    {% else %}color: #64748b;{% endif %}">
+                    {% if candidate_evaluation and candidate_evaluation.final_decision == 'Hired' or application.status == 'Hired' %}Hired
+                    {% elif candidate_evaluation and candidate_evaluation.final_decision == 'Not Hired' %}Not Hired
+                    {% elif candidate_evaluation and candidate_evaluation.status == 'Completed' %}Awaiting Review
+                    {% else %}Final Hiring{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Candidate Hero Profile Card (4-Column Layout) -->
 <div class="candidate-hero-card candidate-hero-4col">
     <!-- Column 1: Applicant Details -->
@@ -123,7 +283,83 @@
         </span>
 
         <div class="hero-stage-container">
-            {% if application.status == "Interview" %}
+            {% if candidate_evaluation and candidate_evaluation.final_decision == "Hired" or application.status == "Hired" %}
+            <div class="stage-cta-card stage-card-final-decision stage-card-hired">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-award"></i> Final Decision: Hired
+                        </span>
+                    </div>
+                    <div class="stage-final-decision-box" style="margin: 8px 0 6px 0; padding: 8px 12px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px;">
+                        <div style="font-size: 12px; font-weight: 700; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-user-check" style="color: #059669;"></i>
+                            <span>Decided by: {{ candidate_evaluation.final_decision_by.get_full_name|default:candidate_evaluation.final_decision_by.username|default:"HR Staff" }}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #047857; margin-top: 3px;">
+                            <i class="far fa-calendar-check" style="margin-right: 4px;"></i>{{ candidate_evaluation.final_decision_date|default:application.created_at|date:"M d, Y" }}
+                        </div>
+                        {% if candidate_evaluation.final_decision_notes %}
+                        <div style="font-size: 11px; color: #374151; margin-top: 4px; font-style: italic; border-top: 1px dashed rgba(16, 185, 129, 0.3); padding-top: 4px;">
+                            "{{ candidate_evaluation.final_decision_notes|truncatechars:85 }}"
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-check-circle"></i> Candidate Hired &amp; Offer Ready
+                </div>
+            </div>
+            {% elif candidate_evaluation and candidate_evaluation.final_decision == "Not Hired" or application.status == "Rejected" and candidate_evaluation and candidate_evaluation.final_decision %}
+            <div class="stage-cta-card stage-card-final-decision stage-card-rejected">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-ban"></i> Final Decision: Not Hired
+                        </span>
+                    </div>
+                    <div class="stage-final-decision-box" style="margin: 8px 0 6px 0; padding: 8px 12px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px;">
+                        <div style="font-size: 12px; font-weight: 700; color: #991b1b; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-user-xmark" style="color: #dc2626;"></i>
+                            <span>Decided by: {{ candidate_evaluation.final_decision_by.get_full_name|default:candidate_evaluation.final_decision_by.username|default:"HR Staff" }}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #b91c1c; margin-top: 3px;">
+                            <i class="far fa-calendar-xmark" style="margin-right: 4px;"></i>{{ candidate_evaluation.final_decision_date|default:application.created_at|date:"M d, Y" }}
+                        </div>
+                        {% if candidate_evaluation.final_decision_notes %}
+                        <div style="font-size: 11px; color: #7f1d1d; margin-top: 4px; font-style: italic; border-top: 1px dashed rgba(239, 68, 68, 0.3); padding-top: 4px;">
+                            "{{ candidate_evaluation.final_decision_notes|truncatechars:85 }}"
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-times-circle"></i> Application Concluded
+                </div>
+            </div>
+            {% elif candidate_evaluation and candidate_evaluation.status == "Completed" %}
+            <div class="stage-cta-card stage-card-final-decision stage-card-pending-decision">
+                <div>
+                    <div class="stage-badge-header">
+                        <span class="stage-badge-pill">
+                            <i class="fas fa-gavel"></i> Final Decision: Pending
+                        </span>
+                    </div>
+                    <div class="stage-final-decision-box" style="margin: 8px 0 6px 0; padding: 8px 12px; background: rgba(255, 255, 255, 0.9); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px;">
+                        <div style="font-size: 12px; font-weight: 700; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-clipboard-check" style="color: #d97706;"></i>
+                            <span>Evaluation Score: {{ candidate_evaluation.overall_rating }}/5.0</span>
+                        </div>
+                        <p class="stage-desc" style="margin: 4px 0 0; font-size: 11.5px; color: #78350f;">
+                            Recommendation: <strong>{{ candidate_evaluation.recommendation }}</strong>. Candidate is ready for official HR hiring determination.
+                        </p>
+                    </div>
+                </div>
+                <div class="stage-cta-footer">
+                    <i class="fas fa-clock"></i> Awaiting Final Review
+                </div>
+            </div>
+            {% elif application.status == "Interview" %}
             <div class="stage-cta-card stage-card-interview">
                 <div>
                     <div class="stage-badge-header">
@@ -239,7 +475,12 @@
         </span>
 
         <div class="hero-actions-stack">
-            {% if application.status == "Interview" %}
+            {% if candidate_evaluation and candidate_evaluation.status == "Completed" and not candidate_evaluation.final_decision %}
+            <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="hero-action-btn btn-final-review" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #fff; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);" title="Finalize hiring decision for {{ application.first_name }}">
+                <i class="fas fa-gavel"></i>
+                <span>Final Review</span>
+            </button>
+            {% elif application.status == "Interview" %}
             <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" title="Evaluate interview performance for {{ application.first_name }}">
                 <i class="fas fa-clipboard-check"></i>
                 <span>Evaluate Candidate</span>
@@ -567,14 +808,14 @@
                     {% if interview_session.status == "COMPLETED" %}
                     <form method="POST" action="{% url 'reanalyze_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Re-run Gemini AI analysis on the recorded video clips for this applicant?');">
                         {% csrf_token %}
-                        <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2980b9; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="submit" class="btn-rerun-analysis">
                             <i class="fas fa-brain"></i> Re-run AI Analysis
                         </button>
                     </form>
                     {% endif %}
                     <form method="POST" action="{% url 'reset_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Allow candidate to retake the video interview? This resets the lock for technical issues.');">
                         {% csrf_token %}
-                        <button type="submit" class="btn" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #e67e22; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <button type="submit" class="btn-reset-interview">
                             <i class="fas fa-rotate-right"></i> Reset / Allow Retake
                         </button>
                     </form>
@@ -718,7 +959,7 @@
                             {% else %}Needs Review{% endif %}
                         </span>
                     </div>
-                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>
                     </button>
                     {% else %}
@@ -917,7 +1158,7 @@
                     Live candidate interview assessment, structured competency rubric scoring, interviewer notes, and audio intelligence have not been performed yet for this applicant.
                 </p>
                 {% if application.status == "Interview" or application.status == "Evaluation" or application.status == "Shortlisted" %}
-                <button type="button" class="btn btn-primary" onclick="openEvaluationForm()" style="background: #2d5a27; color: #ffffff; border: none; padding: 9px 22px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin: 0 auto; box-shadow: 0 4px 12px rgba(45,90,39,0.2);">
+                <button type="button" class="btn btn-primary" onclick="openEvaluationForm()" style="background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; padding: 9px 22px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin: 0 auto; box-shadow: 0 4px 12px rgba(45,90,39,0.2);">
                     <i class="fas fa-clipboard-check"></i>
                     <span>Evaluate Candidate</span>
                 </button>
@@ -1055,10 +1296,10 @@
                             <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
                                 <!-- Live Browser Recorder -->
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <button type="button" id="btn-start-record" class="btn" onclick="startInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                                    <button type="button" id="btn-start-record" class="btn" onclick="startInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
                                         <i class="fas fa-circle-dot"></i> Record via Mic
                                     </button>
-                                    <button type="button" id="btn-stop-record" class="btn" onclick="stopInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                                    <button type="button" id="btn-stop-record" class="btn" onclick="stopInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
                                         <i class="fas fa-stop"></i> Stop (<span id="record-timer">00:00</span>)
                                     </button>
                                 </div>
@@ -1127,7 +1368,7 @@
                             <button type="button" class="btn btn-secondary" onclick="cancelEvaluationForm()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
                                 Cancel
                             </button>
-                            <button type="submit" id="btn-submit-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                            <button type="submit" id="btn-submit-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 14px; border: 1.5px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-floppy-disk"></i>
                                 <span>Save & Record Evaluation</span>
                             </button>
@@ -1135,6 +1376,113 @@
                     </div>
                 </form>
             </div>
+        </div>
+
+        <!-- Candidate Stage 5: Final Hiring Determination Details Box -->
+        <div class="content-box ai-eval-box candidate-final-decision-box" id="candidate-final-decision-section">
+            <div class="box-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #edf2f7; flex-wrap: wrap; gap: 12px;">
+                <div class="box-header-title">
+                    <i class="fas fa-gavel header-icon text-green"></i>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1a1a1a;">
+                            Candidate Stage 5: Final Hiring Determination
+                        </h3>
+                        <p class="box-subtitle" style="margin: 3px 0 0; font-size: 12.5px; color: #666;">
+                            Official employment outcome, decider profile, rationale notes &amp; compliance audit record
+                        </p>
+                    </div>
+                </div>
+
+                <div>
+                    {% if candidate_evaluation and candidate_evaluation.final_decision == "Hired" or application.status == "Hired" %}
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; padding: 6px 16px; border-radius: 20px; background: #dcfce7; color: #15803d; border: 1px solid #86efac;">
+                        <i class="fas fa-award"></i> FINAL DECISION: HIRED
+                    </span>
+                    {% elif candidate_evaluation and candidate_evaluation.final_decision == "Not Hired" or application.status == "Rejected" and candidate_evaluation and candidate_evaluation.final_decision %}
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; padding: 6px 16px; border-radius: 20px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;">
+                        <i class="fas fa-ban"></i> FINAL DECISION: NOT HIRED
+                    </span>
+                    {% elif candidate_evaluation and candidate_evaluation.status == "Completed" %}
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; padding: 6px 16px; border-radius: 20px; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                        <i class="fas fa-clock"></i> FINAL DECISION: PENDING REVIEW
+                    </span>
+                    {% else %}
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 5px 14px; border-radius: 20px; background: #f1f5f9; color: #64748b;">
+                        <i class="fas fa-hourglass-start"></i> Stage Not Reached Yet
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if candidate_evaluation and candidate_evaluation.final_decision %}
+            <div class="final-decision-view-card">
+                <!-- Meta Strip -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: {% if candidate_evaluation.final_decision == 'Hired' %}rgba(34, 197, 94, 0.08){% else %}rgba(239, 68, 68, 0.08){% endif %}; border: 1px solid {% if candidate_evaluation.final_decision == 'Hired' %}#bbf7d0{% else %}#fecaca{% endif %}; border-radius: 8px; margin-bottom: 18px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: #334155;">
+                        <span>
+                            <strong style="color: #0f172a;"><i class="fas fa-user-tie text-green"></i> Decided by:</strong>
+                            {{ candidate_evaluation.final_decision_by.get_full_name|default:candidate_evaluation.final_decision_by.username|default:"HR Recruitment Team" }}
+                        </span>
+                        <span>
+                            <strong style="color: #0f172a;"><i class="far fa-calendar-check text-green"></i> Decision Date:</strong>
+                            {{ candidate_evaluation.final_decision_date|default:application.created_at|date:"M d, Y h:i A" }}
+                        </span>
+                        {% if candidate_evaluation.overall_rating %}
+                        <span>
+                            <strong style="color: #0f172a;"><i class="fas fa-star text-amber"></i> Evaluation Score:</strong>
+                            {{ candidate_evaluation.overall_rating }} / 5.0 ({{ candidate_evaluation.recommendation }})
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn" style="background: #2d5a27; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-pen-to-square"></i> Modify Decision
+                    </button>
+                </div>
+
+                <!-- Notes / Rationale Box -->
+                <div style="background: {% if candidate_evaluation.final_decision == 'Hired' %}#f0fdf4{% else %}#fef2f2{% endif %}; border: 1.5px solid {% if candidate_evaluation.final_decision == 'Hired' %}#86efac{% else %}#fca5a5{% endif %}; border-radius: 10px; padding: 18px; margin-bottom: 16px;">
+                    <h5 style="margin: 0 0 8px; font-size: 13.5px; font-weight: 700; color: {% if candidate_evaluation.final_decision == 'Hired' %}#166534{% else %}#991b1b{% endif %}; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas {% if candidate_evaluation.final_decision == 'Hired' %}fa-award{% else %}fa-circle-exclamation{% endif %}"></i>
+                        {% if candidate_evaluation.final_decision == 'Hired' %}
+                        Official Offer &amp; Hiring Rationale Notes
+                        {% else %}
+                        Reason Why Candidate Was Not Hired
+                        {% endif %}
+                    </h5>
+                    <p style="margin: 0; font-size: 13.5px; color: {% if candidate_evaluation.final_decision == 'Hired' %}#14532d{% else %}#7f1d1d{% endif %}; line-height: 1.6; white-space: pre-line;">
+                        {{ candidate_evaluation.final_decision_notes|default:"No specific notes recorded." }}
+                    </p>
+                </div>
+
+                <!-- Audit Log Stamp -->
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #64748b; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                    <i class="fas fa-shield-halved text-green"></i>
+                    <span>This final hiring decision is permanently logged in the <strong>HR Compliance Audit Trail</strong>.</span>
+                </div>
+            </div>
+            {% elif candidate_evaluation and candidate_evaluation.status == "Completed" %}
+            <div style="background: #fffbeb; border: 1.5px dashed #f59e0b; border-radius: 12px; padding: 24px; text-align: center;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: #fef3c7; color: #d97706; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                    <i class="fas fa-gavel"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #92400e;">
+                    Interview Evaluation Completed &mdash; Ready for Final Decision
+                </h4>
+                <p style="margin: 0 auto 16px auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
+                    The candidate has concluded the interview process with an evaluation score of <strong>{{ candidate_evaluation.overall_rating }}/5.0</strong> ({{ candidate_evaluation.recommendation }}). Finalize the official decision to hire or not hire this candidate.
+                </p>
+                <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; padding: 10px 24px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45,90,39,0.25);">
+                    <i class="fas fa-gavel"></i> Conduct Final Review
+                </button>
+            </div>
+            {% else %}
+            <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 24px; text-align: center; color: #64748b;">
+                <i class="fas fa-hourglass-start" style="font-size: 28px; color: #94a3b8; margin-bottom: 8px; display: block;"></i>
+                <h5 style="margin: 0 0 4px 0; font-size: 14.5px; font-weight: 700; color: #334155;">Final Decision Stage Pending Prior Steps</h5>
+                <p style="margin: 0; font-size: 12.5px;">Candidate must complete the interview and evaluation stage before official final hiring determination.</p>
+            </div>
+            {% endif %}
         </div>
 </div>
 
@@ -1253,6 +1601,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!viewCard && formCard) {
             openEvaluationForm();
         }
+        var section = document.getElementById("candidate-evaluation-section");
+        if (section) {
+            setTimeout(function() {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
     }
 });
 
@@ -1349,7 +1703,6 @@ function handleEvaluationSubmit(event) {
     }
     var submitBtn = document.getElementById("btn-submit-eval");
     if (submitBtn) {
-        submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Evaluation...';
     }
     return true;
@@ -1363,11 +1716,106 @@ function closeConfirmScheduleModal() {
     var modal = document.getElementById('confirmScheduleModal');
     if (modal) modal.style.display = 'none';
 }
+
+// ==========================================
+// FINAL REVIEW MODAL POPUP SCRIPTS
+// ==========================================
+function openFinalReviewModal(appId) {
+    var modalContainer = document.getElementById('final-review-modal-container');
+    if (!modalContainer) return;
+
+    modalContainer.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;display:flex;align-items:center;gap:12px;"><i class="fas fa-spinner fa-spin text-green" style="font-size:20px;"></i> Loading applicant profile...</div></div>';
+
+    fetch('/hr/candidates/applicant/' + appId + '/final-review-modal/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('Could not load final review details.');
+        return res.text();
+    })
+    .then(function(html) {
+        modalContainer.innerHTML = html;
+        var backdrop = document.getElementById('finalReviewModalBackdrop');
+        if (backdrop) {
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    })
+    .catch(function(err) {
+        modalContainer.innerHTML = '';
+        alert('Error: ' + err.message);
+    });
+}
+
+function closeFinalReviewModal() {
+    var backdrop = document.getElementById('finalReviewModalBackdrop');
+    if (backdrop) {
+        backdrop.classList.remove('active');
+    }
+    setTimeout(function() {
+        var modalContainer = document.getElementById('final-review-modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+        document.body.style.overflow = '';
+    }, 200);
+}
+
+function handleDecisionSelection(decisionVal) {
+    var labelHire = document.getElementById('label-decision-hire');
+    var labelNotHire = document.getElementById('label-decision-not-hire');
+    var notesReq = document.getElementById('notes_required_tag');
+    var notesHint = document.getElementById('final_notes_hint');
+    var notesArea = document.getElementById('final_decision_notes_input');
+    var errBox = document.getElementById('notes_validation_error');
+    if (errBox) errBox.style.display = 'none';
+
+    if (decisionVal === 'Hired') {
+        if (labelHire) labelHire.classList.add('selected');
+        if (labelNotHire) labelNotHire.classList.remove('selected');
+        if (notesReq) notesReq.style.display = 'none';
+        if (notesHint) notesHint.innerHTML = 'Enter optional hiring, compensation, or onboarding notes.';
+        if (notesArea) notesArea.placeholder = 'e.g. Recommended for immediate offer. Prepared starting package.';
+    } else {
+        if (labelHire) labelHire.classList.remove('selected');
+        if (labelNotHire) labelNotHire.classList.add('selected');
+        if (notesReq) notesReq.style.display = 'inline';
+        if (notesHint) notesHint.innerHTML = '<strong>Required:</strong> Please explain why this candidate was not selected for hire.';
+        if (notesArea) notesArea.placeholder = 'e.g. Did not meet minimum technical rubric benchmark / Better fit candidates identified.';
+    }
+}
+
+function validateFinalDecisionForm(event) {
+    var form = document.getElementById('finalDecisionForm');
+    if (!form) return true;
+
+    var selectedDecision = form.querySelector('input[name="decision"]:checked');
+    if (!selectedDecision) {
+        alert('Please select a final determination: Hire Candidate or Not Hired.');
+        event.preventDefault();
+        return false;
+    }
+
+    if (selectedDecision.value === 'Not Hired') {
+        var notesArea = document.getElementById('final_decision_notes_input');
+        var errBox = document.getElementById('notes_validation_error');
+        if (!notesArea || !notesArea.value.trim()) {
+            if (errBox) errBox.style.display = 'block';
+            if (notesArea) {
+                notesArea.focus();
+                notesArea.style.borderColor = '#dc2626';
+            }
+            event.preventDefault();
+            return false;
+        }
+    }
+    return true;
+}
 </script>
 
 <!-- Modal Confirm Moving to Waiting for Interview Scheduling -->
 <div id="confirmScheduleModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); overflow: hidden;">
         <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-bottom: 1px solid #bbf7d0; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 40px; height: 40px; border-radius: 10px; background: #2d5a27; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px;">
@@ -1412,7 +1860,7 @@ function closeConfirmScheduleModal() {
                     <button type="button" onclick="closeConfirmScheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                         Cancel
                     </button>
-                    <button type="submit" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <button type="submit" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
                         <i class="fas fa-user-check"></i>
                         <span>Confirm &amp; Shortlist Candidate</span>
                     </button>
@@ -1421,3 +1869,6 @@ function closeConfirmScheduleModal() {
         </div>
     </div>
 </div>
+
+<!-- Dynamic Container for Final Review Profile Modal -->
+<div id="final-review-modal-container"></div>

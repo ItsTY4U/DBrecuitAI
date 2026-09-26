@@ -154,6 +154,28 @@ class CandidateEvaluation(models.Model):
         default="Completed"
     )
 
+    FINAL_DECISION_CHOICES = [
+        ("Hired", "Hired"),
+        ("Not Hired", "Not Hired"),
+    ]
+
+    final_decision = models.CharField(
+        max_length=20,
+        choices=FINAL_DECISION_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    final_decision_notes = models.TextField(blank=True)
+    final_decision_date = models.DateTimeField(null=True, blank=True)
+    final_decision_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="final_decisions_conducted"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -175,4 +197,55 @@ class CandidateEvaluation(models.Model):
 
     def save(self, *args, **kwargs):
         self.overall_rating = self.calculate_overall()
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("STATUS_CHANGE", "Status Change"),
+        ("REJECT_APPLICATION", "Application Rejected"),
+        ("SHORTLIST_APPLICATION", "Application Shortlisted"),
+        ("HIRE_APPLICATION", "Application Hired"),
+        ("FINAL_DECISION_HIRED", "Final Decision: Hired"),
+        ("FINAL_DECISION_NOT_HIRED", "Final Decision: Not Hired"),
+        ("INTERVIEW_SCHEDULED", "Interview Scheduled"),
+        ("INTERVIEW_RESCHEDULED", "Interview Rescheduled"),
+        ("INTERVIEW_CANCELLED", "Interview Cancelled"),
+        ("EVALUATION_COMPLETED", "Evaluation Completed"),
+        ("EVALUATION_RESET", "Evaluation Reset"),
+        ("JOB_CREATED", "Job Created"),
+        ("JOB_UPDATED", "Job Updated"),
+        ("DEPARTMENT_CREATED", "Department Created"),
+        ("EMAIL_SENT", "Candidate Email Sent"),
+        ("HR_LOGIN", "HR Staff Login"),
+        ("HR_LOGOUT", "HR Staff Logout"),
+        ("OTHER", "Other HR Action"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hr_audit_logs"
+    )
+    user_name = models.CharField(max_length=150, blank=True)
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES, db_index=True)
+    action_display = models.CharField(max_length=100, blank=True)
+    target_model = models.CharField(max_length=50, blank=True, db_index=True)
+    target_id = models.CharField(max_length=50, blank=True)
+    target_repr = models.CharField(max_length=255, blank=True)
+    details = models.TextField(blank=True)
+    ip_address = models.CharField(max_length=45, blank=True, null=True)
+    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        indexes = [
+            models.Index(fields=["action", "-timestamp"]),
+            models.Index(fields=["user", "-timestamp"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.user_name or 'System'}: {self.action} - {self.target_repr}"
+

@@ -421,6 +421,7 @@
 .forgot-submit-btn:hover,
 .reset-success-btn:hover {
     background: var(--primary-hover);
+    border-color: var(--primary-hover);
     transform: translateY(-1px);
     box-shadow: 0 8px 20px rgba(45, 90, 39, 0.25);
 }
@@ -791,12 +792,14 @@
     font-weight: 600;
     text-decoration: none;
     margin-bottom: 16px;
-    transition: transform 0.2s ease;
+    border-bottom: 1.5px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .forgot-back-link:hover,
 .reset-back-link:hover {
-    transform: translateX(-3px);
+    color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 .forgot-icon,
@@ -1310,18 +1313,19 @@
     gap: 6px;
     padding: 8px 18px;
     border-radius: 8px;
-    border: none;
+    border: 1.5px solid var(--primary);
     background: var(--primary);
     color: #ffffff;
     font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
 .resume-btn-upload-new:hover {
     background: var(--primary-hover);
+    border-color: var(--primary-hover);
 }
 
 /* Edit Profile Section */
@@ -1598,11 +1602,11 @@ input[readonly].form-control-readonly:focus {
 @keyframes modalFadeIn {
     from {
         opacity: 0;
-        transform: scale(0.96) translateY(-10px);
+        transform: scale(0.96);
     }
     to {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: scale(1);
     }
 }
 
@@ -1776,12 +1780,13 @@ input[readonly].form-control-readonly:focus {
 
 .change-resume-cancel-btn:hover {
     background: #f8fafc;
+    border-color: #94a3b8;
 }
 
 .change-resume-submit-btn {
     padding: 9px 20px;
     border-radius: 8px;
-    border: none;
+    border: 1.5px solid transparent;
     background: var(--primary);
     color: #ffffff;
     font-size: 13px;
@@ -1794,14 +1799,9 @@ input[readonly].form-control-readonly:focus {
     gap: 8px;
 }
 
-.change-resume-submit-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: #94a3b8;
-}
-
-.change-resume-submit-btn:hover:not(:disabled) {
+.change-resume-submit-btn:hover {
     background: var(--primary-hover);
+    border-color: var(--primary-hover);
 }
 
 /* Applications Table */

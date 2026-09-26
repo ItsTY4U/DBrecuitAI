@@ -152,12 +152,14 @@ body {
     color: #ffffff !important;
     padding: 8px 18px;
     border-radius: 10px;
+    border: 1px solid transparent;
     box-shadow: 0 4px 12px rgba(45, 90, 39, 0.25);
 }
 
 .nav-btn-signup:hover,
 .nav-btn-signin:hover {
     background: #1e3d1a !important;
+    border-color: #163213;
     color: #ffffff !important;
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(45, 90, 39, 0.35);
@@ -344,12 +346,14 @@ body {
 .btn-primary {
     background: var(--primary);
     color: white;
+    border: 1px solid transparent;
     box-shadow: 0 10px 20px rgba(45, 90, 39, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-5px);
     background: #1e3d1a;
+    border-color: #163213;
     box-shadow: 0 15px 25px rgba(45, 90, 39, 0.4);
 }
 
@@ -362,6 +366,7 @@ body {
 .btn-secondary:hover {
     transform: translateY(-5px);
     background: white;
+    border-color: var(--primary);
     box-shadow: 0 15px 25px rgba(0, 0, 0, 0.1);
 }
 
@@ -374,6 +379,7 @@ body {
 
 .btn-outline:hover {
     background: var(--primary);
+    border-color: var(--primary-dark);
     color: white;
 }
 
@@ -1610,16 +1616,5 @@ body.hr-loading .login-logo-container .loader,
     .hero-title {
         font-size: 2.8rem;
     }
-}
-
-/* Global Action Disabled State */
-.btn-action-disabled,
-button[disabled].btn-action-disabled,
-input[disabled].btn-action-disabled {
-    pointer-events: none !important;
-    opacity: 0.55 !important;
-    cursor: not-allowed !important;
-    filter: grayscale(20%) !important;
-    transition: opacity 0.2s ease, filter 0.2s ease !important;
 }
 

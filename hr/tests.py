@@ -1089,6 +1089,133 @@ class CandidateManagementTests(TestCase):
         self.assertContains(response, "Total Evaluated")
         self.assertContains(response, "Avg Rubric Score")
 
+    def test_reports_subnavigation_renders_all_three_tabs(self):
+        """Reports page renders sub navigation with Audit Logs, Cancelled, and Evaluated Candidates."""
+        url = reverse("reports")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Verify all 3 sub-navigation buttons exist
+        self.assertContains(response, "tab-btn-audit")
+        self.assertContains(response, "Audit Logs")
+        self.assertContains(response, "tab-btn-cancelled")
+        self.assertContains(response, "Cancelled (Rejected Applications)")
+        self.assertContains(response, "tab-btn-evaluations")
+        self.assertContains(response, "Evaluated Candidates")
+
+        # Verify all 3 tab panes exist in DOM
+        self.assertContains(response, "tab-pane-audit")
+        self.assertContains(response, "tab-pane-cancelled")
+        self.assertContains(response, "tab-pane-evaluations")
+
+        # Verify context variables
+        self.assertIn("active_tab", response.context)
+        self.assertEqual(response.context["active_tab"], "audit")
+        self.assertIn("total_audit_logs", response.context)
+        self.assertIn("total_cancelled", response.context)
+        self.assertIn("total_evaluations", response.context)
+
+    def test_reports_tab_switching_query_param(self):
+        """Active tab can be specified via ?tab= URL query parameter."""
+        # Cancelled tab
+        url_cancelled = f"{reverse('reports')}?tab=cancelled"
+        resp_cancelled = self.client.get(url_cancelled)
+        self.assertEqual(resp_cancelled.status_code, 200)
+        self.assertEqual(resp_cancelled.context["active_tab"], "cancelled")
+
+        # Evaluated candidates tab
+        url_eval = f"{reverse('reports')}?tab=evaluations"
+        resp_eval = self.client.get(url_eval)
+        self.assertEqual(resp_eval.status_code, 200)
+        self.assertEqual(resp_eval.context["active_tab"], "evaluations")
+
+        # Audit logs tab
+        url_audit = f"{reverse('reports')}?tab=audit"
+        resp_audit = self.client.get(url_audit)
+        self.assertEqual(resp_audit.status_code, 200)
+        self.assertEqual(resp_audit.context["active_tab"], "audit")
+
+    def test_audit_log_tracking_and_filtering(self):
+        """HR actions create AuditLog entries and filters return matching logs."""
+        from hr.models import AuditLog
+
+        # Create a job via POST to verify audit logging
+        create_job_url = reverse("create_job")
+        self.client.post(create_job_url, {
+            "title": "QA Automation Lead",
+            "department": "Engineering",
+            "job_type": "FULL-TIME",
+            "schedule": "Monday to Friday",
+            "shift": "Day Shift",
+            "description": "Leading QA teams.",
+            "requirements": "5+ years QA experience.",
+            "key_qualifications": ["Python", "Selenium"],
+        })
+        self.assertTrue(
+            AuditLog.objects.filter(action="JOB_CREATED", target_repr="QA Automation Lead").exists()
+        )
+
+        # Update candidate status to Rejected
+        candidate = self.sales_apps[0]
+        status_url = reverse("update_application_status", args=[candidate.pk])
+        self.client.post(status_url, {"status": "Rejected"})
+
+        self.assertTrue(
+            AuditLog.objects.filter(action="REJECT_APPLICATION", target_id=str(candidate.pk)).exists()
+        )
+
+        # Test filtering by action
+        filter_url = f"{reverse('reports')}?tab=audit&audit_action=REJECT_APPLICATION"
+        resp = self.client.get(filter_url)
+        self.assertEqual(resp.status_code, 200)
+        for log in resp.context["audit_logs"]:
+            self.assertEqual(log.action, "REJECT_APPLICATION")
+
+        # Test search
+        search_url = f"{reverse('reports')}?tab=audit&audit_search={candidate.first_name}"
+        resp_search = self.client.get(search_url)
+        self.assertEqual(resp_search.status_code, 200)
+        self.assertTrue(any(candidate.first_name in log.target_repr for log in resp_search.context["audit_logs"]))
+
+    def test_cancelled_applications_tab_and_restore(self):
+        """Cancelled tab lists rejected candidates and allows restoring them back to Screening."""
+        from hr.models import AuditLog
+
+        # Reject a candidate
+        rejected_app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="RejectedApplicant",
+            last_name="TestPerson",
+            email="rejected_applicant@test.com",
+            phone="09998887777",
+            ai_score=45,
+            status="Rejected",
+        )
+
+        # Check they appear on cancelled tab
+        url = f"{reverse('reports')}?tab=cancelled"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "RejectedApplicant")
+        self.assertContains(response, "#" + rejected_app.application_id)
+
+        # Restore candidate back to Screening
+        restore_url = reverse("restore_candidate", args=[rejected_app.pk])
+        post_resp = self.client.post(restore_url, {"target_stage": "Screening"}, follow=True)
+        self.assertEqual(post_resp.status_code, 200)
+
+        rejected_app.refresh_from_db()
+        self.assertEqual(rejected_app.status, "Screening")
+
+        # Verify audit log was recorded for the restoration
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="STATUS_CHANGE",
+                target_id=str(rejected_app.pk),
+                details__contains="restored"
+            ).exists()
+        )
+
     def test_interview_tab_renders_evaluation_section_grouped_by_department(self):
         """Interviews tab renders candidates ready for evaluation grouped by department and position."""
         from hr.models import Interview
@@ -1157,6 +1284,44 @@ class CandidateManagementTests(TestCase):
 
         interview.refresh_from_db()
         self.assertEqual(interview.status, "Ongoing")
+
+    def test_start_candidate_evaluation_redirects_for_standard_browser_request(self):
+        """Standard browser click/GET on Evaluate redirects to candidate detail evaluation section."""
+        from hr.models import Interview
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Charles",
+            last_name="Babbage",
+            email="charles@babbage.org",
+            phone="09112223333",
+            ai_score=88,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="HR Staff",
+            date="2026-10-21",
+            time="15:00:00",
+            status="Scheduled",
+        )
+        interview.applicants.add(app)
+
+        url = reverse("start_candidate_evaluation", kwargs={"pk": app.pk})
+        # Simulate browser navigation with standard browser Accept header
+        response = self.client.get(
+            url,
+            HTTP_ACCEPT="text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        )
+        expected_redirect = f"{reverse('candidate_detail', kwargs={'pk': app.pk})}?evaluate=1#candidate-evaluation-section"
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, expected_redirect)
+
+        # Confirm evaluation state and interview status transitioned to Ongoing
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Ongoing")
+        self.assertTrue(hasattr(app, "evaluation") and app.evaluation.status == "Draft")
 
     def test_cancel_candidate_evaluation_reverts_interview_to_scheduled(self):
         """Canceling candidate evaluation modal reverts ongoing interview back to Scheduled."""
@@ -1764,6 +1929,454 @@ class CandidateManagementTests(TestCase):
         self.assertContains(resp, "stage-card-shortlisted")
         self.assertContains(resp, "Candidate has been shortlisted for interview. Waiting for session scheduling.")
         self.assertContains(resp, "Waiting for Schedule")
+
+    def test_batch_schedule_interview_with_dedicated_and_default_times(self):
+        """Batch scheduling assigns dedicated time when provided, or defaults to the start time."""
+        app1 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Dorothy",
+            last_name="Vaughan",
+            email="dorothy@nasa.gov",
+            phone="09193334455",
+            ai_score=95,
+            resume_processed=True,
+            status="Shortlisted",
+            interview_scheduled=False,
+        )
+        app2 = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Mary",
+            last_name="Jackson",
+            email="mary@nasa.gov",
+            phone="09194445566",
+            ai_score=91,
+            resume_processed=True,
+            status="Shortlisted",
+            interview_scheduled=False,
+        )
+
+        batch_url = reverse("schedule_interview", kwargs={"job_id": self.job_sales_staff.pk})
+        post_data = {
+            "interview_type": "Technical Interview",
+            "interviewer": "Admin User",
+            "date": "2026-11-05",
+            "time": "09:00",
+            "location": "Room 201",
+            "notes": "Dedicated times test",
+            "applicants": [app1.pk, app2.pk],
+            f"applicant_time_{app1.pk}": "09:30",
+            f"applicant_time_{app2.pk}": "",
+        }
+        resp = self.client.post(batch_url, post_data)
+        self.assertRedirects(resp, f"{reverse('interviews')}?tab=evaluations")
+
+        app1.refresh_from_db()
+        app2.refresh_from_db()
+        self.assertTrue(app1.interview_scheduled)
+        self.assertTrue(app2.interview_scheduled)
+        self.assertEqual(app1.status, "Interview")
+        self.assertEqual(app2.status, "Interview")
+
+        intv1 = app1.interview.first()
+        intv2 = app2.interview.first()
+        self.assertIsNotNone(intv1)
+        self.assertIsNotNone(intv2)
+        self.assertEqual(intv1.time.strftime("%H:%M"), "09:30")
+        self.assertEqual(intv2.time.strftime("%H:%M"), "09:00")
+
+    def test_interview_tables_do_not_contain_rank_column(self):
+        """Waiting and Evaluations tables do not render the Rank column header."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Ada",
+            last_name="Lovelace",
+            email="ada@computing.org",
+            phone="09197778899",
+            ai_score=98,
+            status="Shortlisted",
+            interview_scheduled=False,
+        )
+        resp_waiting = self.client.get(f"{reverse('interviews')}?tab=waiting")
+        self.assertEqual(resp_waiting.status_code, 200)
+        self.assertNotContains(resp_waiting, '<th class="th-rank"')
+        self.assertContains(resp_waiting, "Applications Waiting for Interview")
+
+        from hr.models import Interview
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2026-11-06",
+            time="10:00:00",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        resp_eval = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertEqual(resp_eval.status_code, 200)
+        self.assertNotContains(resp_eval, '<th class="th-rank"')
+        self.assertContains(resp_eval, "Candidate Interview Evaluations")
+
+    def test_legacy_interview_detail_redirects_to_evaluations(self):
+        """GET request to legacy /hr/interviews/<pk>/ redirects to evaluations tab."""
+        from hr.models import Interview
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2026-11-07",
+            time="10:00:00",
+            status="Scheduled",
+        )
+        url = reverse("interview_detail", kwargs={"pk": intv.pk})
+        resp = self.client.get(url)
+        self.assertRedirects(resp, f"{reverse('interviews')}?tab=evaluations")
+
+    def test_schedules_tab_does_not_contain_session_details_or_legacy_update_buttons(self):
+        """Schedules & Overview tab does not render Session Details or legacy Update buttons."""
+        from hr.models import Interview
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Grace",
+            last_name="Hopper",
+            email="grace@navy.mil",
+            phone="09196665544",
+            ai_score=96,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        overdue_intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2020-01-01",
+            time="10:00:00",
+            status="Scheduled",
+        )
+        overdue_intv.applicants.add(app)
+
+        from datetime import date, timedelta
+        upcoming_date = date.today() + timedelta(days=2)
+        upcoming_intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date=upcoming_date,
+            time="11:00:00",
+            status="Scheduled",
+        )
+        upcoming_intv.applicants.add(app)
+
+        resp = self.client.get(f"{reverse('interviews')}?tab=schedules")
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "Session Details")
+        self.assertNotContains(resp, "btn-resolve-status")
+        self.assertContains(resp, "View Candidates")
+
+
+class HRReportsAndFinalDecisionTests(TestCase):
+    def setUp(self):
+        invalidate_hr_cache()
+        self.client = Client()
+        self.staff_user = User.objects.create_user(
+            username="hr_reviewer",
+            password="testpassword123",
+            first_name="Jane",
+            last_name="Reviewer",
+            is_staff=True
+        )
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.staff_user.groups.add(self.hr_group)
+        self.client.login(username="hr_reviewer", password="testpassword123")
+
+        self.dept = "Engineering"
+        self.job = Job.objects.create(
+            title="Senior Backend Engineer",
+            department=self.dept,
+            job_type="FULL-TIME",
+            status="Active"
+        )
+        self.applicant = Application.objects.create(
+            job=self.job,
+            first_name="Ada",
+            last_name="Lovelace",
+            email="ada@computing.org",
+            phone="09171234567",
+            ai_score=94,
+            status="Interview",
+            interview_scheduled=True,
+        )
+
+    def test_reports_subnav_and_stat_cards_ordering(self):
+        """Top KPI stat cards appear before the sub-nav bar; 4 sub-nav tabs exist."""
+        url = reverse("reports")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        content = response.content.decode("utf-8")
+        stat_pos = content.find("reports-stat-cards-top")
+        subnav_pos = content.find("reports-subnav-card")
+        if subnav_pos == -1:
+            subnav_pos = content.find("reports-subnav-container")
+        self.assertTrue(stat_pos != -1, "reports-stat-cards-top not found")
+        self.assertTrue(subnav_pos != -1, "reports-subnav-card/container not found")
+        self.assertTrue(stat_pos < subnav_pos, "KPI stat cards must appear before sub-nav bar")
+
+        self.assertContains(response, 'id="tab-btn-audit"')
+        self.assertContains(response, 'id="tab-btn-cancelled"')
+        self.assertContains(response, 'id="tab-btn-evaluations"')
+        self.assertContains(response, 'id="tab-btn-final_decision"')
+        self.assertContains(response, "Candidates with Final Decision")
+
+    def test_reports_audit_logs_only_hr_actions(self):
+        """Audit logs show HR user actions and exclude generic django admin logs."""
+        from hr.models import AuditLog
+        from hr.utils import purge_legacy_admin_logs, seed_applicant_management_logs_if_empty
+
+        # Create a mock admin log that mentions django administrative action
+        AuditLog.objects.create(
+            user=self.staff_user,
+            user_name="admin",
+            action="OTHER",
+            action_display="Admin Action",
+            target_model="LogEntry",
+            details="Administrative action on LogEntry #1",
+        )
+        # Create an authentic HR applicant management log
+        AuditLog.objects.create(
+            user=self.staff_user,
+            user_name=self.staff_user.get_full_name(),
+            action="INTERVIEW_SCHEDULED",
+            action_display="Interview Scheduled",
+            target_model="Application",
+            target_id=str(self.applicant.pk),
+            target_repr=f"{self.applicant.first_name} {self.applicant.last_name}",
+            details="Technical interview scheduled.",
+        )
+
+        purge_legacy_admin_logs()
+        url = f"{reverse('reports')}?tab=audit"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Confirm HR action is present
+        self.assertContains(response, "Interview Scheduled")
+        # Confirm admin action was purged
+        self.assertNotContains(response, "Administrative action on")
+
+    def test_evaluated_candidates_has_final_review_button(self):
+        """Evaluated candidates tab replaces 'View Report' with 'Final Review' action button."""
+        from hr.models import CandidateEvaluation
+        CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            evaluator_name=self.staff_user.get_full_name(),
+            technical_competence=5,
+            communication_skills=4,
+            problem_solving=5,
+            cultural_fit=4,
+            leadership_potential=4,
+            recommendation="Strong Hire",
+            status="Completed",
+        )
+
+        url = f"{reverse('reports')}?tab=evaluations"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Replaced button check
+        self.assertContains(response, "Final Review")
+        self.assertContains(response, f"openFinalReviewModal({self.applicant.pk})")
+        self.assertNotContains(response, "View Report")
+
+    def test_final_review_modal_endpoint(self):
+        """AJAX endpoint loads applicant profile modal with rubric scores and decision form."""
+        from hr.models import CandidateEvaluation
+        CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            evaluator_name=self.staff_user.get_full_name(),
+            technical_competence=5,
+            communication_skills=4,
+            problem_solving=5,
+            cultural_fit=4,
+            leadership_potential=4,
+            recommendation="Strong Hire",
+            strengths_notes="Exceptional algorithm design skills",
+            weaknesses_notes="None noted",
+            status="Completed",
+        )
+
+        url = reverse("final_review_modal", kwargs={"pk": self.applicant.pk})
+        response = self.client.get(url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(response, "Ada Lovelace")
+        self.assertContains(response, "Senior Backend Engineer")
+        self.assertContains(response, "Interview Evaluation Summary")
+        self.assertContains(response, "Strong Hire")
+        self.assertContains(response, "Exceptional algorithm design skills")
+        self.assertContains(response, 'id="decision-hire"')
+        self.assertContains(response, 'id="decision-not-hire"')
+        self.assertContains(response, 'id="final_decision_notes_input"')
+        self.assertContains(response, "Confirm Final Decision")
+
+    def test_finalize_candidate_decision_hired(self):
+        """Finalizing candidate as Hired updates evaluation, application status, and creates audit log."""
+        from hr.models import CandidateEvaluation, AuditLog
+        eval_obj = CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            status="Completed",
+            recommendation="Strong Hire",
+        )
+
+        url = reverse("finalize_candidate_decision", kwargs={"pk": self.applicant.pk})
+        post_data = {
+            "decision": "Hired",
+            "final_notes": "Candidate accepted starting package. Preparing contract.",
+        }
+        response = self.client.post(url, post_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("tab=final_decision", response.url)
+
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.final_decision, "Hired")
+        self.assertEqual(eval_obj.final_decision_notes, "Candidate accepted starting package. Preparing contract.")
+        self.assertEqual(eval_obj.final_decision_by, self.staff_user)
+        self.assertIsNotNone(eval_obj.final_decision_date)
+
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.status, "Hired")
+
+        audit_entry = AuditLog.objects.filter(
+            action="FINAL_DECISION_HIRED",
+            target_id=str(self.applicant.pk)
+        ).first()
+        self.assertIsNotNone(audit_entry)
+        self.assertIn("Hired", audit_entry.details)
+
+    def test_finalize_candidate_decision_not_hired_requires_notes(self):
+        """Finalizing candidate as Not Hired requires a note; valid note updates status to Rejected."""
+        from hr.models import CandidateEvaluation, AuditLog
+        eval_obj = CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            status="Completed",
+            recommendation="Hold",
+        )
+
+        url = reverse("finalize_candidate_decision", kwargs={"pk": self.applicant.pk})
+
+        # Submit without notes
+        response_invalid = self.client.post(url, {"decision": "Not Hired", "final_notes": ""})
+        self.assertEqual(response_invalid.status_code, 302)
+        eval_obj.refresh_from_db()
+        self.assertIsNone(eval_obj.final_decision)
+
+        # Submit with valid explanation note
+        response_valid = self.client.post(url, {
+            "decision": "Not Hired",
+            "final_notes": "Candidate lacked necessary backend framework experience.",
+        })
+        self.assertEqual(response_valid.status_code, 302)
+
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.final_decision, "Not Hired")
+        self.assertEqual(eval_obj.final_decision_notes, "Candidate lacked necessary backend framework experience.")
+        self.applicant.refresh_from_db()
+        self.assertEqual(self.applicant.status, "Rejected")
+
+        audit_entry = AuditLog.objects.filter(
+            action="FINAL_DECISION_NOT_HIRED",
+            target_id=str(self.applicant.pk)
+        ).first()
+        self.assertIsNotNone(audit_entry)
+        self.assertIn("Not Hired", audit_entry.details)
+
+    def test_candidates_with_final_decision_tab_department_structure(self):
+        """Candidates with Final Decision tab separates Hired and Not Hired with department & job level layout."""
+        from hr.models import CandidateEvaluation
+
+        # Candidate 1: Hired
+        CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            final_decision="Hired",
+            final_decision_notes="Top performer",
+            final_decision_by=self.staff_user,
+            status="Completed",
+        )
+        self.applicant.status = "Hired"
+        self.applicant.save()
+
+        # Candidate 2: Not Hired
+        app2 = Application.objects.create(
+            job=self.job,
+            first_name="Charles",
+            last_name="Babbage",
+            email="charles@difference.org",
+            phone="09189998877",
+            ai_score=78,
+            status="Rejected",
+        )
+        CandidateEvaluation.objects.create(
+            application=app2,
+            evaluator=self.staff_user,
+            final_decision="Not Hired",
+            final_decision_notes="Failed technical assessment benchmark",
+            final_decision_by=self.staff_user,
+            status="Completed",
+        )
+
+        url = f"{reverse('reports')}?tab=final_decision"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # Distinct sections
+        self.assertContains(response, "Hired Candidates")
+        self.assertContains(response, "Not Hired Candidates")
+        self.assertContains(response, "Engineering Department")
+        self.assertContains(response, "Senior Backend Engineer")
+        self.assertContains(response, "Ada Lovelace")
+        self.assertContains(response, "Charles Babbage")
+        self.assertContains(response, "Failed technical assessment benchmark")
+
+        # Department filter check
+        dept_url = f"{reverse('reports')}?tab=final_decision&final_dept=Engineering"
+        resp_dept = self.client.get(dept_url)
+        self.assertEqual(resp_dept.status_code, 200)
+        self.assertContains(resp_dept, "Engineering Department")
+
+        # Search filter check
+        search_url = f"{reverse('reports')}?tab=final_decision&final_search=Ada"
+        resp_search = self.client.get(search_url)
+        self.assertEqual(resp_search.status_code, 200)
+        self.assertContains(resp_search, "Ada Lovelace")
+
+    def test_candidate_profile_stage_five_and_final_review_modal(self):
+        """Candidate detail page renders 5-stage stepper, Final Decision stage card, and modal container."""
+        from hr.models import CandidateEvaluation
+        CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            status="Completed",
+            overall_rating=4.8,
+            recommendation="Strong Hire",
+        )
+
+        url = reverse("candidate_detail", kwargs={"pk": self.applicant.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+        # 5-stage progress stepper
+        self.assertContains(response, "5. Final Decision")
+        # Candidate Stage CTA card in hero Column 3
+        self.assertContains(response, "Final Decision: Pending")
+        # Next Actions in hero Column 4
+        self.assertContains(response, "Conduct Final Review")
+        # Stage 5 Box in profile body
+        self.assertContains(response, "Stage 5: Final Hiring Determination")
+        # Modal container and opener JS function
+        self.assertContains(response, 'id="final-review-modal-container"')
+        self.assertContains(response, "openFinalReviewModal")
+
 
 
 

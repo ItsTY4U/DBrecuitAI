@@ -103,7 +103,7 @@
                     <div class="job-table-outer">
                         <div class="job-table-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                             <span class="table-section-title">
-                                <i class="fas fa-list-ol"></i> Candidate Rankings &amp; Interview Evaluations
+                                <i class="fas fa-clipboard-user"></i> Candidate Interview Evaluations
                             </span>
                             <div style="display: flex; gap: 8px; align-items: center;">
                                 <span style="font-size: 11.5px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 4px 10px; border-radius: 12px;">
@@ -125,7 +125,6 @@
                             <table class="candidate-data-table" id="eval-table-{{ item.job.id }}">
                                 <thead>
                                     <tr>
-                                        <th class="th-rank" style="width: 60px;">Rank</th>
                                         <th class="th-candidate">Candidate</th>
                                         <th class="th-schedule">Interview Schedule</th>
                                         <th class="th-interviewer">Interviewer &amp; Location</th>
@@ -141,9 +140,6 @@
                                         id="eval-cand-row-{{ applicant.id }}"
                                         data-status="{{ applicant.candidate_status|lower }}" 
                                         data-search-target="{{ applicant.first_name|lower }} {{ applicant.last_name|lower }} {{ applicant.email|lower }} {{ applicant.application_id|lower }}">
-                                        <td class="td-rank">
-                                            <span class="rank-badge rank-sub">#{{ applicant.table_rank|default:forloop.counter }}</span>
-                                        </td>
                                         <td class="td-candidate">
                                             <div class="table-applicant-info">
                                                 <div class="table-avatar" style="background: linear-gradient(135deg, #15803d 0%, #14532d 100%); color: #ffffff;">
@@ -299,7 +295,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8">
+                                        <td colspan="7">
                                             <div class="empty-table-state">
                                                 <i class="fas fa-users-slash empty-table-icon"></i>
                                                 <h5>No Candidates</h5>
@@ -336,7 +332,7 @@
 
 <!-- Re-schedule Interview Modal (Per Applicant) -->
 <div id="rescheduleApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
         <div style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px;">
@@ -409,7 +405,7 @@
                 <button type="button" onclick="closeRescheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     Cancel
                 </button>
-                <button type="submit" class="btn btn-primary" style="background: #b45309; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                <button type="submit" class="btn btn-primary" style="background: #b45309; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
                     <i class="fas fa-calendar-check"></i>
                     <span>Confirm Reschedule</span>
                 </button>
@@ -420,7 +416,7 @@
 
 <!-- Cancel Candidate Modal (Per Applicant) -->
 <div id="cancelApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; animation: modalPop 0.2s ease;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
         <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-bottom: 1px solid #fca5a5; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 36px; height: 36px; border-radius: 8px; background: #dc2626; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
@@ -466,7 +462,7 @@
                 <button type="button" onclick="closeCancelModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
                     Keep Interview
                 </button>
-                <button type="submit" class="btn btn-primary" style="background: #dc2626; color: #ffffff; border: none; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                <button type="submit" class="btn btn-primary" style="background: #dc2626; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
                     <i class="fas fa-trash-can"></i>
                     <span>Confirm Cancellation</span>
                 </button>

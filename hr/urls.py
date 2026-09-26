@@ -71,6 +71,15 @@ urlpatterns = [
     path("applicant/<int:pk>/status/", 
         views.update_application_status, 
         name="update_application_status",),
+    path("candidates/applicant/<int:pk>/restore/",
+        views.restore_candidate,
+        name="restore_candidate",),
+    path("candidates/applicant/<int:pk>/final-review-modal/",
+        views.final_review_modal,
+        name="final_review_modal",),
+    path("candidates/applicant/<int:pk>/finalize-decision/",
+        views.finalize_candidate_decision,
+        name="finalize_candidate_decision",),
 
     path("reports/", views.reports_dashboard, name="reports"),
     
@@ -80,5 +89,4 @@ urlpatterns = [
     path("interviews/reschedule-applicant/<int:pk>/", views.reschedule_candidate_interview, name="reschedule_candidate_interview"),
     path("interviews/cancel-applicant/<int:pk>/", views.cancel_candidate_interview, name="cancel_candidate_interview"),
     path("interviews/<int:pk>/", views.interview_detail, name="interview_detail"),
-    path("interviews/<int:pk>/status/", views.update_interview_status, name="update_interview_status"),
 ]

@@ -52,7 +52,7 @@
                 <li class="menu-item {% if request.resolver_match.url_name == 'candidates' or request.resolver_match.url_name == 'candidate_department' or request.resolver_match.url_name == 'candidate_detail' %} active {% endif %}" >
                     <a href="{% url "candidates" %}" class="nav-link menu-link"><i class="fas fa-user-group"></i> <span>Candidates</span></a>
                 </li>
-                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' or request.resolver_match.url_name == 'interview_detail' %}active{% endif %}">
+                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' %}active{% endif %}">
                     <a href="{% url "interviews" %}" class="nav-link menu-link"><i class="fas fa-calendar-check"></i> <span>Interviews</span></a>
                 </li>
                 <li class="menu-item {% if request.resolver_match.url_name == 'reports' or 'report' in request.resolver_match.url_name %}active{% endif %}">
@@ -111,6 +111,5 @@
     <script src="{% static "js/modal.js" %}"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="{% static "js/hr_loader.js" %}"></script>
-    <script src="{% static "js/global_ux.js" %}"></script>
 </body>
 </html>

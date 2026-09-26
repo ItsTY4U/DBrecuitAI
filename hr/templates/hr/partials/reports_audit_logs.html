@@ -1,0 +1,208 @@
+{% load static %}
+
+<!-- Filter & Search Toolbar for Audit Logs -->
+<div class="reports-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <form method="GET" action="{% url 'reports' %}" class="reports-filter-form" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+        <input type="hidden" name="tab" value="audit">
+
+        <!-- Action Category Filter -->
+        <div style="flex: 1.2; min-width: 190px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-filter"></i> Action Category
+            </label>
+            <select name="audit_action" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Action Types</option>
+                {% for code, label in available_audit_actions %}
+                <option value="{{ code }}" {% if audit_action == code %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- HR Staff Member Filter -->
+        <div style="flex: 1; min-width: 170px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-user-tie"></i> HR Operator
+            </label>
+            <select name="audit_user" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Staff Members</option>
+                {% for u in available_audit_users %}
+                <option value="{{ u.id }}" {% if audit_user == u.id|stringformat:"s" %}selected{% endif %}>
+                    {{ u.get_full_name|default:u.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Date Range Filter -->
+        <div style="flex: 1; min-width: 150px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-calendar"></i> Date Period
+            </label>
+            <select name="audit_date_range" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Time</option>
+                <option value="today" {% if audit_date_range == 'today' %}selected{% endif %}>Today</option>
+                <option value="7days" {% if audit_date_range == '7days' %}selected{% endif %}>Past 7 Days</option>
+                <option value="30days" {% if audit_date_range == '30days' %}selected{% endif %}>Past 30 Days</option>
+            </select>
+        </div>
+
+        <!-- Search Input -->
+        <div style="flex: 1.6; min-width: 220px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-magnifying-glass"></i> Search Logs
+            </label>
+            <input type="text" name="audit_search" value="{{ audit_search }}" placeholder="Search candidate, role, notes, IP..." style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; box-sizing: border-box;">
+        </div>
+
+        <!-- Filter Actions -->
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            {% if audit_action or audit_user or audit_date_range or audit_search %}
+            <a href="{% url 'reports' %}?tab=audit" class="btn btn-secondary" style="height: 40px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <i class="fas fa-rotate-left"></i> Reset
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Audit Log Table Card -->
+<div class="content-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+    <div style="padding: 18px 24px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-shield-halved text-green"></i> HR System Audit Trail ({{ audit_logs|length }})
+        </h3>
+        <span style="font-size: 12.5px; color: #64748b;">Chronological audit log tracking administrative activities</span>
+    </div>
+
+    {% if audit_logs %}
+    <div style="overflow-x: auto;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">
+                    <th style="padding: 14px 20px;">Timestamp</th>
+                    <th style="padding: 14px 16px;">HR Operator</th>
+                    <th style="padding: 14px 16px;">Action Category</th>
+                    <th style="padding: 14px 16px;">Target Entity</th>
+                    <th style="padding: 14px 16px;">Details &amp; Description</th>
+                    <th style="padding: 14px 20px; text-align: right;">Origin</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 13.5px; color: #334155;">
+                {% for log in audit_logs %}
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                    <!-- Timestamp Column -->
+                    <td style="padding: 14px 20px; white-space: nowrap;">
+                        <div style="font-weight: 600; color: #0f172a; font-size: 13px;">
+                            {{ log.timestamp|date:"M d, Y" }}
+                        </div>
+                        <div style="font-size: 11.5px; color: #64748b;">
+                            {{ log.timestamp|date:"h:i A" }}
+                        </div>
+                    </td>
+
+                    <!-- HR Operator Column -->
+                    <td style="padding: 14px 16px; white-space: nowrap;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 30px; height: 30px; border-radius: 50%; background: #e2e8f0; color: #334155; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">
+                                {{ log.user_name|default:"S"|first|upper }}
+                            </div>
+                            <div>
+                                <strong style="color: #1e293b; font-size: 13px;">{{ log.user_name|default:"System" }}</strong>
+                                {% if log.user %}
+                                <div style="font-size: 11px; color: #94a3b8;">@{{ log.user.username }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Action Category Badge -->
+                    <td style="padding: 14px 16px; white-space: nowrap;">
+                        {% if log.action == 'FINAL_DECISION_HIRED' or log.action == 'HIRE_APPLICATION' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #dcfce7; color: #15803d;">
+                            <i class="fas fa-award"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'FINAL_DECISION_NOT_HIRED' or log.action == 'REJECT_APPLICATION' or log.action == 'INTERVIEW_CANCELLED' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #fee2e2; color: #b91c1c;">
+                            <i class="fas fa-ban"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'EVALUATION_COMPLETED' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #dcfce7; color: #15803d;">
+                            <i class="fas fa-clipboard-check"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'INTERVIEW_SCHEDULED' or log.action == 'INTERVIEW_RESCHEDULED' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #e0f2fe; color: #0369a1;">
+                            <i class="fas fa-calendar-check"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'JOB_CREATED' or log.action == 'JOB_UPDATED' or log.action == 'DEPARTMENT_CREATED' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #f3e8ff; color: #7e22ce;">
+                            <i class="fas fa-briefcase"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'EMAIL_SENT' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #e0e7ff; color: #4338ca;">
+                            <i class="fas fa-paper-plane"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% elif log.action == 'HR_LOGIN' or log.action == 'HR_LOGOUT' %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #f1f5f9; color: #475569;">
+                            <i class="fas fa-key"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% else %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #fef3c7; color: #b45309;">
+                            <i class="fas fa-arrows-rotate"></i> {{ log.action_display|default:log.action }}
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Target Entity -->
+                    <td style="padding: 14px 16px;">
+                        {% if log.target_model %}
+                        <span class="hero-badge badge-primary" style="font-size: 10.5px; padding: 1px 6px; margin-right: 4px;">
+                            {{ log.target_model }}
+                        </span>
+                        {% endif %}
+                        <span style="font-weight: 600; color: #1e293b; font-size: 13px;">
+                            {{ log.target_repr|default:"-" }}
+                        </span>
+                    </td>
+
+                    <!-- Details -->
+                    <td style="padding: 14px 16px; max-width: 360px;">
+                        <div style="font-size: 13px; color: #475569; word-break: break-word;">
+                            {{ log.details|default:"No additional notes recorded." }}
+                        </div>
+                    </td>
+
+                    <!-- Origin / IP -->
+                    <td style="padding: 14px 20px; text-align: right; white-space: nowrap;">
+                        <span style="font-family: monospace; font-size: 11.5px; color: #94a3b8; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 6px; border-radius: 4px;">
+                            <i class="fas fa-network-wired" style="font-size: 10px;"></i> {{ log.ip_address|default:"127.0.0.1" }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px 24px; text-align: center; color: #64748b;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 24px; color: #94a3b8;">
+            <i class="fas fa-clipboard-question"></i>
+        </div>
+        <h4 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0 0 6px;">No Audit Events Found</h4>
+        <p style="font-size: 13.5px; color: #64748b; max-width: 480px; margin: 0 auto 18px;">
+            {% if audit_action or audit_user or audit_date_range or audit_search %}
+            No audit records match your current search filters. Try clearing or broadening your criteria.
+            {% else %}
+            Audit events will be logged here whenever HR staff updates candidate statuses, schedules interviews, creates job postings, or records evaluations.
+            {% endif %}
+        </p>
+        {% if audit_action or audit_user or audit_date_range or audit_search %}
+        <a href="{% url 'reports' %}?tab=audit" class="btn btn-secondary" style="padding: 8px 18px; border-radius: 8px; font-weight: 600; text-decoration: none;">
+            <i class="fas fa-rotate-left"></i> Reset Filters
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

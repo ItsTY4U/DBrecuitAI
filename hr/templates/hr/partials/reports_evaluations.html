@@ -1,0 +1,298 @@
+{% load static %}
+
+<!-- Stats KPI Grid -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-blue">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <span class="stat-badge">Evaluations</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ total_evaluations }}</h3>
+            <span class="stat-label">Total Evaluated</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-purple">
+                <i class="fas fa-star-half-stroke"></i>
+            </div>
+            <span class="stat-badge">Quality</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ avg_score|default:"0.0" }} <span style="font-size: 14px; color: #888; font-weight: 500;">/ 5.0</span></h3>
+            <span class="stat-label">Avg Rubric Score</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-green">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <span class="stat-badge">Hiring Signal</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ strong_hire_count|add:hire_count }}</h3>
+            <span class="stat-label">Recommended Hires</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-orange">
+                <i class="fas fa-microphone-lines"></i>
+            </div>
+            <span class="stat-badge">AI Audio</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ audio_analyzed_count }}</h3>
+            <span class="stat-label">Audio AI Analyzed</span>
+        </div>
+    </div>
+</section>
+
+<!-- Pending Evaluations Quick Banner -->
+{% if pending_eval_candidates %}
+<div class="pending-eval-strip" style="background: linear-gradient(135deg, rgba(243, 156, 18, 0.08) 0%, rgba(230, 126, 34, 0.12) 100%); border: 1px solid rgba(243, 156, 18, 0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 40px; height: 40px; border-radius: 50%; background: #f39c12; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div>
+            <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #b7791f;">
+                {{ pending_eval_candidates|length }} Candidate{{ pending_eval_candidates|length|pluralize }} Awaiting Evaluation
+            </h4>
+            <p style="margin: 2px 0 0; font-size: 13px; color: #744210;">
+                These candidates have interview records and are ready for HR evaluation &amp; scoring.
+            </p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        {% for pend in pending_eval_candidates|slice:":3" %}
+        <a href="{% url 'candidate_detail' pend.pk %}#candidate-evaluation-section" class="btn" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; color: #2d3748; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fas fa-pen-to-square" style="color: #f39c12;"></i> Evaluate {{ pend.first_name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Filter & Search Toolbar -->
+<div class="reports-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <form method="GET" action="{% url 'reports' %}" class="reports-filter-form" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+        <input type="hidden" name="tab" value="evaluations">
+
+        <!-- Department Filter -->
+        <div style="flex: 1; min-width: 180px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-building"></i> Department
+            </label>
+            <select name="department" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Departments</option>
+                {% for dept in available_departments %}
+                <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>{{ dept }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Interview Mode Filter -->
+        <div style="flex: 1; min-width: 160px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-headset"></i> Interview Mode
+            </label>
+            <select name="mode" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Modes</option>
+                <option value="Face-to-Face" {% if selected_mode == "Face-to-Face" %}selected{% endif %}>Face-to-Face</option>
+                <option value="Online" {% if selected_mode == "Online" %}selected{% endif %}>Online (Meet/Zoom)</option>
+                <option value="Phone Call" {% if selected_mode == "Phone Call" %}selected{% endif %}>Phone Call</option>
+            </select>
+        </div>
+
+        <!-- Recommendation Filter -->
+        <div style="flex: 1; min-width: 160px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-thumbs-up"></i> Recommendation
+            </label>
+            <select name="recommendation" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Decisions</option>
+                <option value="Strong Hire" {% if selected_recommendation == "Strong Hire" %}selected{% endif %}>Strong Hire</option>
+                <option value="Hire" {% if selected_recommendation == "Hire" %}selected{% endif %}>Hire</option>
+                <option value="Hold" {% if selected_recommendation == "Hold" %}selected{% endif %}>Hold / Review</option>
+                <option value="No Hire" {% if selected_recommendation == "No Hire" %}selected{% endif %}>Do Not Hire</option>
+            </select>
+        </div>
+
+        <!-- Search by Name or ID -->
+        <div style="flex: 1.5; min-width: 220px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-magnifying-glass"></i> Search Candidate / Role
+            </label>
+            <div style="position: relative;">
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search candidate, Ref ID, role..." style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; box-sizing: border-box;">
+            </div>
+        </div>
+
+        <!-- Filter Actions -->
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            {% if selected_department or selected_mode or selected_recommendation or search_query %}
+            <a href="{% url 'reports' %}?tab=evaluations" class="btn btn-secondary" style="height: 40px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <i class="fas fa-rotate-left"></i> Reset
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Evaluations Data Table Card -->
+<div class="content-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+    <div style="padding: 18px 24px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-clipboard-list text-green"></i> Evaluated Candidates ({{ evaluations|length }})
+        </h3>
+        <span style="font-size: 12.5px; color: #64748b;">Showing structured interview evaluations &amp; rubrics</span>
+    </div>
+
+    {% if evaluations %}
+    <div style="overflow-x: auto;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">
+                    <th style="padding: 14px 20px;">Candidate</th>
+                    <th style="padding: 14px 16px;">Role &amp; Department</th>
+                    <th style="padding: 14px 16px;">Interview Mode</th>
+                    <th style="padding: 14px 16px;">Rubric Score</th>
+                    <th style="padding: 14px 16px;">AI Audio</th>
+                    <th style="padding: 14px 16px;">Recommendation</th>
+                    <th style="padding: 14px 16px;">Evaluator &amp; Date</th>
+                    <th style="padding: 14px 20px; text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 13.5px; color: #334155;">
+                {% for eval in evaluations %}
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                    <!-- Candidate Column -->
+                    <td style="padding: 14px 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; color: #334155; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">
+                                {{ eval.application.first_name|first|upper }}
+                            </div>
+                            <div>
+                                <strong style="color: #0f172a; font-size: 14px;">
+                                    {{ eval.application.first_name }} {{ eval.application.last_name }}
+                                </strong>
+                                <div style="font-size: 12px; color: #64748b; font-family: monospace;">
+                                    #{{ eval.application.application_id }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Role & Dept -->
+                    <td style="padding: 14px 16px;">
+                        <div style="font-weight: 600; color: #1e293b;">{{ eval.application.job.title }}</div>
+                        <span class="hero-badge badge-primary" style="font-size: 11px; padding: 2px 7px;">
+                            {{ eval.application.job.department }}
+                        </span>
+                    </td>
+
+                    <!-- Interview Mode -->
+                    <td style="padding: 14px 16px;">
+                        <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 6px; 
+                            {% if eval.interview_mode == 'Online' %}background: #ebf8ff; color: #2b6cb0;
+                            {% elif eval.interview_mode == 'Phone Call' %}background: #fefcbf; color: #975a16;
+                            {% else %}background: #edf2f7; color: #2d3748;{% endif %}">
+                            <i class="fas {% if eval.interview_mode == 'Online' %}fa-video{% elif eval.interview_mode == 'Phone Call' %}fa-phone{% else %}fa-handshake{% endif %}"></i>
+                            {{ eval.interview_mode }}
+                        </span>
+                    </td>
+
+                    <!-- Rubric Score -->
+                    <td style="padding: 14px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 700; font-size: 15px; color: #1e293b;">{{ eval.overall_rating }}</span>
+                            <span style="font-size: 12px; color: #94a3b8;">/ 5.0</span>
+                        </div>
+                        <div style="width: 80px; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                            <div style="height: 100%; width: {% widthratio eval.overall_rating 5 100 %}%; background: {% if eval.overall_rating >= 4.0 %}#22c55e{% elif eval.overall_rating >= 3.0 %}#3b82f6{% else %}#f59e0b{% endif %};"></div>
+                        </div>
+                    </td>
+
+                    <!-- AI Audio -->
+                    <td style="padding: 14px 16px;">
+                        {% if eval.ai_audio_score > 0 %}
+                        <span style="display: inline-flex; align-items: center; gap: 5px; background: rgba(34, 197, 94, 0.12); color: #166534; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 6px;">
+                            <i class="fas fa-robot"></i> {{ eval.ai_audio_score }}% Match
+                        </span>
+                        {% elif eval.audio_file %}
+                        <span style="font-size: 12px; color: #64748b; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-file-audio"></i> Audio Attached
+                        </span>
+                        {% else %}
+                        <span style="font-size: 12px; color: #94a3b8;">No Audio</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Recommendation -->
+                    <td style="padding: 14px 16px;">
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+                            {% if eval.recommendation == 'Strong Hire' %}background: #dcfce7; color: #15803d;
+                            {% elif eval.recommendation == 'Hire' %}background: #e0f2fe; color: #0369a1;
+                            {% elif eval.recommendation == 'Hold' %}background: #fef3c7; color: #b45309;
+                            {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
+                            <i class="fas {% if eval.recommendation == 'Strong Hire' %}fa-star{% elif eval.recommendation == 'Hire' %}fa-circle-check{% elif eval.recommendation == 'Hold' %}fa-circle-pause{% else %}fa-circle-xmark{% endif %}"></i>
+                            {{ eval.recommendation }}
+                        </span>
+                    </td>
+
+                    <!-- Evaluator & Date -->
+                    <td style="padding: 14px 16px;">
+                        <div style="font-size: 13px; font-weight: 600; color: #334155;">
+                            {{ eval.evaluator_name|default:"HR Staff" }}
+                        </div>
+                        <div style="font-size: 11.5px; color: #64748b;">
+                            {{ eval.evaluation_date|date:"M d, Y" }}
+                        </div>
+                    </td>
+
+                    <!-- Action -->
+                    <td style="padding: 14px 20px; text-align: right; white-space: nowrap;">
+                        <button type="button" 
+                                class="btn btn-final-review" 
+                                onclick="openFinalReviewModal({{ eval.application.pk }})" 
+                                style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #ffffff; border: none; padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25); transition: all 0.2s ease;">
+                            <i class="fas fa-gavel"></i> Final Review
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px 24px; text-align: center; color: #64748b;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 24px; color: #94a3b8;">
+            <i class="fas fa-clipboard-question"></i>
+        </div>
+        <h4 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0 0 6px;">No Candidate Evaluations Found</h4>
+        <p style="font-size: 13.5px; color: #64748b; max-width: 480px; margin: 0 auto 18px;">
+            {% if search_query or selected_department or selected_mode or selected_recommendation %}
+            No evaluations match your current filter criteria. Try adjusting or resetting your filters.
+            {% else %}
+            Candidate evaluations will appear here once HR completes live interview assessments and ratings.
+            {% endif %}
+        </p>
+        {% if selected_department or selected_mode or selected_recommendation or search_query %}
+        <a href="{% url 'reports' %}?tab=evaluations" class="btn btn-secondary" style="padding: 8px 18px; border-radius: 8px; font-weight: 600; text-decoration: none;">
+            <i class="fas fa-rotate-left"></i> Reset Filters
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

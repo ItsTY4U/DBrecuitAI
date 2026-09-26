@@ -95,7 +95,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (dropzoneIdle) dropzoneIdle.style.display = "block";
         if (dropzoneSelected) dropzoneSelected.style.display = "none";
         if (submitResumeModalBtn) {
-            submitResumeModalBtn.disabled = true;
             submitResumeModalBtn.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i> Save & Process Resume';
         }
         if (modalError) {
@@ -121,7 +120,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 modalError.style.display = "block";
             }
             if (modalFileInput) modalFileInput.value = "";
-            if (submitResumeModalBtn) submitResumeModalBtn.disabled = true;
             return;
         }
 
@@ -132,7 +130,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 modalError.style.display = "block";
             }
             if (modalFileInput) modalFileInput.value = "";
-            if (submitResumeModalBtn) submitResumeModalBtn.disabled = true;
             return;
         }
 
@@ -145,7 +142,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (selectedFileSize) selectedFileSize.textContent = formatFileSize(file.size);
         if (dropzoneIdle) dropzoneIdle.style.display = "none";
         if (dropzoneSelected) dropzoneSelected.style.display = "block";
-        if (submitResumeModalBtn) submitResumeModalBtn.disabled = false;
     }
 
     openResumeModalBtns.forEach(btn => {
@@ -222,7 +218,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 overlay.style.display = "flex";
             }
             if (submitResumeModalBtn) {
-                submitResumeModalBtn.disabled = true;
                 submitResumeModalBtn.textContent = "Processing...";
             }
             if (processingTitle && processingMessage) {

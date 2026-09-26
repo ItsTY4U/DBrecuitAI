@@ -171,10 +171,10 @@
                 
                 <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <button type="button" id="modal-btn-start-record" onclick="startModalInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                        <button type="button" id="modal-btn-start-record" onclick="startModalInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
                             <i class="fas fa-circle-dot"></i> Record Mic
                         </button>
-                        <button type="button" id="modal-btn-stop-record" onclick="stopModalInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; align-items: center; gap: 6px; border: none; cursor: pointer;">
+                        <button type="button" id="modal-btn-stop-record" onclick="stopModalInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
                             <i class="fas fa-stop"></i> Stop (<span id="modal-record-timer">00:00</span>)
                         </button>
                     </div>
@@ -241,7 +241,7 @@
                 <button type="button" class="btn btn-secondary" onclick="closeEvaluationModal()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13.5px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">
                     Cancel
                 </button>
-                <button type="submit" id="btn-modal-save-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13.5px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(45, 90, 39, 0.2);">
+                <button type="submit" id="btn-modal-save-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13.5px; border: 1.5px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(45, 90, 39, 0.2);">
                     <i class="fas fa-floppy-disk"></i>
                     <span>Save &amp; Record Evaluation</span>
                 </button>
@@ -455,7 +455,6 @@ function updateModalRecHighlight(radio) {
 function handleModalEvalSubmit(e) {
     const btn = document.getElementById("btn-modal-save-eval");
     if (btn) {
-        btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving &amp; Completing...</span>';
     }
     return true;

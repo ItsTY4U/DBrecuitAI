@@ -1,0 +1,233 @@
+{% load static %}
+
+<!-- Section 1: KPI Summary Grid for Cancelled Applications -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-orange">
+                <i class="fas fa-user-xmark"></i>
+            </div>
+            <span class="stat-badge">Rejected</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ total_cancelled }}</h3>
+            <span class="stat-label">Total Cancelled / Rejected</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-purple">
+                <i class="fas fa-percent"></i>
+            </div>
+            <span class="stat-badge">Rate</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ rejection_rate }}%</h3>
+            <span class="stat-label">Overall Rejection Rate</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-blue">
+                <i class="fas fa-filter-circle-xmark"></i>
+            </div>
+            <span class="stat-badge">Screening</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ cancelled_screening_count }}</h3>
+            <span class="stat-label">Resume Screening Drop-Off</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon-wrapper icon-green">
+                <i class="fas fa-calendar-xmark"></i>
+            </div>
+            <span class="stat-badge">Interviews</span>
+        </div>
+        <div class="stat-content">
+            <h3 class="stat-value">{{ cancelled_interview_count }}</h3>
+            <span class="stat-label">Post-Interview Disqualified</span>
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search Toolbar for Cancelled Applications -->
+<div class="reports-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <form method="GET" action="{% url 'reports' %}" class="reports-filter-form" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+        <input type="hidden" name="tab" value="cancelled">
+
+        <!-- Department Filter -->
+        <div style="flex: 1; min-width: 180px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-building"></i> Department
+            </label>
+            <select name="cancelled_dept" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Departments</option>
+                {% for dept in available_departments %}
+                <option value="{{ dept }}" {% if cancelled_dept == dept %}selected{% endif %}>{{ dept }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Job Title Filter -->
+        <div style="flex: 1.2; min-width: 190px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-briefcase"></i> Job Position
+            </label>
+            <select name="cancelled_job" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Job Positions</option>
+                {% for j in available_jobs %}
+                <option value="{{ j.id }}" {% if cancelled_job == j.id|stringformat:"s" %}selected{% endif %}>{{ j.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Search Input -->
+        <div style="flex: 1.5; min-width: 220px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-magnifying-glass"></i> Search Candidate / Ref ID
+            </label>
+            <input type="text" name="cancelled_search" value="{{ cancelled_search }}" placeholder="Search candidate, Ref ID, email..." style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; box-sizing: border-box;">
+        </div>
+
+        <!-- Filter Actions -->
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            {% if cancelled_dept or cancelled_job or cancelled_search %}
+            <a href="{% url 'reports' %}?tab=cancelled" class="btn btn-secondary" style="height: 40px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+                <i class="fas fa-rotate-left"></i> Reset
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Cancelled Applications Table Card -->
+<div class="content-box" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+    <div style="padding: 18px 24px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-ban text-red"></i> Cancelled &amp; Rejected Applications ({{ cancelled_applications|length }})
+        </h3>
+        <span style="font-size: 12.5px; color: #64748b;">Disqualified candidate records and cancellation rationales</span>
+    </div>
+
+    {% if cancelled_applications %}
+    <div style="overflow-x: auto;">
+        <table class="data-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">
+                    <th style="padding: 14px 20px;">Candidate</th>
+                    <th style="padding: 14px 16px;">Applied Position</th>
+                    <th style="padding: 14px 16px;">AI Match Score</th>
+                    <th style="padding: 14px 16px;">Disqualified Phase</th>
+                    <th style="padding: 14px 16px;">Notes / Reason</th>
+                    <th style="padding: 14px 16px;">Application Date</th>
+                    <th style="padding: 14px 20px; text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 13.5px; color: #334155;">
+                {% for app in cancelled_applications %}
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                    <!-- Candidate Info -->
+                    <td style="padding: 14px 20px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 50%; background: #fee2e2; color: #b91c1c; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">
+                                {{ app.first_name|first|upper }}
+                            </div>
+                            <div>
+                                <strong style="color: #0f172a; font-size: 14px;">
+                                    {{ app.first_name }} {{ app.last_name }}
+                                </strong>
+                                <div style="font-size: 12px; color: #64748b; font-family: monospace;">
+                                    #{{ app.application_id }} &bull; {{ app.email }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- Job Position -->
+                    <td style="padding: 14px 16px;">
+                        <div style="font-weight: 600; color: #1e293b;">{{ app.job.title }}</div>
+                        <span class="hero-badge badge-primary" style="font-size: 11px; padding: 2px 7px;">
+                            {{ app.job.department }}
+                        </span>
+                    </td>
+
+                    <!-- AI Screening Match -->
+                    <td style="padding: 14px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-weight: 700; font-size: 14px; color: #1e293b;">{{ app.ai_score }}%</span>
+                        </div>
+                        <div style="width: 70px; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 4px;">
+                            <div style="height: 100%; width: {{ app.ai_score }}%; background: {% if app.ai_score >= 80 %}#22c55e{% elif app.ai_score >= 60 %}#3b82f6{% else %}#ef4444{% endif %};"></div>
+                        </div>
+                    </td>
+
+                    <!-- Disqualification Stage -->
+                    <td style="padding: 14px 16px;">
+                        <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: #fee2e2; color: #b91c1c;">
+                            <i class="fas fa-circle-xmark"></i> {{ app.disqualified_stage|default:"Rejected" }}
+                        </span>
+                    </td>
+
+                    <!-- Reason / Notes -->
+                    <td style="padding: 14px 16px; max-width: 260px;">
+                        <div style="font-size: 12.5px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ app.disqualified_notes }}">
+                            {{ app.disqualified_notes|truncatechars:70 }}
+                        </div>
+                    </td>
+
+                    <!-- Application Date -->
+                    <td style="padding: 14px 16px; white-space: nowrap;">
+                        <div style="font-size: 12.5px; color: #64748b;">
+                            {{ app.created_at|date:"M d, Y" }}
+                        </div>
+                    </td>
+
+                    <!-- Actions -->
+                    <td style="padding: 14px 20px; text-align: right; white-space: nowrap;">
+                        <div style="display: inline-flex; align-items: center; gap: 8px;">
+                            <a href="{% url 'candidate_detail' app.pk %}" class="btn" style="background: #f1f5f9; color: #334155; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #cbd5e1;">
+                                <i class="fas fa-eye"></i> View Profile
+                            </a>
+                            <form method="POST" action="{% url 'restore_candidate' app.pk %}" style="margin: 0; display: inline-block;" onsubmit="return confirm('Restore {{ app.first_name }} {{ app.last_name }} to Screening stage?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="target_stage" value="Screening">
+                                <button type="submit" class="btn" style="background: #2d5a27; color: #ffffff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Reopen candidate application">
+                                    <i class="fas fa-rotate-left"></i> Restore
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 48px 24px; text-align: center; color: #64748b;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: #f0fdf4; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 24px; color: #16a34a;">
+            <i class="fas fa-circle-check"></i>
+        </div>
+        <h4 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0 0 6px;">No Cancelled or Rejected Applications</h4>
+        <p style="font-size: 13.5px; color: #64748b; max-width: 480px; margin: 0 auto 18px;">
+            {% if cancelled_dept or cancelled_job or cancelled_search %}
+            No rejected applications match your current filters. Try clearing the search.
+            {% else %}
+            Candidates marked as rejected or whose interviews are cancelled with rejection will be catalogued in this registry.
+            {% endif %}
+        </p>
+        {% if cancelled_dept or cancelled_job or cancelled_search %}
+        <a href="{% url 'reports' %}?tab=cancelled" class="btn btn-secondary" style="padding: 8px 18px; border-radius: 8px; font-weight: 600; text-decoration: none;">
+            <i class="fas fa-rotate-left"></i> Reset Filters
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

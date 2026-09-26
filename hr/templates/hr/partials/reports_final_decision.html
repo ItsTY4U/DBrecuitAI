@@ -1,0 +1,444 @@
+{% load static %}
+
+<!-- Top Toolbar: Department Filter & Search -->
+<div class="reports-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <form method="GET" action="{% url 'reports' %}" class="reports-filter-form" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+        <input type="hidden" name="tab" value="final_decision">
+
+        <!-- Department Filter -->
+        <div style="flex: 1; min-width: 200px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-building"></i> Filter by Department
+            </label>
+            <select name="final_dept" class="toolbar-select" onchange="this.form.submit()" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <option value="">All Departments</option>
+                {% for dept in available_departments %}
+                <option value="{{ dept }}" {% if final_dept_filter == dept %}selected{% endif %}>{{ dept }} Department</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Search Input -->
+        <div style="flex: 2; min-width: 260px;">
+            <label style="display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+                <i class="fas fa-search"></i> Search Finalized Candidates
+            </label>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" 
+                       name="final_search" 
+                       value="{{ final_search_filter }}" 
+                       placeholder="Search candidate name, ID, job role, or reason notes..." 
+                       class="form-input" 
+                       style="flex: 1; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px;">
+                <button type="submit" class="btn btn-primary" style="height: 40px; padding: 0 18px; border-radius: 8px; background: #2d5a27; color: #fff; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </div>
+
+        {% if final_dept_filter or final_search_filter %}
+        <div style="display: flex; align-items: flex-end;">
+            <a href="{% url 'reports' %}?tab=final_decision" class="btn btn-secondary" style="height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="fas fa-rotate-left"></i> Reset
+            </a>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Section View Selector Pills (Show All, Hired, Not Hired) -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
+    <div class="decision-section-pills" style="display: flex; gap: 8px;">
+        <button type="button" 
+                id="btn-show-all-decisions" 
+                class="btn-decision-pill active" 
+                onclick="switchDecisionDisplay('all')"
+                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #2d5a27; background: #2d5a27; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <span>All Final Decisions</span>
+            <span style="background: rgba(255,255,255,0.25); padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_final_decisions_count }}</span>
+        </button>
+
+        <button type="button" 
+                id="btn-show-hired-decisions" 
+                class="btn-decision-pill" 
+                onclick="switchDecisionDisplay('hired')"
+                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #166534; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fas fa-award text-green"></i>
+            <span>Hired Candidates</span>
+            <span style="background: #dcfce7; color: #15803d; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_hired_final }}</span>
+        </button>
+
+        <button type="button" 
+                id="btn-show-not-hired-decisions" 
+                class="btn-decision-pill" 
+                onclick="switchDecisionDisplay('not_hired')"
+                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #991b1b; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fas fa-ban" style="color: #dc2626;"></i>
+            <span>Not Hired Candidates</span>
+            <span style="background: #fee2e2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_not_hired_final }}</span>
+        </button>
+    </div>
+
+    <div style="font-size: 13px; color: #64748b;">
+        Showing <strong>{{ total_final_decisions_count }}</strong> finalized candidate decision{{ total_final_decisions_count|pluralize }}
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- SECTION A: HIRED CANDIDATES (Department & Job Level Hierarchy) -->
+<!-- ============================================================== -->
+<div id="section-hired-decisions" class="decision-group-container" style="margin-bottom: 36px;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #bbf7d0;">
+        <div style="width: 34px; height: 34px; border-radius: 8px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+            <i class="fas fa-award"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">
+                Hired Candidates ({{ total_hired_final }})
+            </h3>
+            <p style="margin: 1px 0 0 0; font-size: 12.5px; color: #166534;">
+                Approved candidates who successfully concluded the recruitment pipeline and received hiring offers.
+            </p>
+        </div>
+    </div>
+
+    {% if hired_department_sections %}
+    <div class="department-sections-container">
+        {% for dept in hired_department_sections %}
+        <section class="dept-section-block" id="hired-dept-block-{{ forloop.counter }}" style="margin-bottom: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Department Section Header -->
+            <div class="dept-section-header" style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-bottom: 1px solid #d1fae5; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div class="dept-title-left" style="display: flex; align-items: center; gap: 12px;">
+                    <div class="dept-icon-badge" style="width: 36px; height: 36px; border-radius: 8px; background: #22c55e; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <h4 class="dept-title-text" style="margin: 0; font-size: 15px; font-weight: 700; color: #14532d;">{{ dept.name }} Department</h4>
+                        <span class="dept-sub-info" style="font-size: 12px; color: #15803d;">
+                            <strong>{{ dept.job_count }}</strong> Position{{ dept.job_count|pluralize }} &bull;
+                            <strong>{{ dept.total_candidates }}</strong> Hired Candidate{{ dept.total_candidates|pluralize }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Job Filter Dropdown within Department -->
+                {% if dept.all_jobs|length > 1 %}
+                <div class="dept-job-filter-box" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="hired-dept-job-{{ forloop.counter }}" style="font-size: 12px; font-weight: 600; color: #166534;">
+                        <i class="fas fa-filter"></i> Job:
+                    </label>
+                    <select id="hired-dept-job-{{ forloop.counter }}" 
+                            class="toolbar-select" 
+                            onchange="filterDeptJobs(this, 'hired-dept-block-{{ forloop.counter }}')"
+                            style="height: 32px; padding: 0 10px; font-size: 12px; border-radius: 6px; border: 1px solid #86efac;">
+                        <option value="all">All {{ dept.name }} Jobs ({{ dept.all_jobs|length }})</option>
+                        {% for j in dept.all_jobs %}
+                        <option value="{{ j.id }}">{{ j.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Jobs List Inside Department -->
+            <div class="dept-jobs-wrapper" style="padding: 16px 20px;">
+                {% for job_data in dept.jobs %}
+                <div class="job-section-card" id="hired-job-card-{{ job_data.job.id }}" data-job-id="{{ job_data.job.id }}" style="margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-weight: 700; font-size: 14px; color: #1e293b;">{{ job_data.job.title }}</span>
+                            <span class="hero-badge badge-type" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #e2e8f0; color: #475569;">{{ job_data.job.job_type }}</span>
+                        </div>
+                        <span style="font-size: 12px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 3px 10px; border-radius: 12px;">
+                            <i class="fas fa-user-check"></i> {{ job_data.candidate_count }} Hired
+                        </span>
+                    </div>
+
+                    <!-- Candidates Table -->
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 11.5px; text-transform: uppercase;">
+                                    <th style="padding: 10px 16px; text-align: left;">Candidate</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Evaluation Score</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Decision Date &amp; Decider</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Hiring Notes</th>
+                                    <th style="padding: 10px 16px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in job_data.candidates %}
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 12px 16px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #dcfce7; color: #15803d; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center;">
+                                                {{ app.first_name|first|upper }}{{ app.last_name|first|upper }}
+                                            </div>
+                                            <div>
+                                                <strong style="color: #0f172a; display: block;">{{ app.first_name }} {{ app.last_name }}</strong>
+                                                <span style="font-size: 11px; color: #64748b;">#{{ app.application_id }} &bull; {{ app.email }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        {% if app.evaluation %}
+                                        <div style="font-weight: 700; color: #15803d;">
+                                            {{ app.evaluation.overall_rating }}/5.0
+                                            <span style="font-size: 11px; font-weight: 500; color: #64748b;">({{ app.evaluation.recommendation }})</span>
+                                        </div>
+                                        {% else %}
+                                        <span style="color: #94a3b8; font-size: 12px;">Pre-evaluated</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <div style="color: #334155; font-weight: 600;">
+                                            <i class="far fa-calendar-check text-green" style="margin-right: 4px;"></i>
+                                            {{ app.evaluation.final_decision_date|default:app.created_at|date:"M d, Y" }}
+                                        </div>
+                                        <div style="font-size: 11.5px; color: #64748b;">
+                                            By: {{ app.evaluation.final_decision_by.get_full_name|default:app.evaluation.final_decision_by.username|default:"HR Staff" }}
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        {% if app.evaluation.final_decision_notes %}
+                                        <div style="max-width: 320px; font-size: 12px; color: #14532d; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 6px 10px;">
+                                            {{ app.evaluation.final_decision_notes }}
+                                        </div>
+                                        {% else %}
+                                        <span style="color: #94a3b8; font-size: 12px; font-style: italic;">No additional notes</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; white-space: nowrap;">
+                                        <a href="{% url 'candidate_detail' app.pk %}" class="btn" style="background: #2d5a27; color: #ffffff; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                            <i class="fas fa-user"></i> View Profile
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
+        <i class="fas fa-award" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+        <h5 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #334155;">No Hired Candidates Found</h5>
+        <p style="margin: 0; font-size: 13px;">Candidates finalized as "Hired" will appear here organized by Department and Job role.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ================================================================== -->
+<!-- SECTION B: NOT HIRED CANDIDATES (Department & Job Level Hierarchy) -->
+<!-- ================================================================== -->
+<div id="section-not-hired-decisions" class="decision-group-container">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #fecaca;">
+        <div style="width: 34px; height: 34px; border-radius: 8px; background: #fee2e2; color: #991b1b; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+            <i class="fas fa-ban"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #7f1d1d;">
+                Not Hired Candidates ({{ total_not_hired_final }})
+            </h3>
+            <p style="margin: 1px 0 0 0; font-size: 12.5px; color: #991b1b;">
+                Candidates evaluated but not selected during the final review stage, with required disqualification rationales.
+            </p>
+        </div>
+    </div>
+
+    {% if not_hired_department_sections %}
+    <div class="department-sections-container">
+        {% for dept in not_hired_department_sections %}
+        <section class="dept-section-block" id="not-hired-dept-block-{{ forloop.counter }}" style="margin-bottom: 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <!-- Department Section Header -->
+            <div class="dept-section-header" style="background: linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%); border-bottom: 1px solid #fecdd3; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div class="dept-title-left" style="display: flex; align-items: center; gap: 12px;">
+                    <div class="dept-icon-badge" style="width: 36px; height: 36px; border-radius: 8px; background: #ef4444; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <h4 class="dept-title-text" style="margin: 0; font-size: 15px; font-weight: 700; color: #881337;">{{ dept.name }} Department</h4>
+                        <span class="dept-sub-info" style="font-size: 12px; color: #9f1239;">
+                            <strong>{{ dept.job_count }}</strong> Position{{ dept.job_count|pluralize }} &bull;
+                            <strong>{{ dept.total_candidates }}</strong> Candidate{{ dept.total_candidates|pluralize }} Not Selected
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Job Filter Dropdown within Department -->
+                {% if dept.all_jobs|length > 1 %}
+                <div class="dept-job-filter-box" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="not-hired-dept-job-{{ forloop.counter }}" style="font-size: 12px; font-weight: 600; color: #881337;">
+                        <i class="fas fa-filter"></i> Job:
+                    </label>
+                    <select id="not-hired-dept-job-{{ forloop.counter }}" 
+                            class="toolbar-select" 
+                            onchange="filterDeptJobs(this, 'not-hired-dept-block-{{ forloop.counter }}')"
+                            style="height: 32px; padding: 0 10px; font-size: 12px; border-radius: 6px; border: 1px solid #fda4af;">
+                        <option value="all">All {{ dept.name }} Jobs ({{ dept.all_jobs|length }})</option>
+                        {% for j in dept.all_jobs %}
+                        <option value="{{ j.id }}">{{ j.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Jobs List Inside Department -->
+            <div class="dept-jobs-wrapper" style="padding: 16px 20px;">
+                {% for job_data in dept.jobs %}
+                <div class="job-section-card" id="not-hired-job-card-{{ job_data.job.id }}" data-job-id="{{ job_data.job.id }}" style="margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-weight: 700; font-size: 14px; color: #1e293b;">{{ job_data.job.title }}</span>
+                            <span class="hero-badge badge-type" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #e2e8f0; color: #475569;">{{ job_data.job.job_type }}</span>
+                        </div>
+                        <span style="font-size: 12px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 3px 10px; border-radius: 12px;">
+                            <i class="fas fa-ban"></i> {{ job_data.candidate_count }} Not Hired
+                        </span>
+                    </div>
+
+                    <!-- Candidates Table -->
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 11.5px; text-transform: uppercase;">
+                                    <th style="padding: 10px 16px; text-align: left;">Candidate</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Evaluation Score</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Decision Date &amp; Decider</th>
+                                    <th style="padding: 10px 16px; text-align: left;">Reason Why Not Hired</th>
+                                    <th style="padding: 10px 16px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for app in job_data.candidates %}
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 12px 16px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center;">
+                                                {{ app.first_name|first|upper }}{{ app.last_name|first|upper }}
+                                            </div>
+                                            <div>
+                                                <strong style="color: #0f172a; display: block;">{{ app.first_name }} {{ app.last_name }}</strong>
+                                                <span style="font-size: 11px; color: #64748b;">#{{ app.application_id }} &bull; {{ app.email }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        {% if app.evaluation %}
+                                        <div style="font-weight: 700; color: #475569;">
+                                            {{ app.evaluation.overall_rating }}/5.0
+                                            <span style="font-size: 11px; font-weight: 500; color: #94a3b8;">({{ app.evaluation.recommendation }})</span>
+                                        </div>
+                                        {% else %}
+                                        <span style="color: #94a3b8; font-size: 12px;">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <div style="color: #334155; font-weight: 600;">
+                                            <i class="far fa-calendar-xmark" style="color: #ef4444; margin-right: 4px;"></i>
+                                            {{ app.evaluation.final_decision_date|default:app.created_at|date:"M d, Y" }}
+                                        </div>
+                                        <div style="font-size: 11.5px; color: #64748b;">
+                                            By: {{ app.evaluation.final_decision_by.get_full_name|default:app.evaluation.final_decision_by.username|default:"HR Staff" }}
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <div style="max-width: 360px; font-size: 12.5px; color: #7f1d1d; background: #fef2f2; border: 1.5px solid #f87171; border-radius: 6px; padding: 8px 12px; line-height: 1.4;">
+                                            <i class="fas fa-circle-exclamation" style="margin-right: 4px; color: #dc2626;"></i>
+                                            <strong>Reason:</strong> {{ app.evaluation.final_decision_notes|default:"Applicant not selected during final evaluation review." }}
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px; text-align: right; white-space: nowrap;">
+                                        <a href="{% url 'candidate_detail' app.pk %}" class="btn btn-secondary" style="padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                            <i class="fas fa-user"></i> View Profile
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
+        <i class="fas fa-ban" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+        <h5 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #334155;">No Candidates Marked as Not Hired</h5>
+        <p style="margin: 0; font-size: 13px;">Candidates finalized as "Not Hired" along with their required reasons will appear here organized by Department and Job role.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function switchDecisionDisplay(mode) {
+    var hiredSec = document.getElementById('section-hired-decisions');
+    var notHiredSec = document.getElementById('section-not-hired-decisions');
+    var btnAll = document.getElementById('btn-show-all-decisions');
+    var btnHired = document.getElementById('btn-show-hired-decisions');
+    var btnNotHired = document.getElementById('btn-show-not-hired-decisions');
+
+    [btnAll, btnHired, btnNotHired].forEach(function(btn) {
+        if (!btn) return;
+        btn.style.background = '#ffffff';
+        btn.style.borderColor = '#cbd5e1';
+        btn.classList.remove('active');
+    });
+    if (btnAll) btnAll.style.color = '#334155';
+    if (btnHired) btnHired.style.color = '#166534';
+    if (btnNotHired) btnNotHired.style.color = '#991b1b';
+
+    if (mode === 'all') {
+        if (hiredSec) hiredSec.style.display = 'block';
+        if (notHiredSec) notHiredSec.style.display = 'block';
+        if (btnAll) {
+            btnAll.classList.add('active');
+            btnAll.style.background = '#2d5a27';
+            btnAll.style.borderColor = '#2d5a27';
+            btnAll.style.color = '#ffffff';
+        }
+    } else if (mode === 'hired') {
+        if (hiredSec) hiredSec.style.display = 'block';
+        if (notHiredSec) notHiredSec.style.display = 'none';
+        if (btnHired) {
+            btnHired.classList.add('active');
+            btnHired.style.background = '#15803d';
+            btnHired.style.borderColor = '#15803d';
+            btnHired.style.color = '#ffffff';
+        }
+    } else if (mode === 'not_hired') {
+        if (hiredSec) hiredSec.style.display = 'none';
+        if (notHiredSec) notHiredSec.style.display = 'block';
+        if (btnNotHired) {
+            btnNotHired.classList.add('active');
+            btnNotHired.style.background = '#b91c1c';
+            btnNotHired.style.borderColor = '#b91c1c';
+            btnNotHired.style.color = '#ffffff';
+        }
+    }
+}
+
+// Support job filtering inside department blocks
+function filterDeptJobs(selectEl, deptBlockId) {
+    var deptBlock = document.getElementById(deptBlockId);
+    if (!deptBlock) return;
+    var selectedJobId = selectEl.value;
+    var jobCards = deptBlock.querySelectorAll('.job-section-card');
+    jobCards.forEach(function(card) {
+        if (selectedJobId === 'all' || card.getAttribute('data-job-id') === selectedJobId) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
