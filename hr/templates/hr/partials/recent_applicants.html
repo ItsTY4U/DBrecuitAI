@@ -41,18 +41,28 @@
                 {% for app in recent_applications %}
                 <tr class="candidate-row">
                     <td class="td-candidate">
-                        <div class="candidate-identity">
-                            <div class="mini-avatar">
+                        <div class="table-applicant-info">
+                            <div class="table-avatar recent-candidate-avatar">
                                 {{ app.first_name|first|upper }}{{ app.last_name|first|upper }}
                             </div>
-                            <div class="candidate-meta">
-                                <a href="{% url 'candidate_detail' app.id %}" class="candidate-name-link">
-                                    {{ app.first_name }} {% if app.middle_initial %}{{ app.middle_initial }}. {% endif %}{{ app.last_name }}
-                                </a>
-                                <span class="candidate-subtext">
-                                    <code>{{ app.application_id }}</code>
-                                    {% if app.email %}&bull; {{ app.email }}{% endif %}
-                                </span>
+                            <div class="applicant-meta">
+                                <div class="recent-candidate-title-row">
+                                    <a href="{% url 'candidate_detail' app.id %}" class="table-candidate-name-link">
+                                        {{ app.first_name }} {% if app.middle_initial %}{{ app.middle_initial }}. {% endif %}{{ app.last_name }}
+                                    </a>
+                                    <span class="app-id-tag">#{{ app.application_id }}</span>
+                                </div>
+                                <div class="recent-candidate-contact-row">
+                                    <span class="contact-item" title="Candidate Email">
+                                        <i class="fas fa-envelope"></i> {{ app.email }}
+                                    </span>
+                                    {% if app.phone %}
+                                    <span class="contact-sep">&bull;</span>
+                                    <span class="contact-item" title="Candidate Phone">
+                                        <i class="fas fa-phone"></i> {{ app.phone }}
+                                    </span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </td>

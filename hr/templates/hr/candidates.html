@@ -81,18 +81,7 @@
     <!-- Horizontal Sub-Navigation Tabs Bar -->
     <div class="candidates-subnav-container" style="margin: 24px 0 20px 0;">
         <div class="candidates-subnav-tabs" style="display: flex; gap: 12px; padding-bottom: 0; flex-wrap: wrap;">
-            <button type="button" 
-                    id="tab-btn-all" 
-                    class="candidates-subnav-tab {% if active_tab == 'all' %}active{% endif %}" 
-                    onclick="switchCandidatesTab('all')"
-                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'all' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'all' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'all' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
-                <i class="fas fa-layer-group"></i>
-                <span>All Applicants</span>
-                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; background: {% if active_tab == 'all' %}rgba(255,255,255,0.25){% else %}rgba(0,0,0,0.06){% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %};">
-                    {{ total_candidates }}
-                </span>
-            </button>
-
+            <!-- Tab 1: Recent Applicants -->
             <button type="button" 
                     id="tab-btn-recent" 
                     class="candidates-subnav-tab {% if active_tab == 'recent' %}active{% endif %}" 
@@ -105,6 +94,19 @@
                     {{ recent_applications_count }}
                 </span>
                 {% endif %}
+            </button>
+
+            <!-- Tab 2: All Applicants -->
+            <button type="button" 
+                    id="tab-btn-all" 
+                    class="candidates-subnav-tab {% if active_tab == 'all' %}active{% endif %}" 
+                    onclick="switchCandidatesTab('all')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'all' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'all' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'all' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-layer-group"></i>
+                <span>All Applicants</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; background: {% if active_tab == 'all' %}rgba(255,255,255,0.25){% else %}rgba(0,0,0,0.06){% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %};">
+                    {{ total_candidates }}
+                </span>
             </button>
         </div>
     </div>

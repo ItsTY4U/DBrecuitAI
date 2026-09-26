@@ -717,9 +717,14 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
     selected_job = request.GET.get("job", "").strip()
-    active_tab = request.GET.get("tab", "all").strip().lower()
-    if active_tab not in ["all", "recent"]:
-        active_tab = "all"
+    active_tab = request.GET.get("tab", "").strip().lower()
+    if not active_tab:
+        if selected_department or selected_job:
+            active_tab = "all"
+        else:
+            active_tab = "recent"
+    elif active_tab not in ["recent", "all"]:
+        active_tab = "recent"
 
     # Recent candidate submissions across all jobs
     recent_applications = list(
