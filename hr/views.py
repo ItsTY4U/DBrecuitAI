@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from jobs.models import Application, Job, Requirement, Department
-from .models import Interview, CandidateEvaluation, AuditLog
-from .utils import log_hr_action, seed_applicant_management_logs_if_empty
+from .models import Interview, CandidateEvaluation, AuditLog, HRNotification
+from .utils import log_hr_action, seed_applicant_management_logs_if_empty, seed_initial_notifications_if_empty
 from video_interview.models import InterviewSession, InterviewResponse
 from .evaluation_ai import analyze_interview_audio
 from django.db.models import Q, Count, Prefetch, F, Window, Avg
+import json
 from django.db.models.functions import RowNumber
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -202,8 +203,79 @@ def dashboard(request):
         recent_applications = list(
             Application.objects.select_related("job")
             .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
-            .order_by("-created_at")[:5]
+            .order_by("-created_at")[:6]
         )
+
+        # 1. 6-Month Recruitment Velocity (Application Inflow & Hires)
+        now = timezone.now()
+        months_labels = []
+        monthly_apps = []
+        monthly_hires = []
+        for i in range(5, -1, -1):
+            m_year = now.year
+            m_month = now.month - i
+            while m_month <= 0:
+                m_month += 12
+                m_year -= 1
+            dt_label = date(m_year, m_month, 1).strftime("%b %Y")
+            months_labels.append(dt_label)
+
+            app_cnt = Application.objects.filter(
+                created_at__year=m_year,
+                created_at__month=m_month,
+            ).count()
+            monthly_apps.append(app_cnt)
+
+            hire_cnt = Application.objects.filter(
+                status="Hired",
+                created_at__year=m_year,
+                created_at__month=m_month,
+            ).count()
+            monthly_hires.append(hire_cnt)
+
+        # 2. Department Breakdown
+        dept_qs = (
+            Application.objects.values("job__department")
+            .annotate(total=Count("id"))
+            .order_by("-total")
+        )
+        dept_labels = []
+        dept_counts = []
+        for item in dept_qs:
+            dept_name = (item["job__department"] or "General").strip()
+            if not dept_name:
+                dept_name = "General"
+            dept_labels.append(dept_name)
+            dept_counts.append(item["total"])
+
+        if not dept_labels:
+            dept_labels = ["No Applications"]
+            dept_counts = [0]
+
+        # 3. AI Talent Quality / Score Distribution
+        score_tiers_agg = Application.objects.aggregate(
+            tier_top=Count("id", filter=Q(ai_score__gte=90)),
+            tier_high=Count("id", filter=Q(ai_score__gte=80, ai_score__lt=90)),
+            tier_qualified=Count("id", filter=Q(ai_score__gte=70, ai_score__lt=80)),
+            tier_review=Count("id", filter=Q(ai_score__lt=70)),
+        )
+        score_labels = ["Top Tier (90-100)", "High Potential (80-89)", "Qualified (70-79)", "Review Needed (<70)"]
+        score_counts = [
+            score_tiers_agg["tier_top"] or 0,
+            score_tiers_agg["tier_high"] or 0,
+            score_tiers_agg["tier_qualified"] or 0,
+            score_tiers_agg["tier_review"] or 0,
+        ]
+
+        chart_data = {
+            "months_labels": months_labels,
+            "monthly_apps": monthly_apps,
+            "monthly_hires": monthly_hires,
+            "dept_labels": dept_labels,
+            "dept_counts": dept_counts,
+            "score_labels": score_labels,
+            "score_counts": score_counts,
+        }
 
         content = {
             "total_applications": total_applications,
@@ -219,9 +291,95 @@ def dashboard(request):
             "interview_percent": interview_percent,
             "evaluation_percent": evaluation_percent,
             "hired_percent": hired_percent,
+            "chart_data_json": json.dumps(chart_data),
         }
         cache.set(cache_key, content, 15)
-    return render(request, "hr/dashboard.html", content)
+
+    # Seed initial notifications if empty
+    seed_initial_notifications_if_empty()
+
+    # Dynamic notification counts and greeting for the logged-in HR staff
+    context = dict(content)
+    hr_user = request.user
+    full_name = f"{hr_user.first_name} {hr_user.last_name}".strip()
+    context["hr_user_name"] = full_name or hr_user.first_name or hr_user.username
+    context["unread_notifs_count"] = HRNotification.objects.filter(is_read=False).count()
+    context["recent_notifications"] = list(
+        HRNotification.objects.all().order_by("-created_at")[:10]
+    )
+
+    return render(request, "hr/dashboard.html", context)
+
+
+@hr_required(login_url="hr_login")
+def hr_notifications_feed(request):
+    """
+    Returns latest HR notifications and unread count in JSON format for reactive updates.
+    """
+    seed_initial_notifications_if_empty()
+    notifs_qs = HRNotification.objects.all().order_by("-created_at")[:15]
+    unread_count = HRNotification.objects.filter(is_read=False).count()
+
+    def format_time_ago(dt):
+        if not dt:
+            return ""
+        delta = timezone.now() - dt
+        seconds = int(delta.total_seconds())
+        if seconds < 60:
+            return "Just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = hours // 24
+        if days < 7:
+            return f"{days}d ago"
+        return dt.strftime("%b %d")
+
+    data = {
+        "status": "success",
+        "unread_count": unread_count,
+        "notifications": [
+            {
+                "id": n.id,
+                "title": n.title,
+                "message": n.message,
+                "type": n.notification_type,
+                "link": n.link or reverse("candidates"),
+                "is_read": n.is_read,
+                "time_ago": format_time_ago(n.created_at),
+            }
+            for n in notifs_qs
+        ],
+    }
+    return JsonResponse(data)
+
+
+@hr_required(login_url="hr_login")
+def mark_notification_read(request):
+    """
+    Marks a single notification or all notifications as read.
+    """
+    if request.method == "POST":
+        notif_id = request.POST.get("notification_id")
+        if not notif_id and request.content_type == "application/json":
+            try:
+                body_data = json.loads(request.body.decode("utf-8")) if request.body else {}
+                notif_id = body_data.get("notification_id")
+            except Exception:
+                pass
+
+        if notif_id:
+            HRNotification.objects.filter(id=notif_id).update(is_read=True)
+        else:
+            HRNotification.objects.filter(is_read=False).update(is_read=True)
+
+        unread_count = HRNotification.objects.filter(is_read=False).count()
+        return JsonResponse({"status": "success", "unread_count": unread_count})
+
+    return JsonResponse({"status": "error", "message": "POST required"}, status=405)
 
 def get_job_management_context(selected_department=""):
     active_jobs = list(

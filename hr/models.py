@@ -249,4 +249,38 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"[{self.timestamp.strftime('%Y-%m-%d %H:%M')}] {self.user_name or 'System'}: {self.action} - {self.target_repr}"
+
+
+class HRNotification(models.Model):
+    NOTIFICATION_TYPES = [
+        ("NEW_APPLICATION", "New Application Submitted"),
+        ("VIDEO_INTERVIEW_COMPLETED", "Video Interview Completed"),
+        ("INTERVIEW_SCHEDULED", "Interview Scheduled"),
+        ("EVALUATION_COMPLETED", "Evaluation Completed"),
+        ("SYSTEM", "System Alert"),
+    ]
+
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="hr_notifications"
+    )
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, db_index=True)
+    title = models.CharField(max_length=150)
+    message = models.TextField()
+    link = models.CharField(max_length=255, blank=True)
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_read", "-created_at"]),
+            models.Index(fields=["recipient", "is_read", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.notification_type}] {self.title} ({'Read' if self.is_read else 'Unread'})"
 

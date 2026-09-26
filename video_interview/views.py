@@ -295,6 +295,19 @@ def finish_interview_view(request, application_id):
         session.completed_at = timezone.now()
         session.save(update_fields=["status", "completed_at"])
 
+        # Trigger HR notification for video interview completion
+        try:
+            from hr.utils import create_hr_notification
+            from django.urls import reverse
+            create_hr_notification(
+                title=f"Video Interview Completed: {application.first_name} {application.last_name}",
+                message=f"Completed automated AI video interview for {application.job.title}",
+                notification_type="VIDEO_INTERVIEW_COMPLETED",
+                link=reverse("candidate_detail", kwargs={"pk": application.pk}),
+            )
+        except Exception:
+            pass
+
         # Run AI analysis in background unless synchronous mode is explicitly configured (e.g. testing)
         if getattr(settings, "ASYNC_VIDEO_ANALYSIS", True):
             threading.Thread(

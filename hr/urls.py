@@ -89,4 +89,6 @@ urlpatterns = [
     path("interviews/reschedule-applicant/<int:pk>/", views.reschedule_candidate_interview, name="reschedule_candidate_interview"),
     path("interviews/cancel-applicant/<int:pk>/", views.cancel_candidate_interview, name="cancel_candidate_interview"),
     path("interviews/<int:pk>/", views.interview_detail, name="interview_detail"),
+    path("api/notifications/", views.hr_notifications_feed, name="hr_notifications_feed"),
+    path("api/notifications/mark-read/", views.mark_notification_read, name="mark_notification_read"),
 ]

@@ -1,59 +1,48 @@
 {% load static %}
 
-<!-- Section 1: KPI Summary Grid for Cancelled Applications -->
-<section class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-orange">
-                <i class="fas fa-user-xmark"></i>
-            </div>
-            <span class="stat-badge">Rejected</span>
+<!-- Section 1: Contextual KPI Summary Strip for Cancelled Applications -->
+<div class="reports-kpi-strip">
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #ffedd5; color: #ea580c;">
+            <i class="fas fa-user-xmark"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ total_cancelled }}</h3>
-            <span class="stat-label">Total Cancelled / Rejected</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ total_cancelled }}</span>
+            <span class="kpi-chip-lbl">Total Cancelled / Rejected</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-purple">
-                <i class="fas fa-percent"></i>
-            </div>
-            <span class="stat-badge">Rate</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #f3e8ff; color: #9333ea;">
+            <i class="fas fa-percent"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ rejection_rate }}%</h3>
-            <span class="stat-label">Overall Rejection Rate</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ rejection_rate }}%</span>
+            <span class="kpi-chip-lbl">Overall Rejection Rate</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-blue">
-                <i class="fas fa-filter-circle-xmark"></i>
-            </div>
-            <span class="stat-badge">Screening</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #e0f2fe; color: #0284c7;">
+            <i class="fas fa-filter-circle-xmark"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ cancelled_screening_count }}</h3>
-            <span class="stat-label">Resume Screening Drop-Off</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ cancelled_screening_count }}</span>
+            <span class="kpi-chip-lbl">Resume Screening Drop-Off</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-green">
-                <i class="fas fa-calendar-xmark"></i>
-            </div>
-            <span class="stat-badge">Interviews</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #dcfce7; color: #16a34a;">
+            <i class="fas fa-calendar-xmark"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ cancelled_interview_count }}</h3>
-            <span class="stat-label">Post-Interview Disqualified</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ cancelled_interview_count }}</span>
+            <span class="kpi-chip-lbl">Post-Interview Disqualified</span>
         </div>
     </div>
-</section>
+</div>
+
 
 <!-- Filter & Search Toolbar for Cancelled Applications -->
 <div class="reports-filter-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">

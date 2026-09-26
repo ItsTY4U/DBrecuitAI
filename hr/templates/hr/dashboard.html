@@ -1,24 +1,93 @@
 {% extends "home_admin.html" %}
 {% load static %}
 {% load time_filters %}
+
 {% block admin_body %}
 <main class="main-dashboard">
     <header class="dashboard-header">
         <div class="header-left">
-            <h1 class="dashboard-title">Welcome back, {{ user.username }}!</h1>
+            <h1 class="dashboard-title">Welcome back, {{ hr_user_name }}!</h1>
             <p class="dashboard-subtitle">Here is what is happening across your recruitment pipeline today.</p>
         </div>
         <div class="header-right">
-            <div class="notif-bell" title="Notifications">
-                <i class="fas fa-bell"></i>
-                {% if pending_count or interview_count %}
-                <span class="notif-dot"></span>
-                {% endif %}
+            <!-- Dynamic, Real-time & Reactive Notification Bell -->
+            <div class="notif-wrapper" id="notif-wrapper">
+                <button type="button" 
+                        class="notif-bell {% if unread_notifs_count %}has-unread{% endif %}" 
+                        id="notif-bell-btn" 
+                        onclick="toggleNotificationDropdown(event)" 
+                        aria-label="Notifications" 
+                        aria-expanded="false" 
+                        title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge" id="notif-badge" {% if not unread_notifs_count %}style="display:none;"{% endif %}>
+                        {{ unread_notifs_count }}
+                    </span>
+                </button>
+                
+                <!-- Expandable Popover Dropdown Panel -->
+                <div class="notif-dropdown" id="notif-dropdown" style="display: none;">
+                    <div class="notif-dropdown-header">
+                        <div class="notif-header-title">
+                            <h4>Notifications</h4>
+                            <span class="notif-unread-pill" id="notif-unread-pill">
+                                {% if unread_notifs_count %}{{ unread_notifs_count }} unread{% else %}All caught up{% endif %}
+                            </span>
+                        </div>
+                        <button type="button" class="btn-mark-all-read" id="btn-mark-all-read" onclick="markAllNotificationsRead(event)">
+                            <i class="fas fa-check-double"></i> Mark all read
+                        </button>
+                    </div>
+
+                    <div class="notif-dropdown-list" id="notif-dropdown-list">
+                        {% for notif in recent_notifications %}
+                        <div class="notif-item {% if not notif.is_read %}is-unread{% endif %}" 
+                             data-notif-id="{{ notif.id }}" 
+                             data-link="{{ notif.link|default:'/hr/candidates/' }}"
+                             onclick="handleNotificationClick(event, this)">
+                            <div class="notif-item-icon notif-icon-{{ notif.notification_type|lower }}">
+                                {% if notif.notification_type == 'NEW_APPLICATION' %}
+                                    <i class="fas fa-user-plus"></i>
+                                {% elif notif.notification_type == 'VIDEO_INTERVIEW_COMPLETED' %}
+                                    <i class="fas fa-video"></i>
+                                {% elif notif.notification_type == 'INTERVIEW_SCHEDULED' %}
+                                    <i class="fas fa-calendar-check"></i>
+                                {% elif notif.notification_type == 'EVALUATION_COMPLETED' %}
+                                    <i class="fas fa-clipboard-check"></i>
+                                {% else %}
+                                    <i class="fas fa-bell"></i>
+                                {% endif %}
+                            </div>
+                            <div class="notif-item-body">
+                                <div class="notif-item-title-row">
+                                    <h5 class="notif-item-title">{{ notif.title }}</h5>
+                                    <span class="notif-item-time">{{ notif.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</span>
+                                </div>
+                                <p class="notif-item-msg">{{ notif.message }}</p>
+                            </div>
+                            {% if not notif.is_read %}
+                            <span class="notif-item-unread-dot"></span>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="notif-empty-state">
+                            <i class="fas fa-circle-check"></i>
+                            <p>No notifications right now.<br><span style="font-size:12px; color:#94a3b8;">You're all caught up!</span></p>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="notif-dropdown-footer">
+                        <a href="{% url 'candidates' %}" class="notif-footer-link">
+                            View All Candidates &rarr;
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- Stats Grid -->
+    <!-- Stats Grid (Compact, Space-Saving, and Constrained from Expanding) -->
     <section class="stats-grid">
         <div class="stat-card">
             <div class="stat-header">
@@ -73,11 +142,119 @@
         </div>
     </section>
 
-    <!-- Middle Grid -->
-    <div class="dashboard-grid">
-        <!-- Left / Main Column -->
+    <!-- Visual Analytics Charts Row -->
+    <section class="dashboard-analytics-row">
+        <!-- Visual Graph 1: Application & Hiring Velocity Trends -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-group">
+                    <i class="fas fa-chart-line header-icon"></i>
+                    <div>
+                        <h3>Recruitment Velocity &amp; Trends</h3>
+                        <p>Application volume &amp; hiring activity over the past 6 months</p>
+                    </div>
+                </div>
+                <span class="chart-badge">
+                    <i class="fas fa-bolt"></i> 6 Months
+                </span>
+            </div>
+            <div class="chart-canvas-container">
+                <canvas id="recruitmentTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Visual Graph 2: Department Talent Distribution -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-group">
+                    <i class="fas fa-chart-pie header-icon"></i>
+                    <div>
+                        <h3>Talent by Department</h3>
+                        <p>Candidate distribution across organizational units</p>
+                    </div>
+                </div>
+                <span class="chart-badge" style="background: #e0f2fe; color: #0284c7;">
+                    <i class="fas fa-building"></i> Breakdown
+                </span>
+            </div>
+            <div class="chart-canvas-container-doughnut">
+                <canvas id="departmentDoughnutChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Data & Performance Row -->
+    <section class="dashboard-bottom-row">
+        <!-- Left Column: Recent Applicants & Candidate Pipeline -->
         <div class="dash-column">
-            <!-- Candidate Pipeline -->
+            <!-- Recent Applicants -->
+            <div class="content-box">
+                <div class="box-header">
+                    <div class="box-header-title">
+                        <i class="fas fa-user-clock header-icon"></i>
+                        <div>
+                            <h3>Recent Applicants</h3>
+                            <p class="box-subtitle">Latest candidate submissions</p>
+                        </div>
+                    </div>
+                    <a href="{% url 'candidates' %}" class="box-action-link">
+                        See All <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="applicant-list">
+                        <thead>
+                            <tr>
+                                <th>Candidate</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Applied</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for application in recent_applications %}
+                            <tr class="applicant-row"
+                                onclick="window.location.href='{% url 'candidate_detail' application.id %}'">
+                                <td class="a-info">
+                                    <div class="avatar">{{ application.first_name|first|upper }}{{ application.last_name|first|upper }}</div>
+                                    <div class="a-details">
+                                        <h4>{{ application.first_name }} {{ application.last_name }}</h4>
+                                        <p>{{ application.email }}</p>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="role-badge">{{ application.job.title }}</span>
+                                </td>
+                                <td>
+                                    <span class="status-pill status-{{ application.status|lower }}">{{ application.status }}</span>
+                                </td>
+                                <td class="a-time">
+                                    {{ application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</td>
+                                <td class="a-action">
+                                    <i class="fas fa-chevron-right action-arrow"></i>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state-box">
+                                        <div class="empty-state-icon">
+                                            <i class="fas fa-inbox"></i>
+                                        </div>
+                                        <h4>No applicants yet</h4>
+                                        <p>When candidates apply to your posted jobs, they will appear right here.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Candidate Pipeline Progress Breakdown -->
             <div class="content-box">
                 <div class="box-header">
                     <div class="box-header-title">
@@ -153,158 +330,399 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Recent Applicants -->
-            <div class="content-box">
-                <div class="box-header">
-                    <div class="box-header-title">
-                        <i class="fas fa-user-clock header-icon"></i>
-                        <div>
-                            <h3>Recent Applicants</h3>
-                            <p class="box-subtitle">Latest candidate submissions</p>
-                        </div>
-                    </div>
-                    <a href="{% url 'candidates' %}" class="box-action-link">
-                        See All <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="applicant-list">
-                        <thead>
-                            <tr>
-                                <th>Candidate</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Applied</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for application in recent_applications %}
-                            <tr class="applicant-row"
-                                onclick="window.location.href='{% url 'candidate_detail' application.id %}'">
-                                <td class="a-info">
-                                    <div class="avatar">{{ application.first_name|first|upper }}{{ application.last_name|first|upper }}</div>
-                                    <div class="a-details">
-                                        <h4>{{ application.first_name }} {{ application.last_name }}</h4>
-                                        <p>{{ application.email }}</p>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="role-badge">{{ application.job.title }}</span>
-                                </td>
-                                <td>
-                                    <span class="status-pill status-{{ application.status|lower }}">{{ application.status }}</span>
-                                </td>
-                                <td class="a-time">
-                                    {{ application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</td>
-                                <td class="a-action">
-                                    <i class="fas fa-chevron-right action-arrow"></i>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-state-box">
-                                        <div class="empty-state-icon">
-                                            <i class="fas fa-inbox"></i>
-                                        </div>
-                                        <h4>No applicants yet</h4>
-                                        <p>When candidates apply to your posted jobs, they will appear right here.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
 
-        <!-- Right / Action Column -->
+        <!-- Right Column: Visual Graph 3 (AI Resume Score & Talent Quality Breakdown) -->
         <div class="dash-column">
-            <!-- Reminders & Pending Tasks -->
-            <div class="content-box">
-                <div class="box-header">
-                    <div class="box-header-title">
-                        <i class="fas fa-bell header-icon"></i>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title-group">
+                        <i class="fas fa-brain header-icon" style="color: #9333ea; background: #f3e8ff;"></i>
                         <div>
-                            <h3>Action Center</h3>
-                            <p class="box-subtitle">Pending reviews and tasks</p>
+                            <h3>AI Talent Quality Distribution</h3>
+                            <p>Candidate AI resume score tier benchmarking</p>
                         </div>
                     </div>
+                    <span class="chart-badge" style="background: #f3e8ff; color: #9333ea;">
+                        <i class="fas fa-wand-magic-sparkles"></i> AI Scoring
+                    </span>
                 </div>
-
-                <div class="reminders-list">
-                    {% if pending_count %}
-                    <div class="reminder-item-card" onclick="window.location.href='{% url 'candidates' %}'">
-                        <div class="reminder-icon-box icon-amber">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="reminder-body">
-                            <h4>Review Pending Applications</h4>
-                            <p>{{ pending_count }} applicant{{ pending_count|pluralize }} waiting for screening</p>
-                        </div>
-                        <i class="fas fa-arrow-right reminder-arrow"></i>
-                    </div>
-                    {% endif %}
-
-                    {% if interview_count %}
-                    <div class="reminder-item-card" onclick="window.location.href='{% url 'interviews' %}'">
-                        <div class="reminder-icon-box icon-purple">
-                            <i class="fas fa-video"></i>
-                        </div>
-                        <div class="reminder-body">
-                            <h4>Scheduled Interviews</h4>
-                            <p>{{ interview_count }} candidate{{ interview_count|pluralize }} waiting for interview</p>
-                        </div>
-                        <i class="fas fa-arrow-right reminder-arrow"></i>
-                    </div>
-                    {% endif %}
-
-                    {% if not pending_count and not interview_count %}
-                    <div class="empty-reminder">
-                        <i class="fas fa-circle-check text-green"></i>
-                        <h4>You are all caught up!</h4>
-                        <p>No urgent reminders or pending candidate actions.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Quick Shortcuts Card -->
-            <div class="content-box">
-                <div class="box-header">
-                    <div class="box-header-title">
-                        <i class="fas fa-bolt header-icon"></i>
-                        <div>
-                            <h3>Quick Actions</h3>
-                            <p class="box-subtitle">Common recruiting workflows</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="quick-actions-grid">
-                    <a href="{% url 'job_management' %}" class="quick-action-btn">
-                        <i class="fas fa-plus-circle"></i>
-                        <span>Create Job Post</span>
-                    </a>
-                    <a href="{% url 'candidates' %}" class="quick-action-btn">
-                        <i class="fas fa-user-check"></i>
-                        <span>Review Candidates</span>
-                    </a>
-                    <a href="{% url 'interviews' %}" class="quick-action-btn">
-                        <i class="fas fa-calendar-plus"></i>
-                        <span>Schedule Interview</span>
-                    </a>
-                    <a href="{% url 'job_management' %}" class="quick-action-btn">
-                        <i class="fas fa-sliders"></i>
-                        <span>Manage Positions</span>
-                    </a>
+                <div class="chart-canvas-container" style="height: 280px;">
+                    <canvas id="aiScoreChart"></canvas>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 </main>
+
+<!-- Chart.js 4.4 CDN for Dashboard Visual Analytics -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+(function() {
+    'use strict';
+
+    // Store chart instances globally for cleanup across HTMX transitions
+    window.hrChartInstances = window.hrChartInstances || {};
+
+    const chartRawData = {{ chart_data_json|default:"{}"|safe }};
+
+    function initDashboardCharts() {
+        if (typeof Chart === 'undefined') return;
+
+        // Cleanup existing charts if present
+        if (window.hrChartInstances.trend) {
+            window.hrChartInstances.trend.destroy();
+        }
+        if (window.hrChartInstances.dept) {
+            window.hrChartInstances.dept.destroy();
+        }
+        if (window.hrChartInstances.aiScore) {
+            window.hrChartInstances.aiScore.destroy();
+        }
+
+        // 1. Recruitment Velocity (Application Inflow & Hires) Line/Area Chart
+        const trendCanvas = document.getElementById('recruitmentTrendChart');
+        if (trendCanvas && chartRawData.months_labels) {
+            const ctx = trendCanvas.getContext('2d');
+            const greenGradient = ctx.createLinearGradient(0, 0, 0, 200);
+            greenGradient.addColorStop(0, 'rgba(45, 90, 39, 0.35)');
+            greenGradient.addColorStop(1, 'rgba(45, 90, 39, 0.02)');
+
+            window.hrChartInstances.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartRawData.months_labels,
+                    datasets: [
+                        {
+                            label: 'Applications',
+                            data: chartRawData.monthly_apps,
+                            borderColor: '#2d5a27',
+                            backgroundColor: greenGradient,
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.35,
+                            pointBackgroundColor: '#2d5a27',
+                            pointHoverRadius: 6,
+                        },
+                        {
+                            label: 'Hired Candidates',
+                            data: chartRawData.monthly_hires,
+                            borderColor: '#0284c7',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.35,
+                            pointBackgroundColor: '#0284c7',
+                            pointHoverRadius: 5,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: {
+                                boxWidth: 12,
+                                font: { family: 'Montserrat', size: 11, weight: '600' },
+                                color: '#475569'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: 'Montserrat', size: 12, weight: '700' },
+                            bodyFont: { family: 'Montserrat', size: 11 },
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: 'Montserrat', size: 11 }, color: '#64748b' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(226, 232, 240, 0.6)' },
+                            ticks: { precision: 0, font: { family: 'Montserrat', size: 11 }, color: '#64748b' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Department Doughnut Chart
+        const deptCanvas = document.getElementById('departmentDoughnutChart');
+        if (deptCanvas && chartRawData.dept_labels) {
+            const ctx = deptCanvas.getContext('2d');
+            const deptColors = ['#2d5a27', '#0284c7', '#d97706', '#9333ea', '#10b981', '#f43f5e', '#64748b'];
+
+            window.hrChartInstances.dept = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: chartRawData.dept_labels,
+                    datasets: [{
+                        data: chartRawData.dept_counts,
+                        backgroundColor: deptColors.slice(0, chartRawData.dept_labels.length),
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 10,
+                                padding: 12,
+                                font: { family: 'Montserrat', size: 10.5, weight: '600' },
+                                color: '#475569'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: 'Montserrat', size: 12, weight: '700' },
+                            bodyFont: { family: 'Montserrat', size: 11 },
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. AI Talent Quality / Score Distribution Bar Chart
+        const aiCanvas = document.getElementById('aiScoreChart');
+        if (aiCanvas && chartRawData.score_labels) {
+            const ctx = aiCanvas.getContext('2d');
+            window.hrChartInstances.aiScore = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['90-100 Top', '80-89 High', '70-79 Qualified', '<70 Review'],
+                    datasets: [{
+                        label: 'Candidate Count',
+                        data: chartRawData.score_counts,
+                        backgroundColor: [
+                            'rgba(45, 90, 39, 0.85)',
+                            'rgba(2, 132, 199, 0.85)',
+                            'rgba(217, 119, 6, 0.85)',
+                            'rgba(100, 116, 139, 0.65)'
+                        ],
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: 'Montserrat', size: 12, weight: '700' },
+                            bodyFont: { family: 'Montserrat', size: 11 },
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { family: 'Montserrat', size: 10.5, weight: '600' }, color: '#475569' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(226, 232, 240, 0.6)' },
+                            ticks: { precision: 0, font: { family: 'Montserrat', size: 11 }, color: '#64748b' }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Dynamic, Real-time & Reactive Notifications Controller
+    window.toggleNotificationDropdown = function(event) {
+        event.stopPropagation();
+        const dropdown = document.getElementById('notif-dropdown');
+        const bellBtn = document.getElementById('notif-bell-btn');
+        if (!dropdown) return;
+
+        const isCurrentlyOpen = dropdown.style.display !== 'none';
+        if (isCurrentlyOpen) {
+            dropdown.style.display = 'none';
+            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
+        } else {
+            dropdown.style.display = 'block';
+            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'true');
+        }
+    };
+
+    window.markAllNotificationsRead = function(event) {
+        if (event) event.stopPropagation();
+        fetch('/hr/api/notifications/mark-read/', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ all: true })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const bell = document.getElementById('notif-bell-btn');
+                const badge = document.getElementById('notif-badge');
+                const pill = document.getElementById('notif-unread-pill');
+                if (bell) bell.classList.remove('has-unread');
+                if (badge) badge.style.display = 'none';
+                if (pill) pill.textContent = 'All caught up';
+
+                document.querySelectorAll('.notif-item').forEach(el => {
+                    el.classList.remove('is-unread');
+                    const dot = el.querySelector('.notif-item-unread-dot');
+                    if (dot) dot.remove();
+                });
+            }
+        })
+        .catch(err => console.warn('Failed to mark notifications read:', err));
+    };
+
+    window.handleNotificationClick = function(event, itemEl) {
+        event.stopPropagation();
+        const notifId = itemEl.getAttribute('data-notif-id');
+        const targetLink = itemEl.getAttribute('data-link');
+
+        // Mark individual notification as read
+        if (notifId && itemEl.classList.contains('is-unread')) {
+            fetch('/hr/api/notifications/mark-read/', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ notification_id: notifId })
+            }).finally(() => {
+                if (targetLink) window.location.href = targetLink;
+            });
+        } else if (targetLink) {
+            window.location.href = targetLink;
+        }
+    };
+
+    // Close notification dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const wrapper = document.getElementById('notif-wrapper');
+        const dropdown = document.getElementById('notif-dropdown');
+        if (wrapper && dropdown && !wrapper.contains(e.target)) {
+            dropdown.style.display = 'none';
+            const bellBtn = document.getElementById('notif-bell-btn');
+            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // Real-time polling function (every 15 seconds)
+    function pollNotifications() {
+        fetch('/hr/api/notifications/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const bell = document.getElementById('notif-bell-btn');
+                const badge = document.getElementById('notif-badge');
+                const pill = document.getElementById('notif-unread-pill');
+                const list = document.getElementById('notif-dropdown-list');
+
+                if (data.unread_count > 0) {
+                    if (bell) bell.classList.add('has-unread');
+                    if (badge) {
+                        badge.style.display = 'flex';
+                        badge.textContent = data.unread_count;
+                    }
+                    if (pill) pill.textContent = data.unread_count + ' unread';
+                } else {
+                    if (bell) bell.classList.remove('has-unread');
+                    if (badge) badge.style.display = 'none';
+                    if (pill) pill.textContent = 'All caught up';
+                }
+
+                // Update list if open or content changed
+                if (list && data.notifications && data.notifications.length > 0) {
+                    list.innerHTML = data.notifications.map(n => {
+                        let iconHtml = '<i class="fas fa-bell"></i>';
+                        if (n.type === 'NEW_APPLICATION') iconHtml = '<i class="fas fa-user-plus"></i>';
+                        else if (n.type === 'VIDEO_INTERVIEW_COMPLETED') iconHtml = '<i class="fas fa-video"></i>';
+                        else if (n.type === 'INTERVIEW_SCHEDULED') iconHtml = '<i class="fas fa-calendar-check"></i>';
+                        else if (n.type === 'EVALUATION_COMPLETED') iconHtml = '<i class="fas fa-clipboard-check"></i>';
+
+                        return `
+                            <div class="notif-item ${!n.is_read ? 'is-unread' : ''}" 
+                                 data-notif-id="${n.id}" 
+                                 data-link="${n.link || '/hr/candidates/'}"
+                                 onclick="handleNotificationClick(event, this)">
+                                <div class="notif-item-icon notif-icon-${(n.type || '').toLowerCase()}">
+                                    ${iconHtml}
+                                </div>
+                                <div class="notif-item-body">
+                                    <div class="notif-item-title-row">
+                                        <h5 class="notif-item-title">${escapeHtml(n.title)}</h5>
+                                        <span class="notif-item-time">${escapeHtml(n.time_ago)}</span>
+                                    </div>
+                                    <p class="notif-item-msg">${escapeHtml(n.message)}</p>
+                                </div>
+                                ${!n.is_read ? '<span class="notif-item-unread-dot"></span>' : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        })
+        .catch(err => console.debug('Notification poll error:', err));
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Initialize on load and on HTMX settlement
+    initDashboardCharts();
+    document.addEventListener('DOMContentLoaded', initDashboardCharts);
+    document.body.addEventListener('htmx:afterSettle', initDashboardCharts);
+
+    // Poll every 15 seconds
+    if (window.hrNotifInterval) clearInterval(window.hrNotifInterval);
+    window.hrNotifInterval = setInterval(pollNotifications, 15000);
+})();
+</script>
 {% endblock %}

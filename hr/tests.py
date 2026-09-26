@@ -2436,6 +2436,114 @@ class HRReportsAndFinalDecisionTests(TestCase):
         self.assertContains(response, "openFinalReviewModal")
 
 
+class HRDashboardModernizationTests(TestCase):
+    def setUp(self):
+        invalidate_hr_cache()
+        self.client = Client()
+        self.hr_user = User.objects.create_user(
+            username="admin",
+            password="testpassword123",
+            first_name="John",
+            last_name="Smith",
+            is_staff=True,
+        )
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.hr_user.groups.add(self.hr_group)
+        self.client.login(username="admin", password="testpassword123")
+
+        self.dept = "Engineering"
+        self.job = Job.objects.create(
+            title="Senior AI Engineer",
+            department=self.dept,
+            job_type="FULL-TIME",
+            status="Active"
+        )
+        self.app = Application.objects.create(
+            job=self.job,
+            first_name="Marie",
+            last_name="Curie",
+            email="marie@radioactivity.org",
+            phone="09181112233",
+            ai_score=95,
+            status="Screening",
+        )
+
+    def test_dashboard_personalized_greeting(self):
+        """Dashboard greets current HR user by actual name rather than username admin."""
+        url = reverse("dashboard")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Welcome back, John Smith!")
+        self.assertNotContains(response, "Welcome back, admin!")
+
+    def test_dashboard_quick_actions_and_action_center_removed(self):
+        """Action Center and Quick Actions sections are removed from the dashboard."""
+        url = reverse("dashboard")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "<h3>Action Center</h3>")
+        self.assertNotContains(response, "<h3>Quick Actions</h3>")
+
+    def test_dashboard_visual_charts_in_context_and_dom(self):
+        """Dashboard passes chart_data_json and renders canvas elements for Chart.js."""
+        url = reverse("dashboard")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("chart_data_json", response.context)
+        self.assertContains(response, 'id="recruitmentTrendChart"')
+        self.assertContains(response, 'id="departmentDoughnutChart"')
+        self.assertContains(response, 'id="aiScoreChart"')
+        self.assertContains(response, "chart.umd.min.js")
+
+    def test_notification_bell_and_reactive_api(self):
+        """Notification bell is dynamic and reactive via the notifications feed and mark-read API."""
+        from hr.models import HRNotification
+
+        # Initial seed check / unread notification creation
+        HRNotification.objects.create(
+            notification_type="NEW_APPLICATION",
+            title="New Application: Marie Curie",
+            message="Applied for Senior AI Engineer",
+            is_read=False,
+        )
+
+        # GET API
+        feed_url = reverse("hr_notifications_feed")
+        feed_resp = self.client.get(feed_url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(feed_resp.status_code, 200)
+        data = feed_resp.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["unread_count"], 0)
+        self.assertTrue(any("Marie Curie" in n["title"] for n in data["notifications"]))
+
+        # Mark all as read POST API
+        mark_url = reverse("mark_notification_read")
+        mark_resp = self.client.post(mark_url, {}, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(mark_resp.status_code, 200)
+        mark_data = mark_resp.json()
+        self.assertEqual(mark_data["status"], "success")
+        self.assertEqual(mark_data["unread_count"], 0)
+
+        # Confirm all are read in DB
+        self.assertEqual(HRNotification.objects.filter(is_read=False).count(), 0)
+
+    def test_reports_tabs_kpi_strip_placement(self):
+        """Reports cancelled and evaluations tabs render sleek contextual KPI strips."""
+        # Cancelled tab
+        resp_cancelled = self.client.get(f"{reverse('reports')}?tab=cancelled")
+        self.assertEqual(resp_cancelled.status_code, 200)
+        self.assertContains(resp_cancelled, "reports-kpi-strip")
+        self.assertContains(resp_cancelled, "Resume Screening Drop-Off")
+        self.assertContains(resp_cancelled, "Post-Interview Disqualified")
+
+        # Evaluations tab
+        resp_eval = self.client.get(f"{reverse('reports')}?tab=evaluations")
+        self.assertEqual(resp_eval.status_code, 200)
+        self.assertContains(resp_eval, "reports-kpi-strip")
+        self.assertContains(resp_eval, "Total Evaluated")
+        self.assertContains(resp_eval, "Avg Rubric Score")
+
+
 
 
 

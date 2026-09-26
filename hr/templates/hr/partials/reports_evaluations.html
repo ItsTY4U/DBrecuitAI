@@ -1,59 +1,48 @@
 {% load static %}
 
-<!-- Stats KPI Grid -->
-<section class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-blue">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <span class="stat-badge">Evaluations</span>
+<!-- Contextual KPI Summary Strip for Evaluated Candidates -->
+<div class="reports-kpi-strip">
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #e0f2fe; color: #0284c7;">
+            <i class="fas fa-clipboard-check"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ total_evaluations }}</h3>
-            <span class="stat-label">Total Evaluated</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ total_evaluations }}</span>
+            <span class="kpi-chip-lbl">Total Evaluated</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-purple">
-                <i class="fas fa-star-half-stroke"></i>
-            </div>
-            <span class="stat-badge">Quality</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #f3e8ff; color: #9333ea;">
+            <i class="fas fa-star-half-stroke"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ avg_score|default:"0.0" }} <span style="font-size: 14px; color: #888; font-weight: 500;">/ 5.0</span></h3>
-            <span class="stat-label">Avg Rubric Score</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ avg_score|default:"0.0" }} <span style="font-size: 11px; color: #64748b; font-weight: 500;">/ 5.0</span></span>
+            <span class="kpi-chip-lbl">Avg Rubric Score</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-green">
-                <i class="fas fa-user-check"></i>
-            </div>
-            <span class="stat-badge">Hiring Signal</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #dcfce7; color: #16a34a;">
+            <i class="fas fa-user-check"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ strong_hire_count|add:hire_count }}</h3>
-            <span class="stat-label">Recommended Hires</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ strong_hire_count|add:hire_count }}</span>
+            <span class="kpi-chip-lbl">Recommended Hires</span>
         </div>
     </div>
 
-    <div class="stat-card">
-        <div class="stat-header">
-            <div class="stat-icon-wrapper icon-orange">
-                <i class="fas fa-microphone-lines"></i>
-            </div>
-            <span class="stat-badge">AI Audio</span>
+    <div class="kpi-chip">
+        <div class="kpi-chip-icon" style="background: #ffedd5; color: #ea580c;">
+            <i class="fas fa-microphone-lines"></i>
         </div>
-        <div class="stat-content">
-            <h3 class="stat-value">{{ audio_analyzed_count }}</h3>
-            <span class="stat-label">Audio AI Analyzed</span>
+        <div class="kpi-chip-data">
+            <span class="kpi-chip-val">{{ audio_analyzed_count }}</span>
+            <span class="kpi-chip-lbl">Audio AI Analyzed</span>
         </div>
     </div>
-</section>
+</div>
+
 
 <!-- Pending Evaluations Quick Banner -->
 {% if pending_eval_candidates %}

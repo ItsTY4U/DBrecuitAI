@@ -141,3 +141,79 @@ def seed_applicant_management_logs_if_empty():
             AuditLog.objects.bulk_create(logs_to_create)
     except Exception as e:
         logger.warning(f"Failed to seed applicant management logs: {e}")
+
+
+def create_hr_notification(title, message, notification_type="SYSTEM", link="", recipient=None):
+    """
+    Safely creates an HRNotification record.
+    """
+    from .models import HRNotification
+    try:
+        return HRNotification.objects.create(
+            recipient=recipient,
+            notification_type=notification_type,
+            title=title[:150],
+            message=message,
+            link=link[:255] if link else "",
+            is_read=False,
+            created_at=timezone.now(),
+        )
+    except Exception as e:
+        logger.warning(f"Failed to create HRNotification: {e}")
+        return None
+
+
+def seed_initial_notifications_if_empty():
+    """
+    Seeds initial HR notifications from recent applications and completed video interviews if empty.
+    """
+    from .models import HRNotification
+    from jobs.models import Application
+    from video_interview.models import InterviewSession
+    from django.urls import reverse
+
+    try:
+        if HRNotification.objects.exists():
+            return
+
+        notifs = []
+        # Recent applications
+        recent_apps = Application.objects.select_related("job").order_by("-created_at")[:10]
+        for app in recent_apps:
+            try:
+                cand_link = reverse("candidate_detail", kwargs={"pk": app.pk})
+            except Exception:
+                cand_link = f"/hr/candidates/applicant/{app.pk}/"
+
+            notifs.append(HRNotification(
+                notification_type="NEW_APPLICATION",
+                title=f"New Application: {app.first_name} {app.last_name}",
+                message=f"Applied for {app.job.title} in {app.job.department or 'General'}",
+                link=cand_link,
+                is_read=False,
+                created_at=app.created_at,
+            ))
+
+        # Recent completed video interview sessions
+        completed_sessions = InterviewSession.objects.filter(status="COMPLETED").select_related("application", "application__job").order_by("-completed_at")[:5]
+        for sess in completed_sessions:
+            score_text = f" (Score: {sess.final_score}%)" if sess.final_score else ""
+            try:
+                sess_link = reverse("candidate_detail", kwargs={"pk": sess.application.pk})
+            except Exception:
+                sess_link = f"/hr/candidates/applicant/{sess.application.pk}/"
+
+            notifs.append(HRNotification(
+                notification_type="VIDEO_INTERVIEW_COMPLETED",
+                title=f"Video Interview Completed: {sess.application.first_name} {sess.application.last_name}",
+                message=f"Completed automated AI interview for {sess.application.job.title}{score_text}",
+                link=sess_link,
+                is_read=False,
+                created_at=sess.completed_at or sess.created_at,
+            ))
+
+        if notifs:
+            notifs.sort(key=lambda n: n.created_at, reverse=True)
+            HRNotification.objects.bulk_create(notifs)
+    except Exception as e:
+        logger.warning(f"Failed to seed initial HR notifications: {e}")
