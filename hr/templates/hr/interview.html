@@ -255,7 +255,11 @@ function filterEvaluationStatus(selectEl, containerId) {
     const rows = container.querySelectorAll('tbody tr.eval-cand-row');
     rows.forEach(row => {
         const rowStatus = row.getAttribute('data-status');
-        const matchesStatus = (selectedStatus === 'all' || rowStatus === selectedStatus);
+        const matchesStatus = (
+            selectedStatus === 'all' ||
+            rowStatus === selectedStatus ||
+            (selectedStatus === 'scheduled' && (rowStatus === 'scheduled' || rowStatus === 'rescheduled'))
+        );
 
         const table = row.closest('table');
         let matchesQuery = true;

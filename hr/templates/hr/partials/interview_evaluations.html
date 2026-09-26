@@ -24,6 +24,7 @@
                 <select id="evalStatusSelect" class="toolbar-select" onchange="filterEvaluationStatus(this, 'eval-dept-sections')">
                     <option value="all">All Statuses ({{ eval_total }})</option>
                     <option value="scheduled">Ready for Evaluation ({{ eval_ready_total }})</option>
+                    <option value="rescheduled">Rescheduled ({{ eval_rescheduled_total|default:0 }})</option>
                     <option value="ongoing">Ongoing ({{ eval_ongoing_total }})</option>
                     <option value="completed">Completed ({{ eval_completed_total }})</option>
                 </select>
@@ -128,10 +129,8 @@
                                         <th class="th-candidate">Candidate</th>
                                         <th class="th-schedule">Interview Schedule</th>
                                         <th class="th-interviewer">Interviewer &amp; Location</th>
-                                        <th class="th-score" style="width: 105px;">AI Score</th>
-                                        <th class="th-status" style="width: 140px;">Interview Status</th>
-                                        <th class="th-rating" style="width: 170px;">Evaluation Rating</th>
-                                        <th class="th-action text-right" style="width: 290px;">Action</th>
+                                        <th class="th-status" style="width: 170px;">Interview Status</th>
+                                        <th class="th-action text-right" style="width: 260px;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -191,11 +190,6 @@
                                             <span style="font-size: 12px; color: #94a3b8;">-</span>
                                             {% endif %}
                                         </td>
-                                        <td class="td-score">
-                                            <span class="ai-score-pill {% if applicant.ai_score >= 90 %}score-high{% elif applicant.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
-                                                <i class="fas fa-bolt"></i> {{ applicant.ai_score }}%
-                                            </span>
-                                        </td>
                                         <td class="td-status">
                                             {% if applicant.candidate_status == 'Ongoing' %}
                                             <span class="status-pill status-ongoing" style="background: #fef3c7; color: #b45309; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
@@ -205,33 +199,24 @@
                                             <span class="status-pill status-completed" style="background: #dcfce7; color: #15803d; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
                                                 <i class="fas fa-check-circle"></i> Completed
                                             </span>
+                                            {% elif applicant.candidate_status == 'Rescheduled' %}
+                                            <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                                                <span class="status-pill status-rescheduled" style="background: #ffedd5; color: #c2410c; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #fdba74;">
+                                                    <i class="fas fa-calendar-alt"></i> RESCHEDULED
+                                                </span>
+                                                {% if applicant.active_interview and applicant.active_interview.notes %}
+                                                <button type="button" 
+                                                        class="btn-reschedule-note" 
+                                                        onclick="openRescheduleNoteModal('{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.notes|escapejs }}')"
+                                                        style="background: transparent; border: none; padding: 0; color: #ea580c; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; text-decoration: underline;"
+                                                        title="View reschedule notes and history">
+                                                    <i class="fas fa-sticky-note"></i> View Note
+                                                </button>
+                                                {% endif %}
+                                            </div>
                                             {% else %}
                                             <span class="status-pill status-scheduled" style="background: #dbeafe; color: #1e40af; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
                                                 <i class="fas fa-clock"></i> Scheduled
-                                            </span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="td-rating">
-                                            {% if applicant.candidate_status == 'Completed' and applicant.evaluation %}
-                                            <div style="display: flex; align-items: center; gap: 6px;">
-                                                <span style="font-weight: 800; font-size: 13px; color: #2d5a27;">
-                                                    <i class="fas fa-star" style="color: #eab308;"></i> {{ applicant.evaluation.overall_rating }}/5.0
-                                                </span>
-                                                <span style="font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
-                                                    {% if applicant.evaluation.recommendation == 'Strong Hire' %}background: #dcfce7; color: #15803d;
-                                                    {% elif applicant.evaluation.recommendation == 'Hire' %}background: #dbeafe; color: #1d4ed8;
-                                                    {% elif applicant.evaluation.recommendation == 'Hold' %}background: #fef3c7; color: #b45309;
-                                                    {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
-                                                    {{ applicant.evaluation.recommendation }}
-                                                </span>
-                                            </div>
-                                            {% elif applicant.candidate_status == 'Ongoing' %}
-                                            <span style="font-size: 11.5px; color: #b45309; font-weight: 600;">
-                                                <i class="fas fa-pen-to-square"></i> Evaluation in progress
-                                            </span>
-                                            {% else %}
-                                            <span style="font-size: 11.5px; color: #94a3b8;">
-                                                Ready for evaluation
                                             </span>
                                             {% endif %}
                                         </td>
@@ -264,24 +249,14 @@
                                                 {% endif %}
 
                                                 {% if applicant.candidate_status != 'Completed' and applicant.active_interview %}
-                                                <!-- Re-schedule Interview Button (Per Applicant) -->
+                                                <!-- Combined Manage Interview Button (Reschedule / Cancel) -->
                                                 <button type="button" 
                                                         class="btn-table-review"
-                                                        onclick="openRescheduleModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
-                                                        style="background: #ffffff; color: #b45309 !important; border-color: #fde68a;"
-                                                        title="Re-schedule candidate interview with HR notes">
-                                                    <i class="fas fa-calendar-clock"></i>
-                                                    <span>Reschedule</span>
-                                                </button>
-
-                                                <!-- Cancel Interview Button (Per Applicant) -->
-                                                <button type="button" 
-                                                        class="btn-table-review"
-                                                        onclick="openCancelModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}')"
-                                                        style="background: #ffffff; color: #b91c1c !important; border-color: #fecaca;"
-                                                        title="Cancel candidate interview with HR notes">
-                                                    <i class="fas fa-calendar-xmark"></i>
-                                                    <span>Cancel</span>
+                                                        onclick="openManageInterviewModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
+                                                        style="background: #ffffff; color: #334155 !important; border-color: #cbd5e1;"
+                                                        title="Manage Interview (Reschedule or Cancel)">
+                                                    <i class="fas fa-sliders"></i>
+                                                    <span>Manage</span>
                                                 </button>
                                                 {% endif %}
 
@@ -295,7 +270,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="7">
+                                        <td colspan="5">
                                             <div class="empty-table-state">
                                                 <i class="fas fa-users-slash empty-table-icon"></i>
                                                 <h5>No Candidates</h5>
@@ -330,181 +305,288 @@
     </div>
 </div>
 
-<!-- Re-schedule Interview Modal (Per Applicant) -->
-<div id="rescheduleApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
-        <div style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+<!-- Combined Manage Interview Modal (Reschedule & Cancel with Tabbed Navigation) -->
+<div id="manageInterviewModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column;">
+        <!-- Modal Top Header -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="fas fa-calendar-clock"></i>
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 16px; color: #f8fafc;">
+                    <i class="fas fa-sliders"></i>
                 </div>
                 <div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">Re-schedule Candidate Interview</h3>
-                    <p style="margin: 2px 0 0; font-size: 12px; color: #fde68a;">Update interview logistics and record timestamped HR note</p>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">Manage Candidate Interview</h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #cbd5e1;">Reschedule interview session or cancel with HR notes</p>
                 </div>
             </div>
-            <button type="button" onclick="closeRescheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #ffffff; cursor: pointer; padding: 4px;">
+            <button type="button" onclick="closeManageInterviewModal()" style="background: transparent; border: none; font-size: 18px; color: #94a3b8; cursor: pointer; padding: 4px;" title="Close modal">
                 <i class="fas fa-xmark"></i>
             </button>
         </div>
 
-        <form method="POST" id="rescheduleForm" action="" style="padding: 22px 24px;">
-            {% csrf_token %}
-            <input type="hidden" name="next_tab" value="evaluations">
-
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
-                <strong id="reschedApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
-                <span id="reschedJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
+        <!-- Candidate Info Banner -->
+        <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <strong id="manageApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
+                <span id="manageJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
             </div>
+            <span style="font-size: 11px; font-weight: 700; color: #475569; background: #e2e8f0; padding: 3px 8px; border-radius: 6px;">Interview Session</span>
+        </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                <div>
-                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                        New Date <span style="color: #ef4444;">*</span>
-                    </label>
-                    <input type="date" name="date" id="reschedDate" required min="{{ today|date:'Y-m-d' }}" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+        <!-- Tabbed Navigation Inside Modal -->
+        <div style="display: flex; border-bottom: 1px solid #e2e8f0; background: #ffffff;">
+            <button type="button" 
+                    id="manageTabBtnReschedule" 
+                    onclick="switchManageTab('reschedule')" 
+                    style="flex: 1; padding: 12px 16px; border: none; background: #ffffff; font-weight: 700; font-size: 13px; color: #b45309; border-bottom: 3px solid #b45309; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                <i class="fas fa-calendar-clock"></i>
+                <span>Reschedule Interview</span>
+            </button>
+            <button type="button" 
+                    id="manageTabBtnCancel" 
+                    onclick="switchManageTab('cancel')" 
+                    style="flex: 1; padding: 12px 16px; border: none; background: #f8fafc; font-weight: 600; font-size: 13px; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+                <i class="fas fa-calendar-xmark"></i>
+                <span>Cancel Interview</span>
+            </button>
+        </div>
+
+        <!-- Tab Pane 1: Reschedule Form -->
+        <div id="managePaneReschedule" style="display: block; padding: 20px 24px;">
+            <form method="POST" id="manageRescheduleForm" action="">
+                {% csrf_token %}
+                <input type="hidden" name="next_tab" value="evaluations">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                            New Date <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="date" name="date" id="manageReschedDate" required min="{{ today|date:'Y-m-d' }}" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                            New Time <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="time" name="time" id="manageReschedTime" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                    </div>
                 </div>
-                <div>
+
+                <div style="margin-bottom: 14px;">
                     <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                        New Time <span style="color: #ef4444;">*</span>
+                        Interviewer / Panel Lead
                     </label>
-                    <input type="time" name="time" id="reschedTime" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                    <select name="interviewer" id="manageReschedInterviewer" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
+                        {% for staff in hr_staff %}
+                        <option value="{{ staff.get_full_name|default:staff.username }}">
+                            {{ staff.get_full_name|default:staff.username }}
+                        </option>
+                        {% empty %}
+                        <option value="HR Panel">HR Panel</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </div>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                    Interviewer / Panel Lead
-                </label>
-                <select name="interviewer" id="reschedInterviewer" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
-                    {% for staff in hr_staff %}
-                    <option value="{{ staff.get_full_name|default:staff.username }}">
-                        {{ staff.get_full_name|default:staff.username }}
-                    </option>
-                    {% empty %}
-                    <option value="HR Panel">HR Panel</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Meeting Location / Link
+                    </label>
+                    <input type="text" name="location" id="manageReschedLocation" placeholder="e.g. Google Meet link or Conference Room" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13px; box-sizing: border-box;">
+                </div>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                    Meeting Location / Link
-                </label>
-                <input type="text" name="location" id="reschedLocation" placeholder="e.g. Google Meet link or Conference Room" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13px; box-sizing: border-box;">
-            </div>
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Reschedule Reason &amp; HR Note <span style="color: #ef4444;">*</span>
+                    </label>
+                    <textarea name="reschedule_notes" id="manageReschedNotes" rows="3" placeholder="Reason for rescheduling (e.g. Candidate requested schedule adjustment, interviewer conflict)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
+                </div>
 
-            <div style="margin-bottom: 18px;">
-                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                    Reschedule Reason &amp; HR Note <span style="color: #ef4444;">*</span>
-                </label>
-                <textarea name="reschedule_notes" rows="3" placeholder="Reason for rescheduling (e.g. Candidate requested schedule adjustment, interviewer conflict)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
-            </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                    <button type="button" onclick="closeManageInterviewModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: #b45309; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Confirm Reschedule</span>
+                    </button>
+                </div>
+            </form>
+        </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                <button type="button" onclick="closeRescheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" style="background: #b45309; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <i class="fas fa-calendar-check"></i>
-                    <span>Confirm Reschedule</span>
-                </button>
-            </div>
-        </form>
+        <!-- Tab Pane 2: Cancel Form -->
+        <div id="managePaneCancel" style="display: none; padding: 20px 24px;">
+            <form method="POST" id="manageCancelForm" action="">
+                {% csrf_token %}
+                <input type="hidden" name="next_tab" value="evaluations">
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Cancellation Action
+                    </label>
+                    <select name="cancel_action" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
+                        <option value="cancel_interview">Return to Candidates Waiting for Interview (Unschedule)</option>
+                        <option value="reject">Reject Application (Discontinue candidate)</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 18px;">
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Cancellation Notes &amp; HR Reason <span style="color: #ef4444;">*</span>
+                    </label>
+                    <textarea name="cancel_notes" id="manageCancelNotes" rows="3" placeholder="Provide notes regarding cancellation (e.g. Candidate withdrew, conflict, or scheduling cancelled by HR)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                    <button type="button" onclick="closeManageInterviewModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Keep Interview
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="background: #dc2626; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <i class="fas fa-trash-can"></i>
+                        <span>Confirm Cancellation</span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Cancel Candidate Modal (Per Applicant) -->
-<div id="cancelApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
-        <div style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-bottom: 1px solid #fca5a5; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;">
+<!-- Reschedule Note View Modal -->
+<div id="rescheduleNoteModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #c2410c 0%, #9a3412 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 36px; height: 36px; border-radius: 8px; background: #dc2626; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                    <i class="fas fa-triangle-exclamation"></i>
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-sticky-note"></i>
                 </div>
                 <div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #991b1b;">Cancel Interview</h3>
-                    <p style="margin: 2px 0 0; font-size: 12px; color: #b91c1c;">Record cancellation notes and update candidate status</p>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">Reschedule Note &amp; History</h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #fed7aa;">Recorded reasons and timestamped schedule log</p>
                 </div>
             </div>
-            <button type="button" onclick="closeCancelModal()" style="background: transparent; border: none; font-size: 18px; color: #64748b; cursor: pointer; padding: 4px;">
+            <button type="button" onclick="closeRescheduleNoteModal()" style="background: transparent; border: none; font-size: 18px; color: #ffffff; cursor: pointer; padding: 4px;" title="Close">
                 <i class="fas fa-xmark"></i>
             </button>
         </div>
 
-        <form method="POST" id="cancelForm" action="" style="padding: 22px 24px;">
-            {% csrf_token %}
-            <input type="hidden" name="next_tab" value="evaluations">
-
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
-                <strong id="cancelApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
-                <span id="cancelJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
+        <div style="padding: 22px 24px;">
+            <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+                <strong id="noteApplicantName" style="font-size: 14px; color: #9a3412; display: block;">Candidate Name</strong>
+                <span id="noteJobTitle" style="font-size: 12px; color: #c2410c;">Position Title</span>
             </div>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                    Cancellation Action
-                </label>
-                <select name="cancel_action" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
-                    <option value="cancel_interview">Return to Candidates Waiting for Interview (Unschedule)</option>
-                    <option value="reject">Reject Application (Discontinue candidate)</option>
-                </select>
+            <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fas fa-clock-rotate-left"></i> Recorded Notes &amp; History
+            </label>
+            <div id="noteContentText" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 13px; color: #1e293b; line-height: 1.6; max-height: 220px; overflow-y: auto; white-space: pre-line; word-break: break-word;">
             </div>
 
-            <div style="margin-bottom: 18px;">
-                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
-                    Cancellation Notes &amp; HR Reason <span style="color: #ef4444;">*</span>
-                </label>
-                <textarea name="cancel_notes" rows="3" placeholder="Provide notes regarding cancellation (e.g. Candidate withdrew, conflict, or scheduling cancelled by HR)..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;" required></textarea>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
-                <button type="button" onclick="closeCancelModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    Keep Interview
-                </button>
-                <button type="submit" class="btn btn-primary" style="background: #dc2626; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <i class="fas fa-trash-can"></i>
-                    <span>Confirm Cancellation</span>
+            <div style="display: flex; justify-content: flex-end; margin-top: 18px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+                <button type="button" onclick="closeRescheduleNoteModal()" class="btn btn-secondary" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Close
                 </button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 <script>
-function openRescheduleModal(appId, appName, jobTitle, date, time, interviewer, location) {
-    document.getElementById('reschedApplicantName').textContent = appName;
-    document.getElementById('reschedJobTitle').textContent = jobTitle;
-    if (date) document.getElementById('reschedDate').value = date;
-    if (time) document.getElementById('reschedTime').value = time;
+function openManageInterviewModal(appId, appName, jobTitle, date, time, interviewer, location) {
+    document.getElementById('manageApplicantName').textContent = appName;
+    document.getElementById('manageJobTitle').textContent = jobTitle;
+
+    var reschedForm = document.getElementById('manageRescheduleForm');
+    if (reschedForm) reschedForm.action = '/hr/interviews/reschedule-applicant/' + appId + '/';
+
+    var cancelForm = document.getElementById('manageCancelForm');
+    if (cancelForm) cancelForm.action = '/hr/interviews/cancel-applicant/' + appId + '/';
+
+    if (date) document.getElementById('manageReschedDate').value = date;
+    if (time) document.getElementById('manageReschedTime').value = time;
     if (interviewer) {
-        var sel = document.getElementById('reschedInterviewer');
+        var sel = document.getElementById('manageReschedInterviewer');
         if (sel) sel.value = interviewer;
     }
-    if (location) document.getElementById('reschedLocation').value = location;
+    if (location) document.getElementById('manageReschedLocation').value = location;
 
-    var form = document.getElementById('rescheduleForm');
-    if (form) form.action = '/hr/interviews/reschedule-applicant/' + appId + '/';
-    var modal = document.getElementById('rescheduleApplicantModal');
+    var reschedNotes = document.getElementById('manageReschedNotes');
+    if (reschedNotes) reschedNotes.value = '';
+    var cancelNotes = document.getElementById('manageCancelNotes');
+    if (cancelNotes) cancelNotes.value = '';
+
+    switchManageTab('reschedule');
+
+    var modal = document.getElementById('manageInterviewModal');
     if (modal) modal.style.display = 'flex';
 }
 
-function closeRescheduleModal() {
-    var modal = document.getElementById('rescheduleApplicantModal');
+function closeManageInterviewModal() {
+    var modal = document.getElementById('manageInterviewModal');
     if (modal) modal.style.display = 'none';
 }
 
-function openCancelModal(appId, appName, jobTitle) {
-    document.getElementById('cancelApplicantName').textContent = appName;
-    document.getElementById('cancelJobTitle').textContent = jobTitle;
-    var form = document.getElementById('cancelForm');
-    if (form) form.action = '/hr/interviews/cancel-applicant/' + appId + '/';
-    var modal = document.getElementById('cancelApplicantModal');
+function switchManageTab(tab) {
+    var btnResched = document.getElementById('manageTabBtnReschedule');
+    var btnCancel = document.getElementById('manageTabBtnCancel');
+    var paneResched = document.getElementById('managePaneReschedule');
+    var paneCancel = document.getElementById('managePaneCancel');
+
+    if (tab === 'reschedule') {
+        if (paneResched) paneResched.style.display = 'block';
+        if (paneCancel) paneCancel.style.display = 'none';
+
+        if (btnResched) {
+            btnResched.style.color = '#b45309';
+            btnResched.style.borderBottomColor = '#b45309';
+            btnResched.style.background = '#ffffff';
+            btnResched.style.fontWeight = '700';
+        }
+        if (btnCancel) {
+            btnCancel.style.color = '#64748b';
+            btnCancel.style.borderBottomColor = 'transparent';
+            btnCancel.style.background = '#f8fafc';
+            btnCancel.style.fontWeight = '600';
+        }
+    } else {
+        if (paneResched) paneResched.style.display = 'none';
+        if (paneCancel) paneCancel.style.display = 'block';
+
+        if (btnCancel) {
+            btnCancel.style.color = '#b91c1c';
+            btnCancel.style.borderBottomColor = '#dc2626';
+            btnCancel.style.background = '#ffffff';
+            btnCancel.style.fontWeight = '700';
+        }
+        if (btnResched) {
+            btnResched.style.color = '#64748b';
+            btnResched.style.borderBottomColor = 'transparent';
+            btnResched.style.background = '#f8fafc';
+            btnResched.style.fontWeight = '600';
+        }
+    }
+}
+
+function openRescheduleNoteModal(appName, jobTitle, notes) {
+    document.getElementById('noteApplicantName').textContent = appName;
+    document.getElementById('noteJobTitle').textContent = jobTitle;
+    document.getElementById('noteContentText').textContent = notes || 'No additional notes provided.';
+    var modal = document.getElementById('rescheduleNoteModal');
     if (modal) modal.style.display = 'flex';
 }
 
-function closeCancelModal() {
-    var modal = document.getElementById('cancelApplicantModal');
+function closeRescheduleNoteModal() {
+    var modal = document.getElementById('rescheduleNoteModal');
     if (modal) modal.style.display = 'none';
 }
+
+// Background click close listeners
+window.addEventListener('click', function(event) {
+    var manageModal = document.getElementById('manageInterviewModal');
+    if (event.target === manageModal) {
+        closeManageInterviewModal();
+    }
+    var noteModal = document.getElementById('rescheduleNoteModal');
+    if (event.target === noteModal) {
+        closeRescheduleNoteModal();
+    }
+});
 </script>

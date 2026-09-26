@@ -1687,6 +1687,7 @@ class CandidateManagementTests(TestCase):
         intv.refresh_from_db()
         self.assertEqual(str(intv.date), "2026-10-26")
         self.assertEqual(str(intv.time), "14:30:00")
+        self.assertEqual(intv.status, "Rescheduled")
         self.assertIn("Candidate requested postponement", intv.notes)
 
         # 2. Cancel interview with notes
@@ -1784,8 +1785,8 @@ class CandidateManagementTests(TestCase):
         self.assertIn(app2, intv.applicants.all())
         self.assertEqual(intv.interview_type, "Technical Interview")
 
-    def test_evaluations_tab_shows_reschedule_cancel_and_evaluate_buttons(self):
-        """In Candidates Ready for Evaluation, candidates have Evaluate, Reschedule, and Cancel buttons."""
+    def test_evaluations_tab_shows_manage_and_evaluate_buttons_and_no_ai_rating_columns(self):
+        """In Candidates Ready for Evaluation, candidates have Evaluate and Manage buttons, combined modal, and no AI/Rating columns."""
         app = Application.objects.create(
             job=self.job_sales_staff,
             first_name="Margaret",
@@ -1812,11 +1813,68 @@ class CandidateManagementTests(TestCase):
 
         # Evaluate button
         self.assertContains(resp, "<span>Evaluate</span>")
-        # Reschedule & Cancel buttons and modals
-        self.assertContains(resp, "<span>Reschedule</span>")
-        self.assertContains(resp, "<span>Cancel</span>")
-        self.assertContains(resp, "rescheduleApplicantModal")
-        self.assertContains(resp, "cancelApplicantModal")
+        # Combined Manage button and modal
+        self.assertContains(resp, "<span>Manage</span>")
+        self.assertContains(resp, 'id="manageInterviewModal"')
+        self.assertNotContains(resp, 'id="rescheduleApplicantModal"')
+        self.assertNotContains(resp, 'id="cancelApplicantModal"')
+
+        # Columns removed in evaluations table: AI Score and Evaluation Rating
+        self.assertNotContains(resp, "Evaluation Rating")
+        self.assertNotContains(resp, '<th class="th-rating"')
+
+        content_str = resp.content.decode("utf-8")
+        self.assertIn("Candidate Interview Evaluations", content_str)
+        eval_table_snippet = content_str.split("Candidate Interview Evaluations")[1].split("</table>")[0]
+        self.assertNotIn("AI Score", eval_table_snippet)
+        self.assertNotIn("th-score", eval_table_snippet)
+        self.assertNotIn("th-rating", eval_table_snippet)
+
+    def test_rescheduled_interview_shows_rescheduled_status_and_note_modal(self):
+        """Rescheduled interviews display RESCHEDULED status badge, Note popup link, and note modal."""
+        app = Application.objects.create(
+            job=self.job_sales_staff,
+            first_name="Katherine",
+            last_name="Johnson",
+            email="katherine@nasa.gov",
+            phone="09192223344",
+            ai_score=98,
+            resume_processed=True,
+            status="Interview",
+            interview_scheduled=True,
+        )
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Admin User",
+            date="2026-10-25",
+            time="11:00:00",
+            location="Room 501",
+            status="Scheduled",
+        )
+        intv.applicants.add(app)
+
+        # Reschedule candidate
+        resched_url = reverse("reschedule_candidate_interview", kwargs={"pk": app.pk})
+        self.client.post(resched_url, {
+            "date": "2026-10-29",
+            "time": "15:00",
+            "location": "Room 502",
+            "interviewer": "Admin User",
+            "reschedule_notes": "Candidate had urgent family emergency.",
+            "next_tab": "evaluations",
+        })
+
+        intv.refresh_from_db()
+        self.assertEqual(intv.status, "Rescheduled")
+
+        resp = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertEqual(resp.status_code, 200)
+        # Verify RESCHEDULED badge and Note button
+        self.assertContains(resp, "status-rescheduled")
+        self.assertContains(resp, "RESCHEDULED")
+        self.assertContains(resp, "openRescheduleNoteModal")
+        self.assertContains(resp, "View Note")
+        self.assertContains(resp, 'id="rescheduleNoteModal"')
 
     def test_job_candidate_search_displays_true_rank_number(self):
         """HTMX search for a candidate displays their true overall rank in the job, not renumbered #1."""

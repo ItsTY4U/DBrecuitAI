@@ -964,7 +964,7 @@ def interviews(request):
     # 1. Combine 5 separate COUNT queries into 1 single aggregate query
     counts = Interview.objects.aggregate(
         total=Count("id"),
-        scheduled=Count("id", filter=Q(status="Scheduled")),
+        scheduled=Count("id", filter=Q(status__in=["Scheduled", "Rescheduled"])),
         ongoing=Count("id", filter=Q(status="Ongoing")),
         completed=Count("id", filter=Q(status="Completed")),
         cancelled=Count("id", filter=Q(status="Cancelled")),
@@ -978,7 +978,7 @@ def interviews(request):
         Interview.objects.filter(
             Q(date=today) |
             Q(date__gt=today, date__lte=three_days) |
-            Q(date__lt=today, status__in=["Scheduled", "Ongoing"])
+            Q(date__lt=today, status__in=["Scheduled", "Rescheduled", "Ongoing"])
         )
         .prefetch_related("applicants__job")
         .order_by("date", "time")
@@ -988,7 +988,7 @@ def interviews(request):
     todays_schedule.sort(key=lambda x: x.time)
 
     upcoming_interviews = [i for i in all_interviews if today < i.date <= three_days]
-    overdue_interviews = [i for i in all_interviews if i.date < today and i.status in ("Scheduled", "Ongoing")]
+    overdue_interviews = [i for i in all_interviews if i.date < today and i.status in ("Scheduled", "Rescheduled", "Ongoing")]
 
     # 3. Prefetch waiting applicants into `waiting_applicants` attribute on each job
     jobs = list(Job.objects.filter(status="Active").prefetch_related(
@@ -1052,6 +1052,7 @@ def interviews(request):
 
     evaluation_dept_dict = defaultdict(lambda: defaultdict(list))
     eval_ready_total = 0
+    eval_rescheduled_total = 0
     eval_ongoing_total = 0
     eval_completed_total = 0
 
@@ -1067,6 +1068,8 @@ def interviews(request):
             app.candidate_status = "Completed"
         elif has_eval and app.evaluation.status == "Draft":
             app.candidate_status = "Ongoing"
+        elif latest_intv.status == "Rescheduled":
+            app.candidate_status = "Rescheduled"
         else:
             app.candidate_status = "Scheduled"
 
@@ -1074,7 +1077,10 @@ def interviews(request):
         job_obj = app.job
         evaluation_dept_dict[dept_name][job_obj].append(app)
 
-        if app.candidate_status == "Scheduled":
+        if app.candidate_status == "Rescheduled":
+            eval_rescheduled_total += 1
+            eval_ready_total += 1
+        elif app.candidate_status == "Scheduled":
             eval_ready_total += 1
         elif app.candidate_status == "Ongoing":
             eval_ongoing_total += 1
@@ -1092,9 +1098,10 @@ def interviews(request):
         for job_obj, app_list in job_map.items():
             for idx, a in enumerate(app_list):
                 a.table_rank = idx + 1
-            job_ready = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Scheduled")
+            job_ready = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") in ("Scheduled", "Rescheduled"))
             job_ongoing = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Ongoing")
             job_completed = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Completed")
+            job_rescheduled = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Rescheduled")
             dept_jobs.append({
                 "job": job_obj,
                 "applicants": app_list,
@@ -1102,6 +1109,7 @@ def interviews(request):
                 "ready_count": job_ready,
                 "ongoing_count": job_ongoing,
                 "completed_count": job_completed,
+                "rescheduled_count": job_rescheduled,
             })
             dept_total += len(app_list)
             dept_ready += job_ready
@@ -1204,6 +1212,7 @@ def interviews(request):
 
         "evaluation_departments": evaluation_departments,
         "eval_ready_total": eval_ready_total,
+        "eval_rescheduled_total": eval_rescheduled_total,
         "eval_ongoing_total": eval_ongoing_total,
         "eval_completed_total": eval_completed_total,
         "eval_total": len(scheduled_applications),
@@ -1398,7 +1407,7 @@ def reschedule_candidate_interview(request, pk):
                 time=new_time,
                 location=location,
                 notes=f"Rescheduled: {reschedule_notes}" if reschedule_notes else "",
-                status="Scheduled",
+                status="Rescheduled",
             )
             interview.applicants.add(application)
         else:
@@ -1410,7 +1419,7 @@ def reschedule_candidate_interview(request, pk):
                 interview.location = location
             if interviewer:
                 interview.interviewer = interviewer
-            interview.status = "Scheduled"
+            interview.status = "Rescheduled"
             if reschedule_notes:
                 stamp = timezone.localtime().strftime("%b %d, %Y %I:%M %p")
                 note_entry = f"[Rescheduled on {stamp}]: {reschedule_notes}"
@@ -1666,8 +1675,8 @@ def start_candidate_evaluation(request, pk):
             evaluation.interview = interview
         evaluation.save(update_fields=["status", "interview"] if not evaluation.interview else ["status"])
 
-    # 2. Update session status to Ongoing if it was Scheduled
-    if interview and interview.status == "Scheduled":
+    # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
+    if interview and interview.status in ("Scheduled", "Rescheduled"):
         interview.status = "Ongoing"
         interview.save(update_fields=["status"])
 
@@ -1698,7 +1707,7 @@ def cancel_candidate_evaluation(request, pk):
     """
     Called when HR cancels the candidate evaluation modal without saving.
     Reverts this candidate's Draft evaluation, making them Scheduled again.
-    If no other candidate in the session has an active evaluation, reverts session to Scheduled.
+    If no other candidate in the session has an active evaluation, reverts session to Scheduled or Rescheduled.
     """
     application = get_object_or_404(Application, pk=pk)
     # 1. Delete Draft evaluation for this candidate so they become Scheduled
@@ -1710,7 +1719,10 @@ def cancel_candidate_evaluation(request, pk):
     if interview:
         has_active_evals = CandidateEvaluation.objects.filter(interview=interview).exists()
         if not has_active_evals and interview.status == "Ongoing":
-            interview.status = "Scheduled"
+            if interview.notes and "[Rescheduled on" in interview.notes:
+                interview.status = "Rescheduled"
+            else:
+                interview.status = "Scheduled"
             interview.save(update_fields=["status"])
 
     invalidate_hr_cache()

@@ -6,7 +6,8 @@ from django.utils import timezone
 class Interview(models.Model):
     STATUS_CHOICES = [
         ("Scheduled", "Scheduled"),
-        ("Ongoing","Ongoing"),
+        ("Rescheduled", "Rescheduled"),
+        ("Ongoing", "Ongoing"),
         ("Completed", "Completed"),
         ("Cancelled", "Cancelled"),
     ]
