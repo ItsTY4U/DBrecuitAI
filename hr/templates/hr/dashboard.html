@@ -4,140 +4,70 @@
 
 {% block admin_body %}
 <main class="main-dashboard main-content">
-    <header class="dashboard-header">
-        <div class="header-left">
-            <h1 class="dashboard-title">Welcome back, {{ hr_user_name }}!</h1>
-            <p class="dashboard-subtitle">Here is what is happening across your recruitment pipeline today.</p>
-        </div>
-        <div class="header-right">
-            <!-- Dynamic, Real-time & Reactive Notification Bell -->
-            <div class="notif-wrapper" id="notif-wrapper">
-                <button type="button" 
-                        class="notif-bell {% if unread_notifs_count %}has-unread{% endif %}" 
-                        id="notif-bell-btn" 
-                        onclick="toggleNotificationDropdown(event)" 
-                        aria-label="Notifications" 
-                        aria-expanded="false" 
-                        title="Notifications">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-badge" id="notif-badge" {% if not unread_notifs_count %}style="display:none;"{% endif %}>
-                        {{ unread_notifs_count }}
-                    </span>
-                </button>
-                
-                <!-- Expandable Popover Dropdown Panel -->
-                <div class="notif-dropdown" id="notif-dropdown" style="display: none;">
-                    <div class="notif-dropdown-header">
-                        <div class="notif-header-title">
-                            <h4>Notifications</h4>
-                            <span class="notif-unread-pill" id="notif-unread-pill">
-                                {% if unread_notifs_count %}{{ unread_notifs_count }} unread{% else %}All caught up{% endif %}
-                            </span>
-                        </div>
-                        <button type="button" class="btn-mark-all-read" id="btn-mark-all-read" onclick="markAllNotificationsRead(event)">
-                            <i class="fas fa-check-double"></i> Mark all read
-                        </button>
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">Welcome back, {{ hr_user_name }}!</h1>
+                <p class="dashboard-subtitle">Here is what is happening across your recruitment pipeline today.</p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
+
+        <!-- Stats Grid (Compact, Space-Saving, and Constrained from Expanding) -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-users"></i>
                     </div>
+                    <span class="stat-badge">Total</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_applications }}</h3>
+                    <span class="stat-label">Total Applicants</span>
+                </div>
+            </div>
 
-                    <div class="notif-dropdown-list" id="notif-dropdown-list">
-                        {% for notif in recent_notifications %}
-                        <div class="notif-item {% if not notif.is_read %}is-unread{% endif %}" 
-                             data-notif-id="{{ notif.id }}" 
-                             data-link="{{ notif.link|default:'/hr/candidates/' }}"
-                             onclick="handleNotificationClick(event, this)">
-                            <div class="notif-item-icon notif-icon-{{ notif.notification_type|lower }}">
-                                {% if notif.notification_type == 'NEW_APPLICATION' %}
-                                    <i class="fas fa-user-plus"></i>
-                                {% elif notif.notification_type == 'VIDEO_INTERVIEW_COMPLETED' %}
-                                    <i class="fas fa-video"></i>
-                                {% elif notif.notification_type == 'INTERVIEW_SCHEDULED' %}
-                                    <i class="fas fa-calendar-check"></i>
-                                {% elif notif.notification_type == 'EVALUATION_COMPLETED' %}
-                                    <i class="fas fa-clipboard-check"></i>
-                                {% else %}
-                                    <i class="fas fa-bell"></i>
-                                {% endif %}
-                            </div>
-                            <div class="notif-item-body">
-                                <div class="notif-item-title-row">
-                                    <h5 class="notif-item-title">{{ notif.title }}</h5>
-                                    <span class="notif-item-time">{{ notif.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</span>
-                                </div>
-                                <p class="notif-item-msg">{{ notif.message }}</p>
-                            </div>
-                            {% if not notif.is_read %}
-                            <span class="notif-item-unread-dot"></span>
-                            {% endif %}
-                        </div>
-                        {% empty %}
-                        <div class="notif-empty-state">
-                            <i class="fas fa-circle-check"></i>
-                            <p>No notifications right now.<br><span style="font-size:12px; color:#94a3b8;">You're all caught up!</span></p>
-                        </div>
-                        {% endfor %}
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-amber">
+                        <i class="fas fa-filter"></i>
                     </div>
+                    <span class="stat-badge">Active</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ screening }}</h3>
+                    <span class="stat-label">In Screening</span>
+                </div>
+            </div>
 
-                    <div class="notif-dropdown-footer">
-                        <a href="{% url 'candidates' %}" class="notif-footer-link">
-                            View All Candidates &rarr;
-                        </a>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-calendar-check"></i>
                     </div>
+                    <span class="stat-badge">Stage</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ interview_count }}</h3>
+                    <span class="stat-label">Interviewing</span>
                 </div>
             </div>
-        </div>
-    </header>
 
-    <!-- Stats Grid (Compact, Space-Saving, and Constrained from Expanding) -->
-    <section class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-users"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <span class="stat-badge">Live</span>
                 </div>
-                <span class="stat-badge">Total</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_applications }}</h3>
-                <span class="stat-label">Total Applicants</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-amber">
-                    <i class="fas fa-filter"></i>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ active_jobs }}</h3>
+                    <span class="stat-label">Active Job Openings</span>
                 </div>
-                <span class="stat-badge">Active</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ screening }}</h3>
-                <span class="stat-label">In Screening</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-purple">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
-                <span class="stat-badge">Stage</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ interview_count }}</h3>
-                <span class="stat-label">Interviewing</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-briefcase"></i>
-                </div>
-                <span class="stat-badge">Live</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ active_jobs }}</h3>
-                <span class="stat-label">Active Job Openings</span>
             </div>
         </div>
     </section>
@@ -481,181 +411,10 @@
         }
     }
 
-    // Dynamic, Real-time & Reactive Notifications Controller
-    window.toggleNotificationDropdown = function(event) {
-        event.stopPropagation();
-        const dropdown = document.getElementById('notif-dropdown');
-        const bellBtn = document.getElementById('notif-bell-btn');
-        if (!dropdown) return;
-
-        const isCurrentlyOpen = dropdown.style.display !== 'none';
-        if (isCurrentlyOpen) {
-            dropdown.style.display = 'none';
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
-        } else {
-            dropdown.style.display = 'block';
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'true');
-        }
-    };
-
-    window.markAllNotificationsRead = function(event) {
-        if (event) event.stopPropagation();
-        fetch('/hr/api/notifications/mark-read/', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ all: true })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const bell = document.getElementById('notif-bell-btn');
-                const badge = document.getElementById('notif-badge');
-                const pill = document.getElementById('notif-unread-pill');
-                if (bell) bell.classList.remove('has-unread');
-                if (badge) badge.style.display = 'none';
-                if (pill) pill.textContent = 'All caught up';
-
-                document.querySelectorAll('.notif-item').forEach(el => {
-                    el.classList.remove('is-unread');
-                    const dot = el.querySelector('.notif-item-unread-dot');
-                    if (dot) dot.remove();
-                });
-            }
-        })
-        .catch(err => console.warn('Failed to mark notifications read:', err));
-    };
-
-    window.handleNotificationClick = function(event, itemEl) {
-        event.stopPropagation();
-        const notifId = itemEl.getAttribute('data-notif-id');
-        const targetLink = itemEl.getAttribute('data-link');
-
-        // Mark individual notification as read
-        if (notifId && itemEl.classList.contains('is-unread')) {
-            fetch('/hr/api/notifications/mark-read/', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ notification_id: notifId })
-            }).finally(() => {
-                if (targetLink) window.location.href = targetLink;
-            });
-        } else if (targetLink) {
-            window.location.href = targetLink;
-        }
-    };
-
-    // Close notification dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        const wrapper = document.getElementById('notif-wrapper');
-        const dropdown = document.getElementById('notif-dropdown');
-        if (wrapper && dropdown && !wrapper.contains(e.target)) {
-            dropdown.style.display = 'none';
-            const bellBtn = document.getElementById('notif-bell-btn');
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
-        }
-    });
-
-    // Real-time polling function (every 15 seconds)
-    function pollNotifications() {
-        fetch('/hr/api/notifications/', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const bell = document.getElementById('notif-bell-btn');
-                const badge = document.getElementById('notif-badge');
-                const pill = document.getElementById('notif-unread-pill');
-                const list = document.getElementById('notif-dropdown-list');
-
-                if (data.unread_count > 0) {
-                    if (bell) bell.classList.add('has-unread');
-                    if (badge) {
-                        badge.style.display = 'flex';
-                        badge.textContent = data.unread_count;
-                    }
-                    if (pill) pill.textContent = data.unread_count + ' unread';
-                } else {
-                    if (bell) bell.classList.remove('has-unread');
-                    if (badge) badge.style.display = 'none';
-                    if (pill) pill.textContent = 'All caught up';
-                }
-
-                // Update list if open or content changed
-                if (list && data.notifications && data.notifications.length > 0) {
-                    list.innerHTML = data.notifications.map(n => {
-                        let iconHtml = '<i class="fas fa-bell"></i>';
-                        if (n.type === 'NEW_APPLICATION') iconHtml = '<i class="fas fa-user-plus"></i>';
-                        else if (n.type === 'VIDEO_INTERVIEW_COMPLETED') iconHtml = '<i class="fas fa-video"></i>';
-                        else if (n.type === 'INTERVIEW_SCHEDULED') iconHtml = '<i class="fas fa-calendar-check"></i>';
-                        else if (n.type === 'EVALUATION_COMPLETED') iconHtml = '<i class="fas fa-clipboard-check"></i>';
-
-                        return `
-                            <div class="notif-item ${!n.is_read ? 'is-unread' : ''}" 
-                                 data-notif-id="${n.id}" 
-                                 data-link="${n.link || '/hr/candidates/'}"
-                                 onclick="handleNotificationClick(event, this)">
-                                <div class="notif-item-icon notif-icon-${(n.type || '').toLowerCase()}">
-                                    ${iconHtml}
-                                </div>
-                                <div class="notif-item-body">
-                                    <div class="notif-item-title-row">
-                                        <h5 class="notif-item-title">${escapeHtml(n.title)}</h5>
-                                        <span class="notif-item-time">${escapeHtml(n.time_ago)}</span>
-                                    </div>
-                                    <p class="notif-item-msg">${escapeHtml(n.message)}</p>
-                                </div>
-                                ${!n.is_read ? '<span class="notif-item-unread-dot"></span>' : ''}
-                            </div>
-                        `;
-                    }).join('');
-                }
-            }
-        })
-        .catch(err => console.debug('Notification poll error:', err));
-    }
-
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    // Initialize on load and on HTMX settlement
+    // Initialize charts on load and on HTMX settlement
     initDashboardCharts();
     document.addEventListener('DOMContentLoaded', initDashboardCharts);
     document.body.addEventListener('htmx:afterSettle', initDashboardCharts);
-
-    // Poll every 15 seconds
-    if (window.hrNotifInterval) clearInterval(window.hrNotifInterval);
-    window.hrNotifInterval = setInterval(pollNotifications, 15000);
 })();
 </script>
 {% endblock %}

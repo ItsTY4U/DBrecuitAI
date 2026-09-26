@@ -257,6 +257,7 @@ class HRNotification(models.Model):
         ("VIDEO_INTERVIEW_COMPLETED", "Video Interview Completed"),
         ("INTERVIEW_SCHEDULED", "Interview Scheduled"),
         ("EVALUATION_COMPLETED", "Evaluation Completed"),
+        ("HR_ACTION", "HR Team Action"),
         ("SYSTEM", "System Alert"),
     ]
 

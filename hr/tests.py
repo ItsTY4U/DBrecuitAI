@@ -2617,6 +2617,189 @@ class HRDashboardModernizationTests(TestCase):
         self.assertNotContains(resp, "empty-table-minimized")
 
 
+class HRUIEnhancementsTests(TestCase):
+    """
+    Tests for the UI enhancements across entire /hr/ app:
+    1. Translucent hero section & reactive notification bell across all 5 navigation pages.
+    2. New Department button relocation next to Filter by Department dropdown in Job Management.
+    3. Contextual Print Report button in every sub-nav section of Reports.
+    4. Categorized notifications (including HR Team actions).
+    5. Removal of Origin column in Audit Trail table to maximize Details & Description space.
+    """
+
+    def setUp(self):
+        invalidate_hr_cache()
+        self.client = Client()
+        self.hr_user = User.objects.create_user(
+            username="hr_tester",
+            password="testpassword123",
+            first_name="Eleanor",
+            last_name="Vance",
+            is_staff=True,
+        )
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.hr_user.groups.add(self.hr_group)
+        self.client.login(username="hr_tester", password="testpassword123")
+
+        self.dept = "Engineering"
+        self.job = Job.objects.create(
+            title="Full Stack Developer",
+            department=self.dept,
+            job_type="FULL-TIME",
+            status="Active"
+        )
+        self.applicant = Application.objects.create(
+            job=self.job,
+            first_name="Alan",
+            last_name="Turing",
+            email="alan@enigma.org",
+            phone="09189998877",
+            ai_score=98,
+            status="Interview",
+            interview_scheduled=True,
+        )
+
+    def test_hero_section_and_notification_bell_in_all_5_navigation_pages(self):
+        """Verify translucent hero section and notification bell are rendered on all 5 navigation pages."""
+        pages = [
+            ("dashboard", reverse("dashboard")),
+            ("job_management", reverse("job_management")),
+            ("candidates", reverse("candidates")),
+            ("interviews", reverse("interviews")),
+            ("reports", reverse("reports")),
+        ]
+
+        for page_name, url in pages:
+            with self.subTest(page=page_name):
+                resp = self.client.get(url)
+                self.assertEqual(resp.status_code, 200)
+                content = resp.content.decode("utf-8")
+                self.assertIn("dashboard-hero-section", content, f"Hero section missing on {page_name}")
+                self.assertIn("notif-bell-btn", content, f"Notification bell button missing on {page_name}")
+                self.assertIn("notif-wrapper", content, f"Notification wrapper missing on {page_name}")
+                self.assertIn("notif-dropdown", content, f"Notification dropdown missing on {page_name}")
+
+    def test_job_management_new_department_relocation(self):
+        """New Department button is moved next to Filter by Department dropdown in top toolbar."""
+        resp = self.client.get(reverse("job_management"))
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode("utf-8")
+
+        # Verify button exists and has correct id and toolbar class
+        self.assertIn('id="open-new-department-modal"', content)
+        self.assertIn("btn-new-dept-toolbar", content)
+        # Verify it is positioned within the candidates-top-toolbar alongside deptSelect
+        toolbar_pos = content.find("candidates-top-toolbar")
+        dept_select_pos = content.find('id="deptSelect"')
+        btn_new_dept_pos = content.find('id="open-new-department-modal"')
+        self.assertTrue(toolbar_pos != -1)
+        self.assertTrue(dept_select_pos > toolbar_pos)
+        self.assertTrue(btn_new_dept_pos > dept_select_pos, "New Department button must follow department dropdown")
+
+    def test_reports_print_buttons_in_every_subnav_section(self):
+        """Reports header print button is removed; each sub-nav tab contains a contextual print button."""
+        # Top reports page does not have header print button in header-actions
+        resp = self.client.get(reverse("reports"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'class="header-actions"')
+
+        # Verify each of the 4 sub-nav tabs has a contextual print button
+        subnav_tabs = ["audit", "cancelled", "evaluations", "final_decision"]
+        for tab in subnav_tabs:
+            with self.subTest(tab=tab):
+                resp_tab = self.client.get(f"{reverse('reports')}?tab={tab}")
+                self.assertEqual(resp_tab.status_code, 200)
+                self.assertContains(resp_tab, "btn-print-subnav")
+                self.assertContains(resp_tab, 'onclick="window.print()"')
+
+    def test_audit_logs_origin_column_removed(self):
+        """Origin (IP address) column is removed from Audit trail table to provide more space for Details."""
+        from hr.models import AuditLog
+
+        AuditLog.objects.create(
+            user=self.hr_user,
+            user_name="Eleanor Vance",
+            action="JOB_CREATED",
+            action_display="Job Created",
+            target_model="Job",
+            target_repr="Full Stack Developer",
+            details="Comprehensive job posting created with all required skills.",
+            ip_address="192.168.1.100",
+        )
+
+        resp = self.client.get(f"{reverse('reports')}?tab=audit")
+        self.assertEqual(resp.status_code, 200)
+        content = resp.content.decode("utf-8")
+
+        # Verify header does NOT contain Origin
+        self.assertNotIn("<th>Origin</th>", content)
+        self.assertNotIn("Origin</th>", content)
+        # Verify 192.168.1.100 is not rendered in the table cell
+        self.assertNotIn("192.168.1.100", content)
+        # Details & Description header and content are present
+        self.assertIn("Details &amp; Description", content)
+        self.assertIn("Comprehensive job posting created with all required skills.", content)
+
+    def test_notifications_category_navigation_and_hr_team_actions(self):
+        """Notification bell includes category tabs and HR Team action category."""
+        from hr.models import HRNotification
+
+        # Create an HR Team action notification
+        HRNotification.objects.create(
+            notification_type="HR_ACTION",
+            title="Job Created: Full Stack Developer",
+            message="Eleanor Vance created a new job posting.",
+            link="/hr/reports/?tab=audit",
+            is_read=False,
+        )
+
+        # Feed API returns category 'team'
+        feed_url = reverse("hr_notifications_feed")
+        resp = self.client.get(feed_url, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["status"], "success")
+
+        team_notif = next((n for n in data["notifications"] if n["type"] == "HR_ACTION"), None)
+        self.assertIsNotNone(team_notif)
+        self.assertEqual(team_notif["category"], "team")
+
+        # Check notification dropdown markup has category tabs
+        dash_resp = self.client.get(reverse("dashboard"))
+        self.assertEqual(dash_resp.status_code, 200)
+        content = dash_resp.content.decode("utf-8")
+        self.assertIn('data-category="all"', content)
+        self.assertIn('data-category="applications"', content)
+        self.assertIn('data-category="interviews"', content)
+        self.assertIn('data-category="team"', content)
+        self.assertIn('data-category="unread"', content)
+
+    def test_hr_action_logged_creates_team_notification(self):
+        """log_hr_action creates an AuditLog and an HRNotification for team-wide visibility."""
+        from hr.models import HRNotification
+        from hr.utils import log_hr_action
+        from django.test import RequestFactory
+
+        rf = RequestFactory()
+        req = rf.post("/hr/jobs/create/")
+        req.user = self.hr_user
+
+        initial_count = HRNotification.objects.filter(notification_type="HR_ACTION").count()
+        log_hr_action(
+            req,
+            action="JOB_CREATED",
+            target_repr="Cybersecurity Specialist",
+            details="Created new cybersecurity role.",
+            target_model="Job",
+        )
+
+        final_count = HRNotification.objects.filter(notification_type="HR_ACTION").count()
+        self.assertEqual(final_count, initial_count + 1)
+        latest = HRNotification.objects.filter(notification_type="HR_ACTION").latest("created_at")
+        self.assertIn("Cybersecurity Specialist", latest.title)
+
+
+
 
 
 

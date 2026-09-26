@@ -5,6 +5,15 @@ from .models import AuditLog
 logger = logging.getLogger(__name__)
 
 
+def is_hr_user(user):
+    """
+    Checks if the user is authenticated and belongs to the HR staff group or is an authorized admin.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    return (user.is_staff and user.groups.filter(name="HR").exists()) or user.is_superuser
+
+
 def get_client_ip(request):
     """Extracts client IP address safely considering proxies."""
     if not request:
@@ -32,7 +41,7 @@ def log_hr_action(request, action, target_repr="", details="", target_model="", 
         action_display = action_map.get(action, action.replace("_", " ").title())
         ip_addr = get_client_ip(request)
 
-        return AuditLog.objects.create(
+        audit_obj = AuditLog.objects.create(
             user=user_obj,
             user_name=user_name,
             action=action,
@@ -44,6 +53,35 @@ def log_hr_action(request, action, target_repr="", details="", target_model="", 
             ip_address=ip_addr,
             timestamp=timezone.now(),
         )
+
+        # Trigger team notification for HR user actions
+        if user_obj and action in (
+            "FINAL_DECISION_HIRED", "FINAL_DECISION_NOT_HIRED",
+            "HIRE_APPLICATION", "REJECT_APPLICATION", "SHORTLIST_APPLICATION",
+            "INTERVIEW_SCHEDULED", "INTERVIEW_RESCHEDULED", "INTERVIEW_CANCELLED",
+            "EVALUATION_COMPLETED", "JOB_CREATED", "JOB_UPDATED", "DEPARTMENT_CREATED"
+        ):
+            target_link = "/hr/candidates/"
+            if target_model == "Application" and target_id:
+                target_link = f"/hr/candidates/applicant/{target_id}/"
+            elif target_model == "Interview":
+                target_link = "/hr/interviews/"
+            elif target_model == "Job":
+                target_link = "/hr/jobs/"
+            elif "FINAL_DECISION" in action:
+                target_link = "/hr/reports/?tab=final_decision"
+            elif action == "EVALUATION_COMPLETED":
+                target_link = "/hr/reports/?tab=evaluations"
+
+            create_hr_notification(
+                notification_type="HR_ACTION",
+                title=f"{action_display}: {target_repr}",
+                message=f"{user_name}: {details or action_display} ({target_repr})".strip(),
+                link=target_link,
+                recipient=None,
+            )
+
+        return audit_obj
     except Exception as e:
         logger.warning(f"Failed to create AuditLog: {e}")
         return None
@@ -210,6 +248,19 @@ def seed_initial_notifications_if_empty():
                 link=sess_link,
                 is_read=False,
                 created_at=sess.completed_at or sess.created_at,
+            ))
+
+        # Recent HR team actions from AuditLog
+        from .models import AuditLog
+        recent_audits = AuditLog.objects.exclude(action__in=["HR_LOGIN", "HR_LOGOUT"]).order_by("-timestamp")[:6]
+        for a in recent_audits:
+            notifs.append(HRNotification(
+                notification_type="HR_ACTION",
+                title=f"{a.action_display}: {a.target_repr or a.target_model}",
+                message=f"{a.user_name} performed {a.action_display.lower()} on {a.target_repr or 'record'}. {a.details}".strip(),
+                link="/hr/reports/?tab=audit",
+                is_read=False,
+                created_at=a.timestamp,
             ))
 
         if notifs:

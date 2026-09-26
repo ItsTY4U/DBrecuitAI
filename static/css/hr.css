@@ -811,8 +811,8 @@ body.hr-loading .sidebar-logo .loader,
     position: absolute;
     top: calc(100% + 10px);
     right: 0;
-    width: 360px;
-    max-width: 90vw;
+    width: 380px;
+    max-width: 92vw;
     background: #ffffff;
     border-radius: 16px;
     border: 1px solid #e2e8f0;
@@ -884,6 +884,64 @@ body.hr-loading .sidebar-logo .loader,
     background: #f1f5f9;
 }
 
+/* Notification Category Navigation Filter */
+.notif-category-nav {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.notif-category-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.notif-cat-tab {
+    background: none;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+}
+
+.notif-cat-tab:hover {
+    color: #1e293b;
+    background: #e2e8f0;
+}
+
+.notif-cat-tab.active {
+    background: #2d5a27;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.notif-cat-tab.active .notif-tab-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+
+.notif-tab-badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: #e2e8f0;
+    color: #475569;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
 .notif-dropdown-list {
     max-height: 380px;
     overflow-y: auto;
@@ -930,6 +988,7 @@ body.hr-loading .sidebar-logo .loader,
 .notif-icon-video_interview_completed { background: #f3e8ff; color: #9333ea; }
 .notif-icon-interview_scheduled { background: #e0f2fe; color: #0284c7; }
 .notif-icon-evaluation_completed { background: #fef3c7; color: #d97706; }
+.notif-icon-hr_action { background: #f3e8ff; color: #7e22ce; }
 .notif-icon-system { background: #f1f5f9; color: #475569; }
 
 .notif-item-body {
@@ -1019,6 +1078,101 @@ body.hr-loading .sidebar-logo .loader,
 .notif-footer-link:hover {
     color: #1e3d1a;
     text-decoration: underline;
+}
+
+/* ==========================================================================
+   DASHBOARD TRANSLUCENT HERO SECTION (Encapsulates Page Header & Stat Cards)
+   ========================================================================== */
+.dashboard-hero-section {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.035);
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.dashboard-hero-section .dashboard-header {
+    margin-bottom: 20px;
+    padding-bottom: 0;
+}
+
+.dashboard-hero-section .stats-grid,
+.dashboard-hero-section .stats-grid-5,
+.dashboard-hero-section .job-summary-grid,
+.dashboard-hero-section .reports-stat-cards-top {
+    margin-bottom: 0 !important;
+}
+
+/* New Department Toolbar Button (Positioned next to Department Filter) */
+.btn-new-dept-toolbar {
+    height: 40px;
+    padding: 0 16px;
+    background: #2d5a27;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.btn-new-dept-toolbar:hover {
+    background: #1e3d1a;
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.25);
+    color: #ffffff;
+}
+
+/* Sub-navigation Contextual Print Report Button */
+.btn-print-subnav {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-print-subnav:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+@media print {
+    .dashboard-hero-section {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin-bottom: 16px !important;
+    }
+    .notif-wrapper,
+    .btn-print-subnav,
+    .reports-subnav-container,
+    .reports-filter-card {
+        display: none !important;
+    }
 }
 
 /* Stats Grid - Compact, Space-Saving, and Constrained on Expanding Screens */

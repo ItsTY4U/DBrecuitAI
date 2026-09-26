@@ -3,77 +3,83 @@
 
 {% block admin_body %}
 <main class="main-dashboard main-content">
-    <header class="dashboard-header">
-        <div class="header-left">
-            <h1 class="dashboard-title">Candidates Management</h1>
-            <p class="dashboard-subtitle">Track candidate applications, review AI screening rankings, and manage hiring stages.</p>
-        </div>
-    </header>
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">Candidates Management</h1>
+                <p class="dashboard-subtitle">Track candidate applications, review AI screening rankings, and manage hiring stages.</p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
 
-    <!-- Candidate Stats Grid (5 Cards in 1 Row) -->
-    <section class="stats-grid stats-grid-5">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-users"></i>
+        <!-- Candidate Stats Grid (5 Cards in 1 Row) -->
+        <div class="stats-grid stats-grid-5">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="stat-badge">Total</span>
                 </div>
-                <span class="stat-badge">Total</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_candidates }}</h3>
+                    <span class="stat-label">Total Applicants</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_candidates }}</h3>
-                <span class="stat-label">Total Applicants</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-amber">
-                    <i class="fas fa-filter"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-amber">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <span class="stat-badge">Screening</span>
                 </div>
-                <span class="stat-badge">Screening</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ screening_count }}</h3>
+                    <span class="stat-label">In Screening</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ screening_count }}</h3>
-                <span class="stat-label">In Screening</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-purple">
-                    <i class="fas fa-calendar-check"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <span class="stat-badge">Interviews</span>
                 </div>
-                <span class="stat-badge">Interviews</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ interview_count }}</h3>
+                    <span class="stat-label">Interview Stage</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ interview_count }}</h3>
-                <span class="stat-label">Interview Stage</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-clipboard-check"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="stat-badge">Evaluation</span>
                 </div>
-                <span class="stat-badge">Evaluation</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ evaluation_count }}</h3>
+                    <span class="stat-label">Evaluation Stage</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ evaluation_count }}</h3>
-                <span class="stat-label">Evaluation Stage</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-user-check"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <span class="stat-badge">Hired</span>
                 </div>
-                <span class="stat-badge">Hired</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ hired_count }}</h3>
-                <span class="stat-label">Hired Candidates</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ hired_count }}</h3>
+                    <span class="stat-label">Hired Candidates</span>
+                </div>
             </div>
         </div>
     </section>

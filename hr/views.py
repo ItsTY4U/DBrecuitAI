@@ -331,6 +331,15 @@ def hr_notifications_feed(request):
             return f"{days}d ago"
         return dt.strftime("%b %d")
 
+    def get_category(notif_type):
+        if notif_type == "NEW_APPLICATION":
+            return "applications"
+        elif notif_type == "VIDEO_INTERVIEW_COMPLETED":
+            return "interviews"
+        elif notif_type in ("HR_ACTION", "INTERVIEW_SCHEDULED", "EVALUATION_COMPLETED"):
+            return "team"
+        return "system"
+
     data = {
         "status": "success",
         "unread_count": unread_count,
@@ -340,6 +349,7 @@ def hr_notifications_feed(request):
                 "title": n.title,
                 "message": n.message,
                 "type": n.notification_type,
+                "category": get_category(n.notification_type),
                 "link": n.link or reverse("candidates"),
                 "is_read": n.is_read,
                 "time_ago": format_time_ago(n.created_at),

@@ -3,80 +3,80 @@
 
 {% block admin_body %}
 <main class="main-dashboard main-content reports-page-main">
-    <header class="dashboard-header">
-        <div class="header-left">
-            <h1 class="dashboard-title">
-                <i class="fas fa-chart-line text-green" style="margin-right: 8px;"></i> Candidate Reports &amp; HR Compliance Hub
-            </h1>
-            <p class="dashboard-subtitle">
-                Centralized registry for HR applicant management audit logs, cancelled/rejected records, evaluated candidates, and final hiring decisions.
-            </p>
-        </div>
-        <div class="header-actions">
-            <button type="button" class="btn btn-secondary" onclick="window.print()" title="Print or save PDF report" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; font-weight: 600; border-radius: 8px;">
-                <i class="fas fa-print"></i>
-                <span>Print Report</span>
-            </button>
-        </div>
-    </header>
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">
+                    <i class="fas fa-chart-line text-green" style="margin-right: 8px;"></i> Candidate Reports &amp; HR Compliance Hub
+                </h1>
+                <p class="dashboard-subtitle">
+                    Centralized registry for HR applicant management audit logs, cancelled/rejected records, evaluated candidates, and final hiring decisions.
+                </p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
 
-    <!-- Global Top Stat Cards Grid (Placed ABOVE Sub-Navigation) -->
-    <section class="stats-grid reports-stat-cards-top" id="reports-stat-cards-top" style="margin-bottom: 24px;">
-        <!-- Card 1: Evaluated Candidates Pending Decision -->
-        <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('evaluations')">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-purple">
-                    <i class="fas fa-clipboard-check"></i>
+        <!-- Global Top Stat Cards Grid (Inside Hero Section) -->
+        <div class="stats-grid reports-stat-cards-top" id="reports-stat-cards-top">
+            <!-- Card 1: Evaluated Candidates Pending Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('evaluations')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="stat-badge">Pending Final Review</span>
                 </div>
-                <span class="stat-badge">Pending Final Review</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ pending_final_decisions_count }}</h3>
+                    <span class="stat-label">Evaluated Candidates Awaiting Decision</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ pending_final_decisions_count }}</h3>
-                <span class="stat-label">Evaluated Candidates Awaiting Decision</span>
-            </div>
-        </div>
 
-        <!-- Card 2: Candidates with Final Decision -->
-        <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('final_decision')">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-gavel"></i>
+            <!-- Card 2: Candidates with Final Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('final_decision')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <span class="stat-badge">Decisions Concluded</span>
                 </div>
-                <span class="stat-badge">Decisions Concluded</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_final_decisions_count }}</h3>
+                    <span class="stat-label">
+                        <strong>{{ total_hired_final }}</strong> Hired &bull; <strong>{{ total_not_hired_final }}</strong> Not Hired
+                    </span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_final_decisions_count }}</h3>
-                <span class="stat-label">
-                    <strong>{{ total_hired_final }}</strong> Hired &bull; <strong>{{ total_not_hired_final }}</strong> Not Hired
-                </span>
-            </div>
-        </div>
 
-        <!-- Card 3: Cancelled / Disqualified Applications -->
-        <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('cancelled')">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-orange">
-                    <i class="fas fa-user-xmark"></i>
+            <!-- Card 3: Cancelled / Disqualified Applications -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('cancelled')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-orange">
+                        <i class="fas fa-user-xmark"></i>
+                    </div>
+                    <span class="stat-badge">Disqualified</span>
                 </div>
-                <span class="stat-badge">Disqualified</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_cancelled }}</h3>
+                    <span class="stat-label">Cancelled / Rejected ({{ rejection_rate }}%)</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_cancelled }}</h3>
-                <span class="stat-label">Cancelled / Rejected ({{ rejection_rate }}%)</span>
-            </div>
-        </div>
 
-        <!-- Card 4: HR Applicant Management Audit Logs -->
-        <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('audit')">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-clock-rotate-left"></i>
+            <!-- Card 4: HR Applicant Management Audit Logs -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('audit')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </div>
+                    <span class="stat-badge">HR Activity</span>
                 </div>
-                <span class="stat-badge">HR Activity</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_audit_logs }}</h3>
-                <span class="stat-label">HR Management Audit Events ({{ audit_today_count }} Today)</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_audit_logs }}</h3>
+                    <span class="stat-label">HR Management Audit Events ({{ audit_today_count }} Today)</span>
+                </div>
             </div>
         </div>
     </section>
