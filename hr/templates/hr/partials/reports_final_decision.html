@@ -46,61 +46,82 @@
     </form>
 </div>
 
-<!-- Section View Selector Pills (Show All, Hired, Not Hired) -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; flex-wrap: wrap; gap: 12px;">
-    <div class="decision-section-pills" style="display: flex; gap: 8px;">
-        <button type="button" 
-                id="btn-show-all-decisions" 
-                class="btn-decision-pill active" 
-                onclick="switchDecisionDisplay('all')"
-                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #2d5a27; background: #2d5a27; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-            <span>All Final Decisions</span>
-            <span style="background: rgba(255,255,255,0.25); padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_final_decisions_count }}</span>
-        </button>
-
-        <button type="button" 
-                id="btn-show-hired-decisions" 
-                class="btn-decision-pill" 
-                onclick="switchDecisionDisplay('hired')"
-                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #166534; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fas fa-award text-green"></i>
-            <span>Hired Candidates</span>
-            <span style="background: #dcfce7; color: #15803d; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_hired_final }}</span>
-        </button>
-
-        <button type="button" 
-                id="btn-show-not-hired-decisions" 
-                class="btn-decision-pill" 
-                onclick="switchDecisionDisplay('not_hired')"
-                style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #991b1b; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fas fa-ban" style="color: #dc2626;"></i>
-            <span>Not Hired Candidates</span>
-            <span style="background: #fee2e2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_not_hired_final }}</span>
-        </button>
-    </div>
-
-    <div style="font-size: 13px; color: #64748b;">
-        Showing <strong>{{ total_final_decisions_count }}</strong> finalized candidate decision{{ total_final_decisions_count|pluralize }}
-    </div>
-</div>
-
-<!-- ============================================================== -->
-<!-- SECTION A: HIRED CANDIDATES (Department & Job Level Hierarchy) -->
-<!-- ============================================================== -->
-<div id="section-hired-decisions" class="decision-group-container" style="margin-bottom: 36px;">
-    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #bbf7d0;">
-        <div style="width: 34px; height: 34px; border-radius: 8px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 16px;">
-            <i class="fas fa-award"></i>
+<!-- Candidates with Final Decision Section Card Container -->
+<section class="content-box final-decision-section-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 32px;">
+    <!-- Section Card Header with Title, Pills, and Metrics -->
+    <div class="final-decision-section-header" style="padding: 18px 24px; border-bottom: 1px solid #edf2f7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; background: #fafbfc;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(45, 90, 39, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 17px;">
+                <i class="fas fa-gavel"></i>
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b;">
+                    Candidates with Final Decision
+                </h3>
+                <p style="margin: 2px 0 0 0; font-size: 12.5px; color: #64748b;">
+                    Official hiring determinations organized by Department and Job position
+                </p>
+            </div>
         </div>
-        <div>
-            <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">
-                Hired Candidates ({{ total_hired_final }})
-            </h3>
-            <p style="margin: 1px 0 0 0; font-size: 12.5px; color: #166534;">
-                Approved candidates who successfully concluded the recruitment pipeline and received hiring offers.
-            </p>
+
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <!-- Section View Selector Pills -->
+            <div class="decision-section-pills" style="display: flex; gap: 8px;">
+                <button type="button" 
+                        id="btn-show-all-decisions" 
+                        class="btn-decision-pill active" 
+                        onclick="switchDecisionDisplay('all')"
+                        style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #2d5a27; background: #2d5a27; color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>All Final Decisions</span>
+                    <span style="background: rgba(255,255,255,0.25); padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_final_decisions_count }}</span>
+                </button>
+
+                <button type="button" 
+                        id="btn-show-hired-decisions" 
+                        class="btn-decision-pill" 
+                        onclick="switchDecisionDisplay('hired')"
+                        style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #166534; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-award text-green"></i>
+                    <span>Hired Candidates</span>
+                    <span style="background: #dcfce7; color: #15803d; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_hired_final }}</span>
+                </button>
+
+                <button type="button" 
+                        id="btn-show-not-hired-decisions" 
+                        class="btn-decision-pill" 
+                        onclick="switchDecisionDisplay('not_hired')"
+                        style="padding: 7px 16px; font-size: 13px; font-weight: 700; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #991b1b; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-ban" style="color: #dc2626;"></i>
+                    <span>Not Hired Candidates</span>
+                    <span style="background: #fee2e2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px;">{{ total_not_hired_final }}</span>
+                </button>
+            </div>
+
+            <div style="font-size: 12.5px; color: #64748b; font-weight: 500;">
+                Showing <strong>{{ total_final_decisions_count }}</strong> finalized candidate decision{{ total_final_decisions_count|pluralize }}
+            </div>
         </div>
     </div>
+
+    <!-- Section Body Container for Decisions -->
+    <div class="final-decisions-body" style="padding: 24px;">
+        <!-- ============================================================== -->
+        <!-- SECTION A: HIRED CANDIDATES (Department & Job Level Hierarchy) -->
+        <!-- ============================================================== -->
+        <section id="section-hired-decisions" class="decision-group-container" style="margin-bottom: 32px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #bbf7d0;">
+                <div style="width: 34px; height: 34px; border-radius: 8px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-award"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: #14532d;">
+                        Hired Candidates ({{ total_hired_final }})
+                    </h3>
+                    <p style="margin: 1px 0 0 0; font-size: 12.5px; color: #166534;">
+                        Approved candidates who successfully concluded the recruitment pipeline and received hiring offers.
+                    </p>
+                </div>
+            </div>
 
     {% if hired_department_sections %}
     <div class="department-sections-container">
@@ -225,18 +246,18 @@
         {% endfor %}
     </div>
     {% else %}
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
+    <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
         <i class="fas fa-award" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
         <h5 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #334155;">No Hired Candidates Found</h5>
         <p style="margin: 0; font-size: 13px;">Candidates finalized as "Hired" will appear here organized by Department and Job role.</p>
     </div>
     {% endif %}
-</div>
+</section>
 
 <!-- ================================================================== -->
 <!-- SECTION B: NOT HIRED CANDIDATES (Department & Job Level Hierarchy) -->
 <!-- ================================================================== -->
-<div id="section-not-hired-decisions" class="decision-group-container">
+<section id="section-not-hired-decisions" class="decision-group-container">
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #fecaca;">
         <div style="width: 34px; height: 34px; border-radius: 8px; background: #fee2e2; color: #991b1b; display: flex; align-items: center; justify-content: center; font-size: 16px;">
             <i class="fas fa-ban"></i>
@@ -371,13 +392,15 @@
         {% endfor %}
     </div>
     {% else %}
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
+    <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 36px 20px; text-align: center; color: #64748b;">
         <i class="fas fa-ban" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
         <h5 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #334155;">No Candidates Marked as Not Hired</h5>
         <p style="margin: 0; font-size: 13px;">Candidates finalized as "Not Hired" along with their required reasons will appear here organized by Department and Job role.</p>
     </div>
     {% endif %}
-</div>
+</section>
+    </div>
+</section>
 
 <script>
 function switchDecisionDisplay(mode) {
