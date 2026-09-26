@@ -1,29 +1,38 @@
 {% if overdue_interviews %}
-<div class="interview-reminder-alert">
-    <div class="reminder-alert-icon">
+<div class="interview-reminder-alert" style="margin-bottom: 0; background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 14px; padding: 12px 18px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.06);">
+    <div class="reminder-alert-icon" style="width: 34px; height: 34px; border-radius: 8px; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 2px;">
         <i class="fas fa-triangle-exclamation"></i>
     </div>
-    <div class="reminder-alert-content">
-        <div class="reminder-alert-header">
-            <h4>Action Required: Past Interview Status</h4>
-            <span class="overdue-count-pill">{{ overdue_interviews|length }} Pending</span>
+    <div class="reminder-alert-content" style="flex: 1;">
+        <div class="reminder-alert-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
+            <h4 style="margin: 0; font-size: 14.5px; font-weight: 800; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                Action Required: Past Interview Outcome Pending
+            </h4>
+            <span class="overdue-count-pill" style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: #fee2e2; color: #b91c1c;">
+                {{ overdue_interviews|length }} Pending Action
+            </span>
         </div>
-        <p class="reminder-alert-desc">
-            The following interviews have passed their scheduled date and require an outcome status (Completed / Cancelled / Rescheduled).
+        <p class="reminder-alert-desc" style="margin: 0 0 10px 0; font-size: 12px; color: #78350f; line-height: 1.4;">
+            The following interviews have passed their scheduled date and require an outcome status update or candidate evaluation recording.
         </p>
-        <div class="overdue-interview-list">
+        <div class="overdue-interview-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
             {% for interview in overdue_interviews %}
                 {% with job=interview.primary_job %}
-                <div class="overdue-interview-item">
+                <div class="overdue-interview-item" style="background: #ffffff; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                     <div class="overdue-item-info">
-                        <strong>{{ job.title|default:"Job Interview" }}</strong>
-                        <span class="overdue-date-tag">
-                            <i class="fas fa-calendar-xmark"></i> Was on {{ interview.date|date:"M d, Y" }} at {{ interview.time|time:"g:i A" }}
+                        <strong style="font-size: 13px; color: #0f172a; display: block;">{{ job.title|default:"Job Interview" }}</strong>
+                        <span class="overdue-date-tag" style="font-size: 11.5px; color: #b45309; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-calendar-xmark"></i> Was on {{ interview.date|date:"M d, Y" }} &bull; {{ interview.time|time:"g:i A" }}
                         </span>
                     </div>
-                    <a href="{% url 'interview_detail' interview.pk %}" class="btn-resolve-status">
-                        Update Status <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <div>
+                        {% if job %}
+                        <button type="button" class="btn btn-sm" onclick="goToEvaluation('{{ job.department|slugify }}', '{{ job.id }}')" style="background: #2d5a27; color: #ffffff; border: 1px solid transparent; padding: 5px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(45,90,39,0.15);">
+                            <i class="fas fa-clipboard-user" style="font-size: 11px;"></i>
+                            <span>Evaluate</span>
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endwith %}
             {% endfor %}

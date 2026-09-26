@@ -2,97 +2,157 @@
 {% load static %}
 
 {% block admin_body %}
-<main class="main-dashboard">
-    <header class="dashboard-header">
-        <div class="header-left">
-            <h1 class="dashboard-title">Candidates Management</h1>
-            <p class="dashboard-subtitle">Track candidate applications, review AI screening rankings, and manage hiring stages.</p>
-        </div>
-    </header>
+<main class="main-dashboard main-content">
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">Candidates Management</h1>
+                <p class="dashboard-subtitle">Track candidate applications, review AI screening rankings, and manage hiring stages.</p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
 
-    <!-- Candidate Stats Grid -->
-    <section class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-users"></i>
+        <!-- Candidate Stats Grid (5 Cards in 1 Row) -->
+        <div class="stats-grid stats-grid-5">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <span class="stat-badge">Total</span>
                 </div>
-                <span class="stat-badge">Total</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_candidates }}</h3>
+                    <span class="stat-label">Total Applicants</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_candidates }}</h3>
-                <span class="stat-label">Total Applicants</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-amber">
-                    <i class="fas fa-filter"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-amber">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <span class="stat-badge">Screening</span>
                 </div>
-                <span class="stat-badge">Screening</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ screening_count }}</h3>
+                    <span class="stat-label">In Screening</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ screening_count }}</h3>
-                <span class="stat-label">In Screening</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-purple">
-                    <i class="fas fa-calendar-check"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <span class="stat-badge">Interviews</span>
                 </div>
-                <span class="stat-badge">Interviews</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ interview_count }}</h3>
+                    <span class="stat-label">Interview Stage</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ interview_count }}</h3>
-                <span class="stat-label">Interview Stage</span>
-            </div>
-        </div>
 
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-user-check"></i>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="stat-badge">Evaluation</span>
                 </div>
-                <span class="stat-badge">Hired</span>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ evaluation_count }}</h3>
+                    <span class="stat-label">Evaluation Stage</span>
+                </div>
             </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ hired_count }}</h3>
-                <span class="stat-label">Hired Candidates</span>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <span class="stat-badge">Hired</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ hired_count }}</h3>
+                    <span class="stat-label">Hired Candidates</span>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Global Top Toolbar: Department Filter -->
-    <div class="candidates-top-toolbar">
-        <form method="GET" action="{% url 'candidates' %}" class="toolbar-filter-form" id="deptFilterForm">
-            <div class="toolbar-filter-group">
-                <label for="deptSelect" class="toolbar-filter-label">
-                    <i class="fas fa-building"></i> Filter by Department:
-                </label>
-                <select name="department" id="deptSelect" class="toolbar-select" onchange="this.form.submit()">
-                    <option value="">All Available Departments</option>
-                    {% for dept in available_departments %}
-                    <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>
-                        {{ dept }} Department
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% if selected_department or selected_job %}
-            <a href="{% url 'candidates' %}" class="btn-reset-filters" title="Reset all filters">
-                <i class="fas fa-rotate-left"></i> Reset Filter
-            </a>
-            {% endif %}
-        </form>
+    <!-- Horizontal Sub-Navigation Tabs Bar -->
+    <div class="candidates-subnav-container" style="margin: 24px 0 20px 0;">
+        <div class="candidates-subnav-tabs" style="display: flex; gap: 12px; padding-bottom: 0; flex-wrap: wrap;">
+            <!-- Tab 1: Recent Applicants -->
+            <button type="button" 
+                    id="tab-btn-recent" 
+                    class="candidates-subnav-tab {% if active_tab == 'recent' %}active{% endif %}" 
+                    onclick="switchCandidatesTab('recent')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'recent' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'recent' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'recent' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'recent' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-user-clock"></i>
+                <span>Recent Applicants</span>
+                {% if recent_applications_count %}
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; background: {% if active_tab == 'recent' %}rgba(255,255,255,0.25){% else %}#dcfce7{% endif %}; color: {% if active_tab == 'recent' %}#ffffff{% else %}#166534{% endif %};">
+                    {{ recent_applications_count }}
+                </span>
+                {% endif %}
+            </button>
+
+            <!-- Tab 2: All Applicants -->
+            <button type="button" 
+                    id="tab-btn-all" 
+                    class="candidates-subnav-tab {% if active_tab == 'all' %}active{% endif %}" 
+                    onclick="switchCandidatesTab('all')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'all' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'all' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'all' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-layer-group"></i>
+                <span>All Applicants</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 12px; background: {% if active_tab == 'all' %}rgba(255,255,255,0.25){% else %}rgba(0,0,0,0.06){% endif %}; color: {% if active_tab == 'all' %}#ffffff{% else %}#475569{% endif %};">
+                    {{ total_candidates }}
+                </span>
+            </button>
+        </div>
     </div>
 
-    <!-- Department Sections Container -->
-    <div class="department-sections-container">
-        {% for dept in department_sections %}
-        <section class="dept-section-block" id="dept-block-{{ forloop.counter }}">
+    <!-- Tab Pane 1: Recent Applicants -->
+    <div id="tab-pane-recent" class="candidates-tab-pane" style="display: {% if active_tab == 'recent' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/recent_applicants.html" %}
+    </div>
+
+    <!-- Tab Pane 2: All Applicants (Department & Job Sections) -->
+    <div id="tab-pane-all" class="candidates-tab-pane" style="display: {% if active_tab == 'all' %}block{% else %}none{% endif %};">
+        <!-- Global Top Toolbar: Department Filter -->
+        <div class="candidates-top-toolbar">
+            <form method="GET" action="{% url 'candidates' %}" class="toolbar-filter-form" id="deptFilterForm">
+                <input type="hidden" name="tab" value="all">
+                <div class="toolbar-filter-group">
+                    <label for="deptSelect" class="toolbar-filter-label">
+                        <i class="fas fa-building"></i> Filter by Department:
+                    </label>
+                    <select name="department" id="deptSelect" class="toolbar-select" onchange="this.form.submit()">
+                        <option value="">All Available Departments</option>
+                        {% for dept in available_departments %}
+                        <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>
+                            {{ dept }} Department
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if selected_department or selected_job %}
+                <a href="{% url 'candidates' %}?tab=all" class="btn-reset-filters" title="Reset all filters">
+                    <i class="fas fa-rotate-left"></i> Reset Filter
+                </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Department Sections Container -->
+        <div class="department-sections-container">
+            {% for dept in department_sections %}
+            <section class="dept-section-block" id="dept-block-{{ forloop.counter }}">
             <!-- Department Section Header -->
             <div class="dept-section-header">
                 <div class="dept-title-left">
@@ -287,6 +347,7 @@
             <p>Adjust your department filter or wait for candidates to apply to active openings.</p>
         </div>
         {% endfor %}
+        </div>
     </div>
 </main>
 
@@ -304,5 +365,59 @@ function filterDeptJobs(selectEl, deptBlockId) {
         }
     });
 }
+
+function switchCandidatesTab(tabKey) {
+    const tabs = ['all', 'recent'];
+    tabs.forEach(t => {
+        const pane = document.getElementById('tab-pane-' + t);
+        const btn = document.getElementById('tab-btn-' + t);
+        if (pane) {
+            pane.style.display = (t === tabKey) ? 'block' : 'none';
+        }
+        if (btn) {
+            const badge = btn.querySelector('.subnav-badge');
+            if (t === tabKey) {
+                btn.classList.add('active');
+                btn.style.background = '#2d5a27';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#2d5a27';
+                btn.style.boxShadow = '0 4px 12px rgba(45,90,39,0.2)';
+                if (badge) {
+                    badge.style.background = 'rgba(255,255,255,0.25)';
+                    badge.style.color = '#ffffff';
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+                if (badge) {
+                    if (t === 'recent') {
+                        badge.style.background = '#dcfce7';
+                        badge.style.color = '#166534';
+                    } else {
+                        badge.style.background = 'rgba(0,0,0,0.06)';
+                        badge.style.color = '#475569';
+                    }
+                }
+            }
+        }
+    });
+
+    try {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', tabKey);
+        window.history.replaceState({}, '', url);
+    } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'recent' || tabParam === 'all') {
+        switchCandidatesTab(tabParam);
+    }
+});
 </script>
 {% endblock %}

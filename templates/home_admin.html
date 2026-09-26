@@ -33,7 +33,7 @@
 </head>
 <body class="dashboard-body light-bg">
     <div class="bg-container dim"></div>
-    <div class="dashboard-container" id="admin-root">
+    <div class="dashboard-container app-wrapper" id="admin-root">
         <!-- Sidebar -->
         <aside class="sidebar" hx-boost="true" hx-select="#admin-root" hx-target="#admin-root" hx-swap="outerHTML show:top">
             <div class="sidebar-logo">
@@ -52,8 +52,11 @@
                 <li class="menu-item {% if request.resolver_match.url_name == 'candidates' or request.resolver_match.url_name == 'candidate_department' or request.resolver_match.url_name == 'candidate_detail' %} active {% endif %}" >
                     <a href="{% url "candidates" %}" class="nav-link menu-link"><i class="fas fa-user-group"></i> <span>Candidates</span></a>
                 </li>
-                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' or request.resolver_match.url_name == 'interview_detail' %}active{% endif %}">
+                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' %}active{% endif %}">
                     <a href="{% url "interviews" %}" class="nav-link menu-link"><i class="fas fa-calendar-check"></i> <span>Interviews</span></a>
+                </li>
+                <li class="menu-item {% if request.resolver_match.url_name == 'reports' or 'report' in request.resolver_match.url_name %}active{% endif %}">
+                    <a href="{% url "reports" %}" class="nav-link menu-link"><i class="fas fa-chart-line"></i> <span>Reports</span></a>
                 </li>
             </ul>
             <div id="sidebar-alert-container" class="sidebar-alert-container">
@@ -108,6 +111,6 @@
     <script src="{% static "js/modal.js" %}"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="{% static "js/hr_loader.js" %}"></script>
-    <script src="{% static "js/global_ux.js" %}"></script>
+    <script src="{% static "js/hr_notifications.js" %}"></script>
 </body>
 </html>

@@ -1,0 +1,560 @@
+<!-- Candidates Waiting for Interview (Aligned and uniformed with Candidates Ready for Evaluation) -->
+<div class="interview-waiting-container">
+    <!-- Global Top Toolbar: Department Filter -->
+    <div class="candidates-top-toolbar" style="margin-bottom: 24px;">
+        <div class="toolbar-filter-form">
+            <div class="toolbar-filter-group">
+                <label for="waitingDeptSelect" class="toolbar-filter-label">
+                    <i class="fas fa-building"></i> Filter by Department:
+                </label>
+                <select id="waitingDeptSelect" class="toolbar-select" onchange="filterDepartmentBlocks(this, 'waiting-dept-sections')">
+                    <option value="all">All Available Departments</option>
+                    {% for dept in waiting_departments %}
+                    <option value="{{ dept.name|slugify }}">{{ dept.name }} Department ({{ dept.total_applicants }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Sections Container -->
+    <div class="department-sections-container" id="waiting-dept-sections">
+        {% for dept in waiting_departments %}
+        <section class="dept-section-block waiting-dept-block" id="waiting-dept-block-{{ forloop.counter }}" data-dept="{{ dept.name|slugify }}">
+            <!-- Department Section Header -->
+            <div class="dept-section-header">
+                <div class="dept-title-left">
+                    <div class="dept-icon-badge" style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%);">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div>
+                        <h2 class="dept-title-text">{{ dept.name }} Department</h2>
+                        <span class="dept-sub-info">
+                            <strong>{{ dept.job_count }}</strong> Position{{ dept.job_count|pluralize }} &bull;
+                            <strong>{{ dept.total_applicants }}</strong> Candidate{{ dept.total_applicants|pluralize }} Waiting
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Dropdown Filter by Job positioned on top right of Department section -->
+                <div class="dept-job-filter-box">
+                    <label for="waiting-job-filter-{{ forloop.counter }}" class="dept-job-filter-label">
+                        <i class="fas fa-briefcase"></i> Filter by Job:
+                    </label>
+                    <select id="waiting-job-filter-{{ forloop.counter }}" 
+                            class="dept-job-select" 
+                            onchange="filterDeptJobs(this, 'waiting-dept-block-{{ forloop.counter }}')">
+                        <option value="all">All {{ dept.name }} Jobs ({{ dept.all_jobs|length }})</option>
+                        {% for j in dept.all_jobs %}
+                        <option value="{{ j.id }}">{{ j.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Jobs List Inside Department -->
+            <div class="dept-jobs-wrapper">
+                {% for item in dept.jobs %}
+                <div class="job-section-card wait-job-card" id="waiting-job-card-{{ item.job.id }}" data-job-id="{{ item.job.id }}">
+                    <!-- Job Header Row -->
+                    <div class="job-card-header-bar">
+                        <div class="job-header-left">
+                            <div class="job-title-row">
+                                <h3 class="job-title-name">{{ item.job.title }}</h3>
+                                <span class="job-badge-type">{{ item.job.job_type }}</span>
+                            </div>
+                            <div class="job-details-meta">
+                                <span><i class="far fa-calendar-alt"></i> Posted {{ item.job.posted_date|date:"M d, Y"|default:"Recently" }}</span>
+                                <span><i class="fas fa-users"></i> {{ item.total_count }} Candidate{{ item.total_count|pluralize }} Waiting for Interview</span>
+                            </div>
+                        </div>
+
+                        <!-- Search Field for this Job Table -->
+                        <div class="job-search-container">
+                            <div class="job-search-group">
+                                <i class="fas fa-search job-search-icon"></i>
+                                <input type="text"
+                                       id="search-input-waiting-{{ item.job.id }}"
+                                       class="job-search-input"
+                                       placeholder="Search by ID, Name, Email…"
+                                       autocomplete="off"
+                                       onkeyup="filterCandidateTable(this, 'waiting-table-{{ item.job.id }}')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden container holding applicant data for the Batch Schedule Modal -->
+                    <div id="batch-cands-data-{{ item.job.id }}" style="display: none;">
+                        {% for cand in item.applicants %}
+                        <div class="batch-applicant-item" 
+                             data-app-id="{{ cand.id }}" 
+                             data-app-name="{{ cand.first_name }} {% if cand.middle_initial %}{{ cand.middle_initial }}. {% endif %}{{ cand.last_name }}" 
+                             data-app-email="{{ cand.email }}" 
+                             data-app-score="{{ cand.ai_score }}" 
+                             data-app-ref="{{ cand.application_id }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Table Section: Candidate Rankings & Applications -->
+                    <div class="job-table-outer">
+                        <div class="job-table-header-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <span class="table-section-title">
+                                <i class="fas fa-user-clock"></i> Applications Waiting for Interview
+                            </span>
+                            <button type="button" 
+                                    class="btn btn-sm btn-primary" 
+                                    onclick="openBatchScheduleModal('{{ item.job.id }}', '{{ item.job.title|escapejs }}', '{{ dept.name|escapejs }}', {{ item.total_count }})"
+                                    style="padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45,90,39,0.15);">
+                                <i class="fas fa-calendar-plus"></i>
+                                <span>Batch Schedule All ({{ item.total_count }})</span>
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="candidate-data-table" id="waiting-table-{{ item.job.id }}">
+                                <thead>
+                                    <tr>
+                                        <th class="th-candidate">Candidate</th>
+                                        <th class="th-date">Applied Date</th>
+                                        <th class="th-score" style="width: 110px;">AI Score</th>
+                                        <th class="th-status" style="width: 160px;">Status</th>
+                                        <th class="th-action text-right" style="width: 170px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cand in item.applicants %}
+                                    <tr class="candidate-row waiting-cand-row" data-search-target="{{ cand.first_name|lower }} {{ cand.last_name|lower }} {{ cand.email|lower }} {{ cand.application_id|lower }}">
+                                        <td class="td-candidate">
+                                            <div class="table-applicant-info">
+                                                <div class="table-avatar" style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%); color: #ffffff;">
+                                                    {{ cand.first_name|first|upper }}{{ cand.last_name|first|upper }}
+                                                </div>
+                                                <div class="applicant-meta">
+                                                    <span class="table-candidate-name">
+                                                        <a href="{% url 'candidate_detail' cand.id %}" style="color: inherit; text-decoration: none;">
+                                                            {{ cand.first_name }}
+                                                            {% if cand.middle_initial %}{{ cand.middle_initial }}.{% endif %}
+                                                            {{ cand.last_name }}
+                                                        </a>
+                                                    </span>
+                                                    <span class="table-candidate-sub">
+                                                        {{ cand.email }}{% if cand.phone %} &bull; {{ cand.phone }}{% endif %}
+                                                    </span>
+                                                    <span class="app-id-tag" style="margin-top: 3px; display: inline-block;">
+                                                        <i class="fas fa-hashtag"></i> {{ cand.application_id }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="td-date">
+                                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b;">
+                                                <i class="far fa-calendar-alt text-green" style="margin-right: 4px;"></i>
+                                                {{ cand.created_at|date:"M d, Y" }}
+                                            </div>
+                                            <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+                                                <i class="far fa-clock" style="margin-right: 4px;"></i>
+                                                {{ cand.created_at|time:"g:i A" }}
+                                            </div>
+                                        </td>
+                                        <td class="td-score">
+                                            <span class="ai-score-pill {% if cand.ai_score >= 90 %}score-high{% elif cand.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
+                                                <i class="fas fa-bolt"></i> {{ cand.ai_score }}%
+                                            </span>
+                                        </td>
+                                        <td class="td-status">
+                                            <span class="status-pill status-screening" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700; background: #fef3c7; color: #b45309;">
+                                                <i class="fas fa-hourglass-half"></i> Ready to Schedule
+                                            </span>
+                                        </td>
+                                        <td class="td-action text-right">
+                                            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
+                                                <button type="button" 
+                                                        class="btn-table-review" 
+                                                        onclick="openScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
+                                                        style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
+                                                        title="Schedule candidate interview">
+                                                    <i class="fas fa-calendar-plus"></i>
+                                                    <span>Schedule</span>
+                                                </button>
+                                                <a href="{% url 'candidate_detail' cand.id %}" class="btn-table-review" title="View Full Profile">
+                                                    <i class="fas fa-user"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5">
+                                            <div class="empty-table-state">
+                                                <i class="fas fa-users-slash empty-table-icon"></i>
+                                                <h5>No Candidates</h5>
+                                                <p>No candidates waiting for interview for this position.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="dept-empty-box" style="padding: 24px; text-align: center; background: #ffffff; border-radius: 12px; border: 1px dashed #cbd5e1;">
+                    <p style="margin: 0; color: #64748b; font-size: 13px;">No positions with waiting candidates in this department.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% empty %}
+        <div class="empty-state-box full-grid-empty" style="padding: 48px 24px; text-align: center; background: #ffffff; border-radius: 16px; border: 1.5px dashed #cbd5e1; margin-top: 10px;">
+            <div class="empty-state-icon" style="font-size: 32px; color: #94a3b8; margin-bottom: 12px;">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #0f172a;">No candidates currently waiting for interview</h4>
+            <p style="margin: 0; font-size: 13px; color: #64748b;">
+                Candidates advancing from screening confirmation will appear here organized by department and position for interview scheduling.
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Single Candidate Schedule Modal -->
+<div id="scheduleApplicantModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #2d5a27 0%, #1e3d1a 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #ffffff;">Schedule Candidate Interview</h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #dcfce7;">Set interview time, panel interviewer, and logistics</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeScheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #ffffff; cursor: pointer; padding: 4px;">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{% url 'schedule_candidate_interview' %}" style="padding: 22px 24px;">
+            {% csrf_token %}
+            <input type="hidden" name="applicant_id" id="schedApplicantId" value="">
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;">
+                <strong id="schedApplicantName" style="font-size: 14px; color: #0f172a; display: block;">Candidate Name</strong>
+                <span id="schedJobTitle" style="font-size: 12px; color: #64748b;">Position Title</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Interview Type <span style="color: #ef4444;">*</span>
+                    </label>
+                    <select name="interview_type" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;" required>
+                        <option value="Initial Interview">Initial Interview</option>
+                        <option value="Technical Interview">Technical Interview</option>
+                        <option value="HR Screening">HR Screening</option>
+                        <option value="Final Interview">Final Interview</option>
+                        <option value="Manager Interview">Manager Interview</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Interviewer / Panel Lead
+                    </label>
+                    <select name="interviewer" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px;">
+                        {% for staff in hr_staff %}
+                        <option value="{{ staff.get_full_name|default:staff.username }}">
+                            {{ staff.get_full_name|default:staff.username }}
+                        </option>
+                        {% empty %}
+                        <option value="HR Panel">HR Panel</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Date <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="date" name="date" required min="{{ today|date:'Y-m-d' }}" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                        Time <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="time" name="time" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Meeting Location / Link <span style="color: #ef4444;">*</span>
+                </label>
+                <input type="text" name="location" placeholder="e.g. Google Meet link or HR Conference Room" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13px; box-sizing: border-box;" required>
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 5px;">
+                    Notes / Instructions
+                </label>
+                <textarea name="notes" rows="2" placeholder="Preparation notes, special instructions, or agenda..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 13px; box-sizing: border-box; resize: vertical;"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                <button type="button" onclick="closeScheduleModal()" class="btn btn-secondary" style="padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; padding: 9px 20px; border-radius: 8px; font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Confirm Schedule</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Redesigned Batch Scheduling Popup Modal (2-Column Layout with Dedicated Times) -->
+<div id="batchScheduleModal" class="custom-modal-overlay" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
+    <div class="custom-modal-box" style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 900px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- Modal Header -->
+        <div style="background: linear-gradient(135deg, #2d5a27 0%, #1e3d1a 100%); padding: 18px 24px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16.5px; font-weight: 800; color: #ffffff;">
+                        Batch Schedule: <span id="batchModalJobTitle">Job Title</span>
+                    </h3>
+                    <p style="margin: 2px 0 0; font-size: 12px; color: #dcfce7;">
+                        <span id="batchModalDept">Department</span> &bull; Position-wide Interview Scheduling
+                    </p>
+                </div>
+            </div>
+            <button type="button" onclick="closeBatchScheduleModal()" style="background: transparent; border: none; font-size: 18px; color: #ffffff; cursor: pointer; padding: 4px;">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Modal Form (2 Columns) -->
+        <form method="POST" id="batchScheduleForm" action="" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+            {% csrf_token %}
+
+            <div class="batch-modal-body-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 24px; overflow-y: auto; flex: 1;">
+                <!-- Column 1: Schedule Details & Logistics -->
+                <div class="batch-col-logistics" style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 13px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                        <i class="fas fa-calendar-days text-green"></i> Session Logistics &amp; Start Time
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                Interview Type <span style="color: #ef4444;">*</span>
+                            </label>
+                            <select name="interview_type" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 12.5px;" required>
+                                <option value="Initial Interview">Initial Interview</option>
+                                <option value="Technical Interview">Technical Interview</option>
+                                <option value="HR Screening">HR Screening</option>
+                                <option value="Final Interview">Final Interview</option>
+                                <option value="Manager Interview">Manager Interview</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                Interviewer / Panel
+                            </label>
+                            <select name="interviewer" class="form-control-custom" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 12.5px;">
+                                {% for staff in hr_staff %}
+                                <option value="{{ staff.get_full_name|default:staff.username }}">
+                                    {{ staff.get_full_name|default:staff.username }}
+                                </option>
+                                {% empty %}
+                                <option value="HR Panel">HR Panel</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                Date <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="date" name="date" required min="{{ today|date:'Y-m-d' }}" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 12.5px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                                Start Time <span style="color: #ef4444;">*</span>
+                            </label>
+                            <input type="time" name="time" id="batchDefaultStartTime" oninput="syncBatchStartTimeDisplay(this.value)" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 12.5px; box-sizing: border-box;">
+                        </div>
+                    </div>
+
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; font-size: 11.5px; color: #166534; line-height: 1.4;">
+                        <i class="fas fa-info-circle"></i> <strong>Start Time Fallback:</strong> This start time applies to all selected candidates unless a candidate has their own dedicated time entered on the right.
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                            Meeting Location / Link <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="text" name="location" placeholder="e.g. Google Meet link or Conference Room 3" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 12.5px; box-sizing: border-box;" required>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                            Notes &amp; Instructions
+                        </label>
+                        <textarea name="notes" rows="3" placeholder="Agenda, candidate preparation details, or panel notes..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 12.5px; box-sizing: border-box; resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <!-- Column 2: Candidates & Dedicated Time Slots -->
+                <div class="batch-col-candidates" style="display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                        <div style="font-size: 13px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                            <i class="fas fa-users text-green"></i> Candidates &amp; Dedicated Times
+                        </div>
+                        <label style="font-size: 12px; font-weight: 700; color: #2d5a27; display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" id="batchSelectAllToggle" checked onchange="toggleBatchSelectAll(this)" style="accent-color: #2d5a27;">
+                            <span>Select All</span>
+                        </label>
+                    </div>
+
+                    <div id="batchApplicantsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 390px; overflow-y: auto; padding-right: 4px;">
+                        <!-- Dynamically populated candidate items with dedicated time input -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding: 14px 24px; background: #f8fafc;">
+                <button type="button" onclick="closeBatchScheduleModal()" class="btn btn-secondary" style="padding: 8px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="batchSubmitBtn" style="background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; padding: 8px 22px; border-radius: 8px; font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(45,90,39,0.2);">
+                    <i class="fas fa-calendar-check"></i>
+                    <span id="batchSubmitBtnText">Confirm Batch Schedule</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openScheduleModal(appId, appName, jobTitle, jobId) {
+    document.getElementById('schedApplicantId').value = appId;
+    document.getElementById('schedApplicantName').textContent = appName;
+    document.getElementById('schedJobTitle').textContent = jobTitle;
+    var modal = document.getElementById('scheduleApplicantModal');
+    if (modal) modal.style.display = 'flex';
+}
+function closeScheduleModal() {
+    var modal = document.getElementById('scheduleApplicantModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function syncBatchStartTimeDisplay(timeVal) {
+    var textSpans = document.querySelectorAll('.sync-start-time-text');
+    var displayVal = timeVal ? timeVal : '--:--';
+    textSpans.forEach(function(sp) {
+        sp.textContent = displayVal;
+    });
+}
+
+function openBatchScheduleModal(jobId, jobTitle, deptName, count) {
+    document.getElementById('batchModalJobTitle').textContent = jobTitle;
+    document.getElementById('batchModalDept').textContent = deptName;
+    var form = document.getElementById('batchScheduleForm');
+    if (form) form.action = '/hr/interviews/schedule/' + jobId + '/';
+
+    var listContainer = document.getElementById('batchApplicantsList');
+    listContainer.innerHTML = '';
+
+    var dataContainer = document.getElementById('batch-cands-data-' + jobId);
+    var startTimeInput = document.getElementById('batchDefaultStartTime');
+    var currentStartTime = startTimeInput ? startTimeInput.value : '';
+
+    if (dataContainer) {
+        var items = dataContainer.querySelectorAll('.batch-applicant-item');
+        items.forEach(function(item) {
+            var appId = item.getAttribute('data-app-id');
+            var appName = item.getAttribute('data-app-name');
+            var appEmail = item.getAttribute('data-app-email');
+            var appScore = item.getAttribute('data-app-score');
+            var appRef = item.getAttribute('data-app-ref');
+
+            var card = document.createElement('div');
+            card.className = 'batch-cand-card';
+            card.style.background = '#ffffff';
+            card.style.border = '1px solid #e2e8f0';
+            card.style.borderRadius = '10px';
+            card.style.padding = '10px 12px';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.gap = '8px';
+
+            card.innerHTML = 
+                '<div style="display: flex; justify-content: space-between; align-items: center;">' +
+                    '<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; font-weight: 700; font-size: 13px; color: #0f172a;">' +
+                        '<input type="checkbox" name="applicants" value="' + appId + '" checked onchange="updateBatchCandidateCount()" style="width: 16px; height: 16px; accent-color: #2d5a27; cursor: pointer;">' +
+                        '<span>' + appName + '</span>' +
+                    '</label>' +
+                    '<span class="ai-score-pill score-high" style="font-size: 10.5px; padding: 2px 7px;"><i class="fas fa-bolt"></i> ' + appScore + '%</span>' +
+                '</div>' +
+                '<div style="font-size: 11.5px; color: #64748b; margin-left: 24px;">' +
+                    appEmail + ' &bull; #' + appRef +
+                '</div>' +
+                '<div style="margin-left: 24px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 6px; padding: 6px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">' +
+                    '<label style="font-size: 11.5px; font-weight: 600; color: #475569; margin: 0; white-space: nowrap;">' +
+                        '<i class="fas fa-clock text-green"></i> Dedicated Time:' +
+                    '</label>' +
+                    '<input type="time" name="applicant_time_' + appId + '" class="batch-applicant-time" style="height: 30px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 12px; background: #ffffff;">' +
+                '</div>' +
+                '<div style="margin-left: 24px; font-size: 10.5px; color: #94a3b8;">' +
+                    'Leave blank to use Start Time (<span class="sync-start-time-text">' + (currentStartTime || '--:--') + '</span>)' +
+                '</div>';
+
+            listContainer.appendChild(card);
+        });
+    }
+
+    var toggle = document.getElementById('batchSelectAllToggle');
+    if (toggle) toggle.checked = true;
+    updateBatchCandidateCount();
+
+    var modal = document.getElementById('batchScheduleModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeBatchScheduleModal() {
+    var modal = document.getElementById('batchScheduleModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function toggleBatchSelectAll(masterCheckbox) {
+    var checkboxes = document.querySelectorAll('#batchApplicantsList input[name="applicants"]');
+    checkboxes.forEach(function(cb) {
+        cb.checked = masterCheckbox.checked;
+    });
+    updateBatchCandidateCount();
+}
+
+function updateBatchCandidateCount() {
+    var checked = document.querySelectorAll('#batchApplicantsList input[name="applicants"]:checked');
+    var count = checked.length;
+    var btnText = document.getElementById('batchSubmitBtnText');
+    if (btnText) {
+        btnText.textContent = 'Confirm Batch Schedule (' + count + ' Candidate' + (count === 1 ? '' : 's') + ')';
+    }
+    var submitBtn = document.getElementById('batchSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = (count === 0);
+    }
+}
+</script>

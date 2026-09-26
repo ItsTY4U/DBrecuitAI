@@ -1,53 +1,57 @@
-<div class="content-box today-schedule-box">
-    <div class="box-header">
-        <div class="box-header-title">
-            <i class="fas fa-calendar-day header-icon text-green"></i>
+<div class="content-box today-schedule-box" style="background: #ffffff; border-radius: 14px; border: 1.5px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.02); overflow: hidden;">
+    <div class="box-header" style="padding: 12px 18px; border-bottom: 1.5px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div class="box-header-title" style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 34px; height: 34px; border-radius: 8px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 15px;">
+                <i class="fas fa-calendar-day"></i>
+            </div>
             <div>
-                <h3>Today's Interview Schedule</h3>
-                <p class="box-subtitle">Sessions scheduled for today</p>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">Today's Interview Schedule</h3>
+                <p class="box-subtitle" style="margin: 1px 0 0; font-size: 12px; color: #64748b;">Positions and departments with interviews scheduled for today</p>
             </div>
         </div>
-        <span class="dept-count-badge">
-            {{ todays_schedule|length }} Session{{ todays_schedule|length|pluralize }}
+        <span class="dept-count-badge" style="font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 16px; background: #e0f2fe; color: #0369a1;">
+            {{ today_dept_positions|length }} Active Position{{ today_dept_positions|length|pluralize }}
         </span>
     </div>
 
-    <div class="today-interview-list">
-        {% for interview in todays_schedule %}
-            {% with job=interview.primary_job %}
-            <div class="today-interview-card">
-                <div class="today-interview-time">
-                    <span class="time-main"><i class="fas fa-clock"></i> {{ interview.time|time:"g:i A" }}</span>
-                    <span class="interview-type-tag">{{ interview.interview_type }}</span>
+    <div class="today-interview-list" style="padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+        {% for item in today_dept_positions %}
+        <div class="today-dept-pos-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; transition: all 0.2s ease;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #ffffff; border: 1px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #2d5a27; font-size: 14px;">
+                    <i class="fas fa-building"></i>
                 </div>
-
-                <div class="today-interview-info">
-                    <h4>{{ job.title|default:"Job Interview" }}</h4>
-                    <p class="dept-tag-text"><i class="fas fa-building"></i> {{ job.department }}</p>
-                    <span class="candidate-count-chip">
-                        <i class="fas fa-users"></i>
-                        {{ interview.applicants.all|length }} Candidate{{ interview.applicants.all|length|pluralize }}
+                <div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+                        <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b;">
+                            {{ item.department }} Department
+                        </span>
+                        <span style="display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: #94a3b8;"></span>
+                        <span style="font-size: 11px; color: #2d5a27; font-weight: 700;">Today</span>
+                    </div>
+                    <h4 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">{{ item.job.title }}</h4>
+                    <span style="font-size: 12px; color: #475569; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+                        <i class="fas fa-users text-green"></i> <strong>{{ item.count }}</strong> Candidate{{ item.count|pluralize }} scheduled today
                     </span>
-                </div>
-
-                <div class="today-interview-status">
-                    <span class="status-pill status-{{ interview.status|lower }}">
-                        {{ interview.status }}
-                    </span>
-                    <a href="{% url 'interview_detail' interview.pk %}" class="btn-job-edit" style="padding: 6px 14px; font-size: 11.5px;">
-                        Manage
-                    </a>
                 </div>
             </div>
-            {% endwith %}
+
+            <div>
+                <button type="button" class="btn btn-primary" onclick="goToEvaluation('{{ item.department|slugify }}', '{{ item.job.id }}')" style="background: #2d5a27; color: #ffffff; border: 1.5px solid transparent; padding: 7px 15px; border-radius: 7px; font-size: 12.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(45,90,39,0.15);">
+                    <i class="fas fa-clipboard-user"></i>
+                    <span>Go to Evaluation</span>
+                    <i class="fas fa-arrow-right" style="font-size: 10px;"></i>
+                </button>
+            </div>
+        </div>
         {% empty %}
-            <div class="empty-state-box">
-                <div class="empty-state-icon">
-                    <i class="fas fa-mug-hot"></i>
-                </div>
-                <h4>No interviews scheduled for today</h4>
-                <p>Enjoy your day! Check upcoming interviews on the right panel.</p>
+        <div class="empty-state-box" style="padding: 24px 16px; text-align: center; background: #fafafa; border-radius: 10px; border: 1px dashed #cbd5e1;">
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 18px; margin-bottom: 8px;">
+                <i class="fas fa-calendar-check"></i>
             </div>
+            <h4 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: #1e293b;">No interviews scheduled for today</h4>
+            <p style="margin: 0; font-size: 12px; color: #64748b;">All scheduled sessions for today are clear. Check Upcoming Interviews or schedule waiting applicants.</p>
+        </div>
         {% endfor %}
     </div>
 </div>

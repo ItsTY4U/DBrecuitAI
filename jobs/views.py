@@ -276,6 +276,19 @@ def apply_job(request, pk):
                 "error": "Duplicate submission detected: You have already applied for this job."
             })
 
+        # Trigger HR notification for new application submission
+        try:
+            from hr.utils import create_hr_notification
+            from django.urls import reverse
+            create_hr_notification(
+                title=f"New Application: {application.first_name} {application.last_name}",
+                message=f"Applied for {job.title} in {job.department or 'General'}",
+                notification_type="NEW_APPLICATION",
+                link=reverse("candidate_detail", kwargs={"pk": application.pk}),
+            )
+        except Exception:
+            pass
+
         # Run AI screening and resume text extraction in the background
         # This keeps the submission instant (<100ms) and completely non-blocking for applicants
         thread = threading.Thread(

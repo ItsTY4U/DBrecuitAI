@@ -31,7 +31,7 @@ document.addEventListener("click", function (e) {
         if (modal) {
             modal.classList.add('active');
             const input = modal.querySelector('#new-dept-name');
-            if (input) setTimeout(() => input.focus(), 100);
+            if (input) input.focus();
         }
         return;
     }
@@ -324,9 +324,7 @@ function toggleInterviewComment(button) {
         );
 
         if (textarea) {
-            setTimeout(function () {
-                textarea.focus();
-            }, 100);
+            textarea.focus();
         }
     }
 }
@@ -623,8 +621,6 @@ function updateCriteriaTotal(
             </span>
         `;
 
-        submitButton.disabled = false;
-
     } else {
 
         totalDisplay.classList.remove("is-valid");
@@ -639,8 +635,6 @@ function updateCriteriaTotal(
                 Criteria weights must total 100%.
             </span>
         `;
-
-        submitButton.disabled = true;
     }
 }
 
@@ -716,8 +710,6 @@ function updateCriteriaModal(modal) {
             </span>
         `;
 
-        submitButton.disabled = false;
-
     } else {
 
         totalElement.classList.remove("is-valid");
@@ -732,8 +724,6 @@ function updateCriteriaModal(modal) {
                 Criteria weights must total 100%.
             </span>
         `;
-
-        submitButton.disabled = true;
     }
 }
 

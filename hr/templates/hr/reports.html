@@ -1,0 +1,316 @@
+{% extends "home_admin.html" %}
+{% load static %}
+
+{% block admin_body %}
+<main class="main-dashboard main-content reports-page-main">
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">
+                    <i class="fas fa-chart-line text-green" style="margin-right: 8px;"></i> Candidate Reports &amp; HR Compliance Hub
+                </h1>
+                <p class="dashboard-subtitle">
+                    Centralized registry for HR applicant management audit logs, cancelled/rejected records, evaluated candidates, and final hiring decisions.
+                </p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
+
+        <!-- Global Top Stat Cards Grid (Inside Hero Section) -->
+        <div class="stats-grid reports-stat-cards-top" id="reports-stat-cards-top">
+            <!-- Card 1: Evaluated Candidates Pending Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('evaluations')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="stat-badge">Pending Final Review</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ pending_final_decisions_count }}</h3>
+                    <span class="stat-label">Evaluated Candidates Awaiting Decision</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Candidates with Final Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('final_decision')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <span class="stat-badge">Decisions Concluded</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_final_decisions_count }}</h3>
+                    <span class="stat-label">
+                        <strong>{{ total_hired_final }}</strong> Hired &bull; <strong>{{ total_not_hired_final }}</strong> Not Hired
+                    </span>
+                </div>
+            </div>
+
+            <!-- Card 3: Cancelled / Disqualified Applications -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('cancelled')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-orange">
+                        <i class="fas fa-user-xmark"></i>
+                    </div>
+                    <span class="stat-badge">Disqualified</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_cancelled }}</h3>
+                    <span class="stat-label">Cancelled / Rejected ({{ rejection_rate }}%)</span>
+                </div>
+            </div>
+
+            <!-- Card 4: HR Applicant Management Audit Logs -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('audit')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </div>
+                    <span class="stat-badge">HR Activity</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_audit_logs }}</h3>
+                    <span class="stat-label">HR Management Audit Events ({{ audit_today_count }} Today)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sub-Navigation Tabs Bar (Placed Directly BELOW Stat Cards) -->
+    <div class="reports-subnav-container reports-subnav-card" id="reports-subnav-card" style="margin: 0 0 24px 0;">
+        <div class="reports-subnav-tabs" style="display: flex; gap: 12px; padding-bottom: 0; flex-wrap: wrap;">
+            <!-- Tab 1: Audit Logs -->
+            <button type="button" 
+                    id="tab-btn-audit" 
+                    class="reports-subnav-tab {% if active_tab == 'audit' %}active{% endif %}" 
+                    onclick="switchReportsTab('audit')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'audit' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'audit' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'audit' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'audit' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Audit Logs</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'audit' %}rgba(255,255,255,0.25){% else %}#e0e7ff{% endif %}; color: {% if active_tab == 'audit' %}#ffffff{% else %}#4338ca{% endif %};">
+                    {{ total_audit_logs }}
+                </span>
+            </button>
+
+            <!-- Tab 2: Cancelled (Rejected Applications) -->
+            <button type="button" 
+                    id="tab-btn-cancelled" 
+                    class="reports-subnav-tab {% if active_tab == 'cancelled' %}active{% endif %}" 
+                    onclick="switchReportsTab('cancelled')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'cancelled' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'cancelled' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'cancelled' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'cancelled' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-user-xmark"></i>
+                <span>Cancelled (Rejected Applications)</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'cancelled' %}rgba(255,255,255,0.25){% else %}#fee2e2{% endif %}; color: {% if active_tab == 'cancelled' %}#ffffff{% else %}#b91c1c{% endif %};">
+                    {{ total_cancelled }}
+                </span>
+            </button>
+
+            <!-- Tab 3: Evaluated Candidates -->
+            <button type="button" 
+                    id="tab-btn-evaluations" 
+                    class="reports-subnav-tab {% if active_tab == 'evaluations' %}active{% endif %}" 
+                    onclick="switchReportsTab('evaluations')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'evaluations' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'evaluations' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'evaluations' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'evaluations' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Evaluated Candidates</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'evaluations' %}rgba(255,255,255,0.25){% else %}#dcfce7{% endif %}; color: {% if active_tab == 'evaluations' %}#ffffff{% else %}#15803d{% endif %};">
+                    {{ pending_final_decisions_count }}
+                </span>
+            </button>
+
+            <!-- Tab 4: Candidates with Final Decision -->
+            <button type="button" 
+                    id="tab-btn-final_decision" 
+                    class="reports-subnav-tab {% if active_tab == 'final_decision' %}active{% endif %}" 
+                    onclick="switchReportsTab('final_decision')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'final_decision' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'final_decision' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'final_decision' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'final_decision' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-gavel"></i>
+                <span>Candidates with Final Decision</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'final_decision' %}rgba(255,255,255,0.25){% else %}#fef3c7{% endif %}; color: {% if active_tab == 'final_decision' %}#ffffff{% else %}#b45309{% endif %};">
+                    {{ total_final_decisions_count }}
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab 1 Pane: Audit Logs for HR (HR Actions Only) -->
+    <div id="tab-pane-audit" class="reports-tab-pane" style="display: {% if active_tab == 'audit' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_audit_logs.html" %}
+    </div>
+
+    <!-- Tab 2 Pane: Cancelled (Rejected Applications) -->
+    <div id="tab-pane-cancelled" class="reports-tab-pane" style="display: {% if active_tab == 'cancelled' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_cancelled.html" %}
+    </div>
+
+    <!-- Tab 3 Pane: Evaluated Candidates (Pending Final Decision) -->
+    <div id="tab-pane-evaluations" class="reports-tab-pane" style="display: {% if active_tab == 'evaluations' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_evaluations.html" %}
+    </div>
+
+    <!-- Tab 4 Pane: Candidates with Final Decision -->
+    <div id="tab-pane-final_decision" class="reports-tab-pane" style="display: {% if active_tab == 'final_decision' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_final_decision.html" %}
+    </div>
+
+    <!-- Dynamic Container for Final Review Profile Modal -->
+    <div id="final-review-modal-container"></div>
+</main>
+
+<script>
+function switchReportsTab(tabKey) {
+    var tabs = ['audit', 'cancelled', 'evaluations', 'final_decision'];
+    tabs.forEach(function(t) {
+        var pane = document.getElementById('tab-pane-' + t);
+        var btn = document.getElementById('tab-btn-' + t);
+        if (pane) {
+            pane.style.display = (t === tabKey) ? 'block' : 'none';
+        }
+        if (btn) {
+            var badge = btn.querySelector('.subnav-badge');
+            if (t === tabKey) {
+                btn.classList.add('active');
+                btn.style.background = '#2d5a27';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#2d5a27';
+                btn.style.boxShadow = '0 4px 12px rgba(45,90,39,0.2)';
+                if (badge) {
+                    badge.style.background = 'rgba(255,255,255,0.25)';
+                    badge.style.color = '#ffffff';
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+                if (badge) {
+                    if (t === 'audit') {
+                        badge.style.background = '#e0e7ff';
+                        badge.style.color = '#4338ca';
+                    } else if (t === 'cancelled') {
+                        badge.style.background = '#fee2e2';
+                        badge.style.color = '#b91c1c';
+                    } else if (t === 'evaluations') {
+                        badge.style.background = '#dcfce7';
+                        badge.style.color = '#15803d';
+                    } else {
+                        badge.style.background = '#fef3c7';
+                        badge.style.color = '#b45309';
+                    }
+                }
+            }
+            btn.style.borderRadius = '12px';
+        }
+    });
+
+    try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', tabKey);
+        window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+        console.warn("Could not update history state", e);
+    }
+}
+
+// ==========================================
+// FINAL REVIEW MODAL POPUP SCRIPTS
+// ==========================================
+function openFinalReviewModal(appId) {
+    var modalContainer = document.getElementById('final-review-modal-container');
+    if (!modalContainer) return;
+
+    modalContainer.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;display:flex;align-items:center;gap:12px;"><i class="fas fa-spinner fa-spin text-green" style="font-size:20px;"></i> Loading applicant profile...</div></div>';
+
+    fetch('/hr/candidates/applicant/' + appId + '/final-review-modal/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('Could not load final review details.');
+        return res.text();
+    })
+    .then(function(html) {
+        modalContainer.innerHTML = html;
+        var backdrop = document.getElementById('finalReviewModalBackdrop');
+        if (backdrop) {
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    })
+    .catch(function(err) {
+        modalContainer.innerHTML = '';
+        alert('Error: ' + err.message);
+    });
+}
+
+function closeFinalReviewModal() {
+    var backdrop = document.getElementById('finalReviewModalBackdrop');
+    if (backdrop) {
+        backdrop.classList.remove('active');
+    }
+    setTimeout(function() {
+        var modalContainer = document.getElementById('final-review-modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+        document.body.style.overflow = '';
+    }, 200);
+}
+
+function handleDecisionSelection(decisionVal) {
+    var labelHire = document.getElementById('label-decision-hire');
+    var labelNotHire = document.getElementById('label-decision-not-hire');
+    var notesReq = document.getElementById('notes_required_tag');
+    var notesHint = document.getElementById('final_notes_hint');
+    var notesArea = document.getElementById('final_decision_notes_input');
+    var errBox = document.getElementById('notes_validation_error');
+    if (errBox) errBox.style.display = 'none';
+
+    if (decisionVal === 'Hired') {
+        if (labelHire) labelHire.classList.add('selected');
+        if (labelNotHire) labelNotHire.classList.remove('selected');
+        if (notesReq) notesReq.style.display = 'none';
+        if (notesHint) notesHint.innerHTML = 'Enter optional hiring, compensation, or onboarding notes.';
+        if (notesArea) notesArea.placeholder = 'e.g. Recommended for immediate offer. Prepared starting package.';
+    } else {
+        if (labelHire) labelHire.classList.remove('selected');
+        if (labelNotHire) labelNotHire.classList.add('selected');
+        if (notesReq) notesReq.style.display = 'inline';
+        if (notesHint) notesHint.innerHTML = '<strong>Required:</strong> Please explain why this candidate was not selected for hire.';
+        if (notesArea) notesArea.placeholder = 'e.g. Did not meet minimum technical rubric benchmark / Better fit candidates identified.';
+    }
+}
+
+function validateFinalDecisionForm(event) {
+    var form = document.getElementById('finalDecisionForm');
+    if (!form) return true;
+
+    var selectedDecision = form.querySelector('input[name="decision"]:checked');
+    if (!selectedDecision) {
+        alert('Please select a final determination: Hire Candidate or Not Hired.');
+        event.preventDefault();
+        return false;
+    }
+
+    if (selectedDecision.value === 'Not Hired') {
+        var notesArea = document.getElementById('final_decision_notes_input');
+        var errBox = document.getElementById('notes_validation_error');
+        if (!notesArea || !notesArea.value.trim()) {
+            if (errBox) errBox.style.display = 'block';
+            if (notesArea) {
+                notesArea.focus();
+                notesArea.style.borderColor = '#dc2626';
+            }
+            event.preventDefault();
+            return false;
+        }
+    }
+    return true;
+}
+</script>
+{% endblock admin_body %}
