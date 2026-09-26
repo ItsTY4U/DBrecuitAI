@@ -185,75 +185,8 @@
 
     <!-- Bottom Data & Performance Row -->
     <section class="dashboard-bottom-row">
-        <!-- Left Column: Recent Applicants & Candidate Pipeline -->
+        <!-- Left Column: Candidate Pipeline -->
         <div class="dash-column">
-            <!-- Recent Applicants -->
-            <div class="content-box">
-                <div class="box-header">
-                    <div class="box-header-title">
-                        <i class="fas fa-user-clock header-icon"></i>
-                        <div>
-                            <h3>Recent Applicants</h3>
-                            <p class="box-subtitle">Latest candidate submissions</p>
-                        </div>
-                    </div>
-                    <a href="{% url 'candidates' %}" class="box-action-link">
-                        See All <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="applicant-list">
-                        <thead>
-                            <tr>
-                                <th>Candidate</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Applied</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for application in recent_applications %}
-                            <tr class="applicant-row"
-                                onclick="window.location.href='{% url 'candidate_detail' application.id %}'">
-                                <td class="a-info">
-                                    <div class="avatar">{{ application.first_name|first|upper }}{{ application.last_name|first|upper }}</div>
-                                    <div class="a-details">
-                                        <h4>{{ application.first_name }} {{ application.last_name }}</h4>
-                                        <p>{{ application.email }}</p>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="role-badge">{{ application.job.title }}</span>
-                                </td>
-                                <td>
-                                    <span class="status-pill status-{{ application.status|lower }}">{{ application.status }}</span>
-                                </td>
-                                <td class="a-time">
-                                    {{ application.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</td>
-                                <td class="a-action">
-                                    <i class="fas fa-chevron-right action-arrow"></i>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5">
-                                    <div class="empty-state-box">
-                                        <div class="empty-state-icon">
-                                            <i class="fas fa-inbox"></i>
-                                        </div>
-                                        <h4>No applicants yet</h4>
-                                        <p>When candidates apply to your posted jobs, they will appear right here.</p>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
             <!-- Candidate Pipeline Progress Breakdown -->
             <div class="content-box">
                 <div class="box-header">

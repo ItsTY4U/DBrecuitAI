@@ -6642,14 +6642,90 @@ table .btn-review-applicant {
     margin: 0;
 }
 
+.empty-table-minimized {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin: 6px 0;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px dashed rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    color: #64748b;
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.empty-table-minimized i {
+    color: #16a34a;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
 /* =========================================================
    CANDIDATES MANAGEMENT - RESTRUCTURED HIERARCHY
    Department > Job > Top 3 Cards + Top 4-8 Table + HTMX
    ========================================================= */
 
+/* Sub-Navigation Tabs Bar */
+.candidates-subnav-container {
+    margin: 24px 0 20px 0;
+}
+
+.candidates-subnav-tabs {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.candidates-subnav-tab {
+    padding: 11px 22px;
+    font-size: 13.5px;
+    font-weight: 700;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.candidates-subnav-tab:hover {
+    border-color: #cbd5e1;
+    color: #1e293b;
+    transform: translateY(-1px);
+}
+
+.candidates-subnav-tab.active {
+    background: #2d5a27 !important;
+    color: #ffffff !important;
+    border-color: #2d5a27 !important;
+    box-shadow: 0 4px 12px rgba(45, 90, 39, 0.2) !important;
+}
+
+.candidates-tab-pane {
+    animation: fadeInTab 0.2s ease;
+}
+
+@keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Recent Applicants Section */
+.recent-applicants-section {
+    margin-bottom: 28px;
+}
+
 /* Top Toolbar: Department Filter */
 .candidates-top-toolbar {
-    margin: 24px 0 28px 0;
+    margin: 20px 0 24px 0;
     display: flex;
     align-items: center;
     justify-content: flex-end;

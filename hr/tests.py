@@ -2543,6 +2543,80 @@ class HRDashboardModernizationTests(TestCase):
         self.assertContains(resp_eval, "Total Evaluated")
         self.assertContains(resp_eval, "Avg Rubric Score")
 
+    def test_dashboard_does_not_contain_recent_applicants(self):
+        """Recent Applicants has been moved out of Dashboard; verify dashboard bottom row."""
+        resp = self.client.get(reverse("dashboard"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, "<h3>Recent Applicants</h3>")
+        self.assertContains(resp, "Candidate Pipeline")
+        self.assertContains(resp, "AI Talent Quality Distribution")
+
+    def test_candidates_subnav_tabs_rendered(self):
+        """Candidates page renders sub-navigation tabs for All Applicants and Recent Applicants."""
+        resp = self.client.get(reverse("candidates"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "candidates-subnav-container")
+        self.assertContains(resp, "All Applicants")
+        self.assertContains(resp, "Recent Applicants")
+        self.assertContains(resp, 'id="tab-pane-all"')
+        self.assertContains(resp, 'id="tab-pane-recent"')
+
+    def test_candidates_recent_applicants_tab_content(self):
+        """Recent Applicants tab renders latest submissions with candidate details and links."""
+        resp = self.client.get(f"{reverse('candidates')}?tab=recent")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["active_tab"], "recent")
+        self.assertIn("recent_applications", resp.context)
+        self.assertGreater(len(resp.context["recent_applications"]), 0)
+
+        # Check that latest applicant is displayed with role, department and review link
+        latest_app = resp.context["recent_applications"][0]
+        self.assertContains(resp, latest_app.first_name)
+        self.assertContains(resp, latest_app.job.title)
+        self.assertContains(resp, reverse("candidate_detail", args=[latest_app.id]))
+
+    def test_minimized_no_additional_candidates_beyond_top_3(self):
+        """When a job has 3 or fewer applicants, candidate table displays minimized empty state."""
+        # Create a job with exactly 2 applicants
+        small_job = Job.objects.create(
+            title="Junior Graphic Designer",
+            department="Marketing",
+            job_type="FULL-TIME",
+            status="Active"
+        )
+        for i in range(2):
+            Application.objects.create(
+                job=small_job,
+                first_name=f"Designer{i+1}",
+                last_name="Test",
+                email=f"designer{i+1}@test.com",
+                phone="09112223344",
+                ai_score=85 - i,
+                status="Screening",
+            )
+
+        url = reverse("candidate_job_table", args=[small_job.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        # Verify the minimized empty state is rendered
+        self.assertContains(resp, "empty-table-minimized")
+        self.assertContains(resp, "All 2 applicants are displayed in the top candidate cards above")
+        self.assertContains(resp, "No additional candidates beyond Top 3")
+        # Verify the bulky empty-table-state is NOT rendered for non-search
+        self.assertNotContains(resp, "empty-table-state")
+
+    def test_search_empty_state_preserved(self):
+        """When searching for a candidate with no match, detailed search empty state is rendered."""
+        url = reverse("candidate_job_table", args=[self.job.id])
+        resp = self.client.get(f"{url}?search=NonExistentApplicantName123")
+        self.assertEqual(resp.status_code, 200)
+
+        self.assertContains(resp, "empty-table-state")
+        self.assertContains(resp, 'No candidates found matching "NonExistentApplicantName123"')
+        self.assertNotContains(resp, "empty-table-minimized")
+
+
 
 
 

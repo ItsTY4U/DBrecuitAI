@@ -200,12 +200,6 @@ def dashboard(request):
             evaluation_percent = 0
             hired_percent = 0
 
-        recent_applications = list(
-            Application.objects.select_related("job")
-            .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
-            .order_by("-created_at")[:6]
-        )
-
         # 1. 6-Month Recruitment Velocity (Application Inflow & Hires)
         now = timezone.now()
         months_labels = []
@@ -284,7 +278,6 @@ def dashboard(request):
             "interview": interview,
             "evaluation": evaluation,
             "active_jobs": active_jobs,
-            "recent_applications": recent_applications,
             "pending_count": pending_count,
             "interview_count": interview_count,
             "screening_percent": screening_percent,
@@ -724,6 +717,20 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
     selected_job = request.GET.get("job", "").strip()
+    active_tab = request.GET.get("tab", "all").strip().lower()
+    if active_tab not in ["all", "recent"]:
+        active_tab = "all"
+
+    # Recent candidate submissions across all jobs
+    recent_applications = list(
+        Application.objects.select_related("job")
+        .only(
+            "id", "application_id", "first_name", "middle_initial", "last_name",
+            "email", "phone", "ai_score", "status", "created_at",
+            "job__id", "job__title", "job__department"
+        )
+        .order_by("-created_at", "-id")[:50]
+    )
 
     # Single aggregate query for all candidate status counts
     counts = Application.objects.aggregate(
@@ -853,6 +860,9 @@ def candidates(request):
         "interview_count": counts["interview"],
         "evaluation_count": counts["evaluation"],
         "hired_count": counts["hired"],
+        "active_tab": active_tab,
+        "recent_applications": recent_applications,
+        "recent_applications_count": len(recent_applications),
     })
 
 @never_cache

@@ -1,0 +1,127 @@
+{% load static %}
+<section class="dept-section-block recent-applicants-section">
+    <!-- Header -->
+    <div class="dept-section-header">
+        <div class="dept-title-left">
+            <div class="dept-icon-badge" style="background: rgba(45, 90, 39, 0.1); color: var(--primary);">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <div>
+                <h2 class="dept-title-text">Recent Applicants</h2>
+                <span class="dept-sub-info">
+                    Latest candidate submissions across all active job postings &bull;
+                    <strong>{{ recent_applications_count|default:"0" }}</strong> Total Recent Application{{ recent_applications_count|pluralize }}
+                </span>
+            </div>
+        </div>
+
+        <div class="dept-job-filter-box">
+            <span class="recent-live-badge" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
+                <span class="pulse-dot-green" style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
+                <span>Reverse Chronological</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Table -->
+    {% if recent_applications %}
+    <div class="table-responsive" style="margin-top: 14px;">
+        <table class="candidate-data-table">
+            <thead>
+                <tr>
+                    <th style="width: 28%;">Candidate</th>
+                    <th style="width: 22%;">Position &amp; Department</th>
+                    <th style="width: 16%;">Applied Date</th>
+                    <th style="width: 12%;">AI Score</th>
+                    <th style="width: 12%;">Status</th>
+                    <th style="width: 10%; text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in recent_applications %}
+                <tr class="candidate-row">
+                    <td class="td-candidate">
+                        <div class="candidate-identity">
+                            <div class="mini-avatar">
+                                {{ app.first_name|first|upper }}{{ app.last_name|first|upper }}
+                            </div>
+                            <div class="candidate-meta">
+                                <a href="{% url 'candidate_detail' app.id %}" class="candidate-name-link">
+                                    {{ app.first_name }} {% if app.middle_initial %}{{ app.middle_initial }}. {% endif %}{{ app.last_name }}
+                                </a>
+                                <span class="candidate-subtext">
+                                    <code>{{ app.application_id }}</code>
+                                    {% if app.email %}&bull; {{ app.email }}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 3px;">
+                            <strong style="color: #1e293b; font-size: 13px;">{{ app.job.title }}</strong>
+                            <span style="font-size: 11.5px; color: #64748b; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-building" style="font-size: 10.5px; color: #94a3b8;"></i>
+                                {{ app.job.department }}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span style="font-size: 12.5px; color: #334155; font-weight: 600;">
+                                <i class="far fa-calendar" style="color: #94a3b8; margin-right: 4px;"></i>
+                                {{ app.created_at|date:"M d, Y" }}
+                            </span>
+                            <span style="font-size: 11px; color: #94a3b8;">
+                                {{ app.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if app.ai_score is not None %}
+                            {% if app.ai_score >= 85 %}
+                            <span class="ai-score-pill score-high">
+                                <i class="fas fa-star"></i> {{ app.ai_score }}%
+                            </span>
+                            {% elif app.ai_score >= 70 %}
+                            <span class="ai-score-pill score-mid">
+                                <i class="fas fa-check"></i> {{ app.ai_score }}%
+                            </span>
+                            {% else %}
+                            <span class="ai-score-pill score-low">
+                                <i class="fas fa-info-circle"></i> {{ app.ai_score }}%
+                            </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="ai-score-pill" style="background: #f1f5f9; color: #64748b;">
+                                N/A
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-pill status-{{ app.status|lower }}">
+                            {{ app.status }}
+                        </span>
+                    </td>
+                    <td class="td-action text-right">
+                        <a href="{% url 'candidate_detail' app.id %}" class="btn-table-review" title="Review candidate profile">
+                            <span>Review</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-table-state" style="padding: 48px 16px; text-align: center;">
+        <div class="empty-table-icon" style="font-size: 36px; color: #cbd5e1; margin-bottom: 12px;">
+            <i class="fas fa-user-clock"></i>
+        </div>
+        <h4 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0 0 6px 0;">No Recent Applicants Found</h4>
+        <p style="font-size: 13px; color: #64748b; margin: 0 auto; max-width: 450px;">
+            When candidates apply to active jobs, their submissions will appear here in real time.
+        </p>
+    </div>
+    {% endif %}
+</section>
