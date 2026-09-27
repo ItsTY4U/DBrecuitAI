@@ -1145,7 +1145,20 @@
             </div>
             {% endif %}
 
-            {% if not candidate_evaluation or candidate_evaluation.status != "Completed" %}
+            {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
+            <!-- Candidate Evaluation In Progress by Another Evaluator Banner -->
+            <div id="eval-locked-card" class="eval-locked-box" style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #fef3c7; color: #b45309; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #92400e;">
+                    Candidate Evaluation In Progress (Locked)
+                </h4>
+                <p style="margin: 0 auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
+                    This candidate is currently being evaluated by <strong>{{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}</strong>. The live scoring and evaluation form is locked to prevent conflicting submissions.
+                </p>
+            </div>
+            {% elif not candidate_evaluation or candidate_evaluation.status != "Completed" %}
             <!-- Candidate Evaluation Not Yet Initiated Placeholder Banner -->
             <div id="eval-pending-card" class="eval-pending-box" style="{% if show_eval_form %}display: none;{% else %}display: block;{% endif %} background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 32px 24px; text-align: center; margin-bottom: 20px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(45, 90, 39, 0.08); color: #2d5a27; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
@@ -1534,20 +1547,31 @@ var recordSeconds = 0;
 var recordedAudioBlob = null;
 
 function openEvaluationForm() {
-    var pendingCard = document.getElementById("eval-pending-card");
-    if (pendingCard) pendingCard.style.display = "none";
-    var formCard = document.getElementById("eval-form-card");
-    if (formCard) formCard.style.display = "block";
-    var viewCard = document.getElementById("eval-view-card");
-    if (viewCard) viewCard.style.display = "none";
-    var section = document.getElementById("candidate-evaluation-section");
-    if (section) section.scrollIntoView({ behavior: "smooth" });
     fetch("{% url 'start_candidate_evaluation' application.pk %}", {
         method: "POST",
         headers: {
             "X-CSRFToken": "{{ csrf_token }}",
             "X-Requested-With": "XMLHttpRequest",
         }
+    }).then(function(res) {
+        return res.json();
+    }).then(function(data) {
+        if (data && data.locked) {
+            if (window.HRConcurrency) {
+                window.HRConcurrency.showConcurrencyAlert(data.message || "Candidate is currently being evaluated by another HR user.");
+            } else {
+                alert(data.message || "Candidate is currently being evaluated by another HR user.");
+            }
+            return;
+        }
+        var pendingCard = document.getElementById("eval-pending-card");
+        if (pendingCard) pendingCard.style.display = "none";
+        var formCard = document.getElementById("eval-form-card");
+        if (formCard) formCard.style.display = "block";
+        var viewCard = document.getElementById("eval-view-card");
+        if (viewCard) viewCard.style.display = "none";
+        var section = document.getElementById("candidate-evaluation-section");
+        if (section) section.scrollIntoView({ behavior: "smooth" });
     }).catch(function(e) {});
 }
 
@@ -1578,15 +1602,26 @@ function toggleEvaluationForm() {
     var toggleText = document.getElementById("toggle-eval-text");
     if (!formCard) return;
     if (formCard.style.display === "none") {
-        formCard.style.display = "block";
-        if (viewCard) viewCard.style.display = "none";
-        if (toggleText) toggleText.textContent = "Cancel Edit";
         fetch("{% url 'start_candidate_evaluation' application.pk %}", {
             method: "POST",
             headers: {
                 "X-CSRFToken": "{{ csrf_token }}",
                 "X-Requested-With": "XMLHttpRequest",
             }
+        }).then(function(res) {
+            return res.json();
+        }).then(function(data) {
+            if (data && data.locked) {
+                if (window.HRConcurrency) {
+                    window.HRConcurrency.showConcurrencyAlert(data.message || "Candidate is currently being evaluated by another HR user.");
+                } else {
+                    alert(data.message || "Candidate is currently being evaluated by another HR user.");
+                }
+                return;
+            }
+            formCard.style.display = "block";
+            if (viewCard) viewCard.style.display = "none";
+            if (toggleText) toggleText.textContent = "Cancel Edit";
         }).catch(function(e) {});
     } else {
         cancelEvaluationForm();
@@ -1720,7 +1755,24 @@ function closeConfirmScheduleModal() {
 // ==========================================
 // FINAL REVIEW MODAL POPUP SCRIPTS
 // ==========================================
+var _currentFinalReviewAppId = null;
+
 function openFinalReviewModal(appId) {
+    if (window.HRConcurrency) {
+        window.HRConcurrency.acquireLock(appId, 'FINAL_DECISION').then(function(res) {
+            if (!res.success) {
+                window.HRConcurrency.showConcurrencyAlert('Candidate final decision is currently being reviewed by <strong>' + (res.locked_by || 'another HR user') + '</strong>.');
+                return;
+            }
+            _doOpenFinalReviewModal(appId);
+        });
+    } else {
+        _doOpenFinalReviewModal(appId);
+    }
+}
+
+function _doOpenFinalReviewModal(appId) {
+    _currentFinalReviewAppId = appId;
     var modalContainer = document.getElementById('final-review-modal-container');
     if (!modalContainer) return;
 
@@ -1745,6 +1797,10 @@ function openFinalReviewModal(appId) {
     })
     .catch(function(err) {
         modalContainer.innerHTML = '';
+        if (_currentFinalReviewAppId && window.HRConcurrency) {
+            window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+            _currentFinalReviewAppId = null;
+        }
         alert('Error: ' + err.message);
     });
 }
@@ -1753,6 +1809,10 @@ function closeFinalReviewModal() {
     var backdrop = document.getElementById('finalReviewModalBackdrop');
     if (backdrop) {
         backdrop.classList.remove('active');
+    }
+    if (_currentFinalReviewAppId && window.HRConcurrency) {
+        window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+        _currentFinalReviewAppId = null;
     }
     setTimeout(function() {
         var modalContainer = document.getElementById('final-review-modal-container');

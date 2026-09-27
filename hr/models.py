@@ -273,6 +273,11 @@ class HRNotification(models.Model):
     message = models.TextField()
     link = models.CharField(max_length=255, blank=True)
     is_read = models.BooleanField(default=False, db_index=True)
+    read_by = models.ManyToManyField(
+        User,
+        related_name="read_hr_notifications",
+        blank=True
+    )
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
@@ -284,4 +289,32 @@ class HRNotification(models.Model):
 
     def __str__(self):
         return f"[{self.notification_type}] {self.title} ({'Read' if self.is_read else 'Unread'})"
+
+
+class HRActionLock(models.Model):
+    ACTION_CHOICES = [
+        ("SCHEDULE", "Interview Scheduling"),
+        ("RESCHEDULE", "Interview Rescheduling"),
+        ("FINAL_DECISION", "Final Hiring Decision"),
+    ]
+
+    target_model = models.CharField(max_length=50, default="Application", db_index=True)
+    target_id = models.PositiveIntegerField(db_index=True)
+    action_type = models.CharField(max_length=30, choices=ACTION_CHOICES, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="hr_action_locks")
+    user_name = models.CharField(max_length=150)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["target_model", "target_id", "expires_at"]),
+        ]
+        unique_together = [("target_model", "target_id", "action_type")]
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def __str__(self):
+        return f"Lock [{self.action_type}] on {self.target_model} #{self.target_id} by {self.user_name}"
 

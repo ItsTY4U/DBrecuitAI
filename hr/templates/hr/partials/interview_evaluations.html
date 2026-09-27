@@ -231,13 +231,24 @@
                                                     <span>View Evaluation</span>
                                                 </a>
                                                 {% elif applicant.candidate_status == 'Ongoing' %}
-                                                <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
-                                                   class="btn-table-review"
-                                                   style="background: #fef3c7; color: #b45309 !important; border-color: #fde68a;"
-                                                   title="Continue recording candidate evaluation">
-                                                    <i class="fas fa-play"></i>
-                                                    <span>Continue Evaluation</span>
-                                                </a>
+                                                    {% if applicant.is_my_evaluation or applicant.evaluation.evaluator == request.user or not applicant.evaluation.evaluator %}
+                                                    <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
+                                                       class="btn-table-review"
+                                                       style="background: #fef3c7; color: #b45309 !important; border-color: #fde68a;"
+                                                       title="Continue recording candidate evaluation">
+                                                        <i class="fas fa-play"></i>
+                                                        <span>Continue Evaluation</span>
+                                                    </a>
+                                                    {% else %}
+                                                    <button type="button"
+                                                            class="btn-table-review disabled"
+                                                            disabled
+                                                            style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
+                                                            title="Candidate is currently being evaluated by {{ applicant.evaluator_display_name|default:applicant.evaluation.evaluator_name|default:'another HR user' }}.">
+                                                        <i class="fas fa-lock"></i>
+                                                        <span>In Evaluation ({{ applicant.evaluator_display_name|default:applicant.evaluation.evaluator_name|default:'Another HR' }})</span>
+                                                    </button>
+                                                    {% endif %}
                                                 {% else %}
                                                 <a href="{% url 'start_candidate_evaluation' applicant.id %}"
                                                    class="btn-table-review"
@@ -249,15 +260,26 @@
                                                 {% endif %}
 
                                                 {% if applicant.candidate_status != 'Completed' and applicant.active_interview %}
-                                                <!-- Combined Manage Interview Button (Reschedule / Cancel) -->
-                                                <button type="button" 
-                                                        class="btn-table-review"
-                                                        onclick="openManageInterviewModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
-                                                        style="background: #ffffff; color: #334155 !important; border-color: #cbd5e1;"
-                                                        title="Manage Interview (Reschedule or Cancel)">
-                                                    <i class="fas fa-sliders"></i>
-                                                    <span>Manage</span>
-                                                </button>
+                                                    {% if applicant.active_lock %}
+                                                    <button type="button" 
+                                                            class="btn-table-review disabled"
+                                                            disabled
+                                                            style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
+                                                            title="Interview is currently being managed by {{ applicant.active_lock.user_name }}.">
+                                                        <i class="fas fa-lock"></i>
+                                                        <span>Locked ({{ applicant.active_lock.user_name }})</span>
+                                                    </button>
+                                                    {% else %}
+                                                    <!-- Combined Manage Interview Button (Reschedule / Cancel) -->
+                                                    <button type="button" 
+                                                            class="btn-table-review"
+                                                            onclick="hrOpenManageInterviewModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
+                                                            style="background: #ffffff; color: #334155 !important; border-color: #cbd5e1;"
+                                                            title="Manage Interview (Reschedule or Cancel)">
+                                                        <i class="fas fa-sliders"></i>
+                                                        <span>Manage</span>
+                                                    </button>
+                                                    {% endif %}
                                                 {% endif %}
 
                                                 <a href="{% url 'candidate_detail' applicant.id %}" 
@@ -490,7 +512,10 @@
 </div>
 
 <script>
+var _currentManagedAppId = null;
+
 function openManageInterviewModal(appId, appName, jobTitle, date, time, interviewer, location) {
+    _currentManagedAppId = appId;
     document.getElementById('manageApplicantName').textContent = appName;
     document.getElementById('manageJobTitle').textContent = jobTitle;
 
@@ -522,6 +547,10 @@ function openManageInterviewModal(appId, appName, jobTitle, date, time, intervie
 function closeManageInterviewModal() {
     var modal = document.getElementById('manageInterviewModal');
     if (modal) modal.style.display = 'none';
+    if (_currentManagedAppId && window.HRConcurrency) {
+        window.HRConcurrency.releaseLock(_currentManagedAppId, 'RESCHEDULE');
+        _currentManagedAppId = null;
+    }
 }
 
 function switchManageTab(tab) {

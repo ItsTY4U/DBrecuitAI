@@ -168,14 +168,25 @@
                                         </td>
                                         <td class="td-action text-right">
                                             <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
+                                                {% if cand.active_lock %}
+                                                <button type="button" 
+                                                        class="btn-table-review disabled"
+                                                        disabled
+                                                        style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
+                                                        title="Candidate is currently being scheduled by {{ cand.active_lock.user_name }}.">
+                                                    <i class="fas fa-lock"></i>
+                                                    <span>Locked ({{ cand.active_lock.user_name }})</span>
+                                                </button>
+                                                {% else %}
                                                 <button type="button" 
                                                         class="btn-table-review" 
-                                                        onclick="openScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
+                                                        onclick="hrOpenScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
                                                         style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
                                                         title="Schedule candidate interview">
                                                     <i class="fas fa-calendar-plus"></i>
                                                     <span>Schedule</span>
                                                 </button>
+                                                {% endif %}
                                                 <a href="{% url 'candidate_detail' cand.id %}" class="btn-table-review" title="View Full Profile">
                                                     <i class="fas fa-user"></i>
                                                 </a>
@@ -447,7 +458,10 @@
 </div>
 
 <script>
+var _currentSchedulingAppId = null;
+
 function openScheduleModal(appId, appName, jobTitle, jobId) {
+    _currentSchedulingAppId = appId;
     document.getElementById('schedApplicantId').value = appId;
     document.getElementById('schedApplicantName').textContent = appName;
     document.getElementById('schedJobTitle').textContent = jobTitle;
@@ -457,6 +471,10 @@ function openScheduleModal(appId, appName, jobTitle, jobId) {
 function closeScheduleModal() {
     var modal = document.getElementById('scheduleApplicantModal');
     if (modal) modal.style.display = 'none';
+    if (_currentSchedulingAppId && window.HRConcurrency) {
+        window.HRConcurrency.releaseLock(_currentSchedulingAppId, 'SCHEDULE');
+        _currentSchedulingAppId = null;
+    }
 }
 
 function syncBatchStartTimeDisplay(timeVal) {

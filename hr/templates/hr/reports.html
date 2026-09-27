@@ -221,7 +221,24 @@ function switchReportsTab(tabKey) {
 // ==========================================
 // FINAL REVIEW MODAL POPUP SCRIPTS
 // ==========================================
+var _currentFinalReviewAppId = null;
+
 function openFinalReviewModal(appId) {
+    if (window.HRConcurrency) {
+        window.HRConcurrency.acquireLock(appId, 'FINAL_DECISION').then(function(res) {
+            if (!res.success) {
+                window.HRConcurrency.showConcurrencyAlert('Candidate final decision is currently being reviewed by <strong>' + (res.locked_by || 'another HR user') + '</strong>.');
+                return;
+            }
+            _doOpenFinalReviewModal(appId);
+        });
+    } else {
+        _doOpenFinalReviewModal(appId);
+    }
+}
+
+function _doOpenFinalReviewModal(appId) {
+    _currentFinalReviewAppId = appId;
     var modalContainer = document.getElementById('final-review-modal-container');
     if (!modalContainer) return;
 
@@ -246,6 +263,10 @@ function openFinalReviewModal(appId) {
     })
     .catch(function(err) {
         modalContainer.innerHTML = '';
+        if (_currentFinalReviewAppId && window.HRConcurrency) {
+            window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+            _currentFinalReviewAppId = null;
+        }
         alert('Error: ' + err.message);
     });
 }
@@ -254,6 +275,10 @@ function closeFinalReviewModal() {
     var backdrop = document.getElementById('finalReviewModalBackdrop');
     if (backdrop) {
         backdrop.classList.remove('active');
+    }
+    if (_currentFinalReviewAppId && window.HRConcurrency) {
+        window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+        _currentFinalReviewAppId = null;
     }
     setTimeout(function() {
         var modalContainer = document.getElementById('final-review-modal-container');

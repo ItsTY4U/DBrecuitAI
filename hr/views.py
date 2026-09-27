@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from jobs.models import Application, Job, Requirement, Department
-from .models import Interview, CandidateEvaluation, AuditLog, HRNotification
+from .models import Interview, CandidateEvaluation, AuditLog, HRNotification, HRActionLock
 from .utils import log_hr_action, seed_applicant_management_logs_if_empty, seed_initial_notifications_if_empty
 from video_interview.models import InterviewSession, InterviewResponse
 from .evaluation_ai import analyze_interview_audio
@@ -296,10 +296,19 @@ def dashboard(request):
     hr_user = request.user
     full_name = f"{hr_user.first_name} {hr_user.last_name}".strip()
     context["hr_user_name"] = full_name or hr_user.first_name or hr_user.username
-    context["unread_notifs_count"] = HRNotification.objects.filter(is_read=False).count()
-    context["recent_notifications"] = list(
-        HRNotification.objects.all().order_by("-created_at")[:10]
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+    context["unread_notifs_count"] = unread_count
+    recent_notifs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:10]
     )
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
+    for n in recent_notifs:
+        n.is_read = (n.id in read_ids)
+    context["recent_notifications"] = recent_notifs
 
     return render(request, "hr/dashboard.html", context)
 
@@ -307,11 +316,20 @@ def dashboard(request):
 @hr_required(login_url="hr_login")
 def hr_notifications_feed(request):
     """
-    Returns latest HR notifications and unread count in JSON format for reactive updates.
+    Returns latest HR notifications and unread count in JSON format for reactive updates,
+    isolated per logged-in HR staff user.
     """
     seed_initial_notifications_if_empty()
-    notifs_qs = HRNotification.objects.all().order_by("-created_at")[:15]
-    unread_count = HRNotification.objects.filter(is_read=False).count()
+    hr_user = request.user
+    notifs_qs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:15]
+    )
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
 
     def format_time_ago(dt):
         if not dt:
@@ -351,7 +369,7 @@ def hr_notifications_feed(request):
                 "type": n.notification_type,
                 "category": get_category(n.notification_type),
                 "link": n.link or reverse("candidates"),
-                "is_read": n.is_read,
+                "is_read": (n.id in read_ids),
                 "time_ago": format_time_ago(n.created_at),
             }
             for n in notifs_qs
@@ -363,7 +381,8 @@ def hr_notifications_feed(request):
 @hr_required(login_url="hr_login")
 def mark_notification_read(request):
     """
-    Marks a single notification or all notifications as read.
+    Marks a single notification or all notifications as read for the current HR user.
+    Never alters other HR users' read states or unread counts.
     """
     if request.method == "POST":
         notif_id = request.POST.get("notification_id")
@@ -374,15 +393,188 @@ def mark_notification_read(request):
             except Exception:
                 pass
 
+        hr_user = request.user
         if notif_id:
-            HRNotification.objects.filter(id=notif_id).update(is_read=True)
+            notif = HRNotification.objects.filter(
+                Q(recipient=hr_user) | Q(recipient__isnull=True),
+                id=notif_id
+            ).first()
+            if notif:
+                notif.read_by.add(hr_user)
         else:
-            HRNotification.objects.filter(is_read=False).update(is_read=True)
+            unread_notifs = HRNotification.objects.filter(
+                Q(recipient=hr_user) | Q(recipient__isnull=True)
+            ).exclude(read_by=hr_user)
+            hr_user.read_hr_notifications.add(*unread_notifs)
 
-        unread_count = HRNotification.objects.filter(is_read=False).count()
+        unread_count = HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).exclude(read_by=hr_user).count()
         return JsonResponse({"status": "success", "unread_count": unread_count})
 
     return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+
+def clean_expired_hr_locks():
+    """Removes all expired action locks across the platform."""
+    try:
+        HRActionLock.objects.filter(expires_at__lte=timezone.now()).delete()
+    except Exception:
+        pass
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_acquire_lock(request):
+    """
+    Acquires or refreshes an operational action lock on an entity (e.g. Application).
+    Guarantees concurrency isolation so only one HR user can schedule, reschedule, or evaluate.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type", "SCHEDULE")
+
+    if not target_id:
+        return JsonResponse({"success": False, "message": "Missing target_id"}, status=400)
+
+    try:
+        target_id = int(target_id)
+    except (ValueError, TypeError):
+        return JsonResponse({"success": False, "message": "Invalid target_id"}, status=400)
+
+    clean_expired_hr_locks()
+
+    # Check if active lock held by another HR staff member
+    active_lock = HRActionLock.objects.filter(
+        target_model=target_model,
+        target_id=target_id,
+        action_type=action_type,
+        expires_at__gt=timezone.now()
+    ).first()
+
+    if active_lock and active_lock.user != request.user:
+        return JsonResponse({
+            "success": False,
+            "locked": True,
+            "locked_by": active_lock.user_name,
+            "action": active_lock.get_action_type_display(),
+            "message": f"This candidate is currently being handled by {active_lock.user_name}."
+        })
+
+    user_name = request.user.get_full_name() or request.user.username
+    lock, _ = HRActionLock.objects.update_or_create(
+        target_model=target_model,
+        target_id=target_id,
+        action_type=action_type,
+        defaults={
+            "user": request.user,
+            "user_name": user_name,
+            "expires_at": timezone.now() + timedelta(minutes=5)
+        }
+    )
+
+    return JsonResponse({
+        "success": True,
+        "message": f"Lock acquired for {lock.get_action_type_display()}.",
+        "expires_at": lock.expires_at.isoformat()
+    })
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_release_lock(request):
+    """
+    Releases an action lock currently held by the logged-in HR staff user.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type")
+
+    if target_id:
+        try:
+            target_id = int(target_id)
+            qs = HRActionLock.objects.filter(
+                target_model=target_model,
+                target_id=target_id,
+                user=request.user
+            )
+            if action_type:
+                qs = qs.filter(action_type=action_type)
+            qs.delete()
+        except (ValueError, TypeError):
+            pass
+
+    return JsonResponse({"success": True})
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_heartbeat_lock(request):
+    """
+    Extends the active lease of an action lock held by the logged-in HR staff user.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type")
+
+    if not target_id:
+        return JsonResponse({"success": False, "message": "Missing target_id"}, status=400)
+
+    try:
+        target_id = int(target_id)
+        qs = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id=target_id,
+            user=request.user
+        )
+        if action_type:
+            qs = qs.filter(action_type=action_type)
+        lock = qs.first()
+        if lock:
+            lock.expires_at = timezone.now() + timedelta(minutes=5)
+            lock.save(update_fields=["expires_at"])
+            return JsonResponse({"success": True, "expires_at": lock.expires_at.isoformat()})
+        else:
+            return JsonResponse({"success": False, "message": "Lock not found or expired."}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
 
 def get_job_management_context(selected_department=""):
     active_jobs = list(
@@ -1036,6 +1228,19 @@ def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
     
     if request.method == "POST":
+        # Guard against changing status if candidate is actively locked by another user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot update status: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(request.META.get("HTTP_REFERER", "candidates"))
+
         old_status = application.status
         new_status = request.POST.get("status")
         if new_status and new_status != old_status:
@@ -1219,9 +1424,18 @@ def interviews(request):
         })
 
     # 7. Collect scheduled applications grouped by Department and Position for the Evaluation section
+    clean_expired_hr_locks()
+    active_locks = {
+        lock.target_id: lock
+        for lock in HRActionLock.objects.filter(
+            target_model="Application",
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user)
+    }
+
     scheduled_applications = list(
         Application.objects.filter(interview__isnull=False)
-        .select_related("job", "evaluation")
+        .select_related("job", "evaluation", "evaluation__evaluator")
         .prefetch_related(
             Prefetch(
                 "interview",
@@ -1244,6 +1458,7 @@ def interviews(request):
             continue
         latest_intv = app.ordered_interviews[0]
         app.active_interview = latest_intv
+        app.active_lock = active_locks.get(app.id)
 
         # Determine individual candidate evaluation status
         has_eval = hasattr(app, "evaluation") and app.evaluation is not None
@@ -1251,6 +1466,8 @@ def interviews(request):
             app.candidate_status = "Completed"
         elif has_eval and app.evaluation.status == "Draft":
             app.candidate_status = "Ongoing"
+            app.is_my_evaluation = (app.evaluation.evaluator == request.user or not app.evaluation.evaluator)
+            app.evaluator_display_name = app.evaluation.evaluator_name or (app.evaluation.evaluator.get_full_name() if app.evaluation.evaluator else "Another HR")
         elif latest_intv.status == "Rescheduled":
             app.candidate_status = "Rescheduled"
         else:
@@ -1322,6 +1539,7 @@ def interviews(request):
     waiting_dept_dict = defaultdict(lambda: defaultdict(list))
     waiting_total = 0
     for app in waiting_applications:
+        app.active_lock = active_locks.get(app.id)
         dept_name = app.job.department if (app.job and app.job.department) else "General"
         waiting_dept_dict[dept_name][app.job].append(app)
         waiting_total += 1
@@ -1418,6 +1636,19 @@ def schedule_interview(request, job_id):
             messages.warning(request, "No candidates were selected for batch scheduling.")
             return redirect(f"{reverse('interviews')}?tab=waiting")
 
+        # Check if any candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=ids,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot batch schedule: Candidate #{locked.target_id} is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
         interview_type = request.POST.get("interview_type", "HR Interview")
         interviewer = request.POST.get("interviewer", "").strip() or (request.user.get_full_name() or request.user.username)
         date = request.POST.get("date")
@@ -1456,6 +1687,13 @@ def schedule_interview(request, job_id):
             interview_scheduled=True
         )
         invalidate_hr_cache()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=ids,
+            user=request.user
+        ).delete()
 
         log_hr_action(
             request,
@@ -1529,6 +1767,19 @@ def schedule_candidate_interview(request):
             messages.error(request, "Please provide the interview date, time, and select at least one candidate.")
             return redirect(f"{reverse('interviews')}?tab=waiting")
 
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=applicant_ids,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot schedule interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
         interviewer_name = interviewer or request.user.get_full_name() or request.user.username
         interview = Interview.objects.create(
             interview_type=interview_type,
@@ -1545,6 +1796,13 @@ def schedule_candidate_interview(request):
             interview_scheduled=True
         )
         invalidate_hr_cache()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=applicant_ids,
+            user=request.user
+        ).delete()
 
         log_hr_action(
             request,
@@ -1573,6 +1831,19 @@ def reschedule_candidate_interview(request, pk):
     """
     application = get_object_or_404(Application, pk=pk)
     if request.method == "POST":
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot reschedule interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
         new_date = request.POST.get("date")
         new_time = request.POST.get("time")
         location = request.POST.get("location", "").strip()
@@ -1614,6 +1885,13 @@ def reschedule_candidate_interview(request, pk):
         application.save(update_fields=["status", "interview_scheduled"])
         invalidate_hr_cache()
 
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            user=request.user
+        ).delete()
+
         log_hr_action(
             request,
             action="INTERVIEW_RESCHEDULED",
@@ -1643,6 +1921,19 @@ def cancel_candidate_interview(request, pk):
     """
     application = get_object_or_404(Application, pk=pk)
     if request.method == "POST":
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot cancel interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
         cancel_notes = request.POST.get("cancel_notes", "").strip()
         cancel_action = request.POST.get("cancel_action", "cancel_interview")
 
@@ -1655,6 +1946,13 @@ def cancel_candidate_interview(request, pk):
                 interview.status = "Cancelled"
             interview.applicants.remove(application)
             interview.save()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            user=request.user
+        ).delete()
 
         if cancel_action == "reject":
             application.status = "Rejected"
@@ -1713,6 +2011,13 @@ def evaluate_candidate(request, pk):
     )
 
     if request.method == "POST":
+        existing_eval = CandidateEvaluation.objects.filter(application=application).first()
+        if existing_eval and existing_eval.status == "Draft" and existing_eval.evaluator and existing_eval.evaluator != request.user:
+            lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
+            if lease_seconds < 7200:
+                messages.error(request, f"This candidate's evaluation is currently locked and being conducted by {existing_eval.evaluator_name or existing_eval.evaluator.username}.")
+                return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
         evaluation, _ = CandidateEvaluation.objects.get_or_create(application=application)
 
         evaluator_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
@@ -1839,31 +2144,11 @@ def start_candidate_evaluation(request, pk):
     """
     Called when HR initiates evaluation on an applicant.
     Creates or sets a Draft evaluation for this specific candidate (Ongoing).
+    Binds the draft evaluation to request.user and prevents concurrent takeover while active.
     Also sets the shared interview session status to Ongoing.
     """
     application = get_object_or_404(Application, pk=pk)
     interview = application.interview.order_by("-date", "-time").first()
-
-    # 1. Candidate-specific evaluation state
-    evaluation, created = CandidateEvaluation.objects.get_or_create(
-        application=application,
-        defaults={
-            "status": "Draft",
-            "interview": interview,
-        }
-    )
-    if not created and evaluation.status != "Completed":
-        evaluation.status = "Draft"
-        if not evaluation.interview and interview:
-            evaluation.interview = interview
-        evaluation.save(update_fields=["status", "interview"] if not evaluation.interview else ["status"])
-
-    # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
-    if interview and interview.status in ("Scheduled", "Rescheduled"):
-        interview.status = "Ongoing"
-        interview.save(update_fields=["status"])
-
-    invalidate_hr_cache()
 
     accept_hdr = request.headers.get("accept", "")
     is_ajax = (
@@ -1873,11 +2158,60 @@ def start_candidate_evaluation(request, pk):
         or ("application/json" in accept_hdr and "text/html" not in accept_hdr)
     )
 
+    user_name = request.user.get_full_name() or request.user.username
+
+    # Check if existing evaluation is in Draft and evaluated by another active user
+    existing_eval = CandidateEvaluation.objects.filter(application=application).first()
+    if existing_eval and existing_eval.status == "Draft" and existing_eval.evaluator and existing_eval.evaluator != request.user:
+        lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
+        if lease_seconds < 7200:  # 2 hours
+            locked_name = existing_eval.evaluator_name or existing_eval.evaluator.username
+            msg = f"Candidate is currently being evaluated by {locked_name}."
+            if is_ajax:
+                return JsonResponse({
+                    "success": False,
+                    "locked": True,
+                    "evaluator_name": locked_name,
+                    "message": msg
+                }, status=423)
+            messages.warning(request, msg)
+            return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    # 1. Candidate-specific evaluation state
+    evaluation, created = CandidateEvaluation.objects.get_or_create(
+        application=application,
+        defaults={
+            "status": "Draft",
+            "interview": interview,
+            "evaluator": request.user,
+            "evaluator_name": user_name,
+        }
+    )
+    if not created and evaluation.status != "Completed":
+        evaluation.status = "Draft"
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = user_name
+        if not evaluation.interview and interview:
+            evaluation.interview = interview
+        evaluation.save(update_fields=["status", "evaluator", "evaluator_name", "updated_at"] if not evaluation.interview else ["status", "evaluator", "evaluator_name", "interview", "updated_at"])
+    elif created:
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = user_name
+        evaluation.save(update_fields=["evaluator", "evaluator_name"])
+
+    # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
+    if interview and interview.status in ("Scheduled", "Rescheduled"):
+        interview.status = "Ongoing"
+        interview.save(update_fields=["status"])
+
+    invalidate_hr_cache()
+
     if is_ajax:
         return JsonResponse({
             "success": True,
             "status": "Ongoing",
             "applicant_id": application.id,
+            "evaluator_name": user_name,
             "message": "Candidate evaluation set to Ongoing."
         })
 
@@ -1893,9 +2227,10 @@ def cancel_candidate_evaluation(request, pk):
     If no other candidate in the session has an active evaluation, reverts session to Scheduled or Rescheduled.
     """
     application = get_object_or_404(Application, pk=pk)
-    # 1. Delete Draft evaluation for this candidate so they become Scheduled
+    # 1. Delete Draft evaluation for this candidate so they become Scheduled (if owned by user or unassigned)
     if hasattr(application, "evaluation") and application.evaluation and application.evaluation.status == "Draft":
-        application.evaluation.delete()
+        if application.evaluation.evaluator == request.user or not application.evaluation.evaluator:
+            application.evaluation.delete()
 
     # 2. Check if the shared interview session still has any remaining evaluations
     interview = application.interview.order_by("-date", "-time").first()
@@ -2039,6 +2374,21 @@ def finalize_candidate_decision(request, pk):
         return redirect("reports")
 
     application = get_object_or_404(Application.objects.select_related("job"), pk=pk)
+
+    # Check if candidate is locked for final decision by another HR user
+    locked = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type="FINAL_DECISION",
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+    if locked:
+        msg = f"Cannot finalize decision: Candidate is currently under review by {locked.user_name}."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": msg}, status=423)
+        messages.error(request, msg)
+        return redirect(reverse("reports") + "?tab=evaluations")
+
     decision = request.POST.get("decision", "").strip()
     final_notes = request.POST.get("final_notes", "").strip()
 
@@ -2066,6 +2416,14 @@ def finalize_candidate_decision(request, pk):
     new_status = "Hired" if decision == "Hired" else "Rejected"
     application.status = new_status
     application.save(update_fields=["status"])
+
+    # Release any final decision locks held by user
+    HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type="FINAL_DECISION",
+        user=request.user
+    ).delete()
 
     # Log HR Action strictly for applicant management
     action_key = "FINAL_DECISION_HIRED" if decision == "Hired" else "FINAL_DECISION_NOT_HIRED"

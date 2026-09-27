@@ -1,6 +1,9 @@
+import json
+from datetime import timedelta
 from unittest.mock import patch
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from jobs.models import Job, Application, Requirement, Department
 from hr.models import Interview
@@ -2524,8 +2527,8 @@ class HRDashboardModernizationTests(TestCase):
         self.assertEqual(mark_data["status"], "success")
         self.assertEqual(mark_data["unread_count"], 0)
 
-        # Confirm all are read in DB
-        self.assertEqual(HRNotification.objects.filter(is_read=False).count(), 0)
+        # Confirm all are read for this user in DB
+        self.assertEqual(HRNotification.objects.exclude(read_by=self.hr_user).count(), 0)
 
     def test_reports_tabs_kpi_strip_placement(self):
         """Reports cancelled and evaluations tabs render sleek contextual KPI strips."""
@@ -2797,6 +2800,319 @@ class HRUIEnhancementsTests(TestCase):
         self.assertEqual(final_count, initial_count + 1)
         latest = HRNotification.objects.filter(notification_type="HR_ACTION").latest("created_at")
         self.assertIn("Cybersecurity Specialist", latest.title)
+
+
+class HRMultiUserConcurrencyTests(TestCase):
+    """
+    Comprehensive tests verifying multi-user isolation and concurrency locking across /hr/:
+    1. Notification read isolation (HR 1 action never affects HR 2).
+    2. Candidate evaluation locking (when HR 1 evaluates, HR 2 cannot click Continue Evaluation).
+    3. Interview scheduling & rescheduling concurrency locking.
+    4. Final decision concurrency checks.
+    """
+
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from jobs.models import Department, Job, Application
+        from hr.models import Interview, CandidateEvaluation, HRNotification, HRActionLock
+
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+
+        # HR User 1 (Alice)
+        self.hr_user_1 = User.objects.create_user(
+            username="hr_alice",
+            email="alice@company.com",
+            password="Password123!",
+            first_name="Alice",
+            last_name="Recruiter",
+            is_staff=True,
+        )
+        self.hr_user_1.groups.add(self.hr_group)
+
+        # HR User 2 (Bob)
+        self.hr_user_2 = User.objects.create_user(
+            username="hr_bob",
+            email="bob@company.com",
+            password="Password123!",
+            first_name="Bob",
+            last_name="Talent",
+            is_staff=True,
+        )
+        self.hr_user_2.groups.add(self.hr_group)
+
+        # Department, Job, and Applicant
+        self.department = Department.objects.create(name="Engineering")
+        self.job = Job.objects.create(
+            title="Senior Backend Engineer",
+            department="Engineering",
+            status="Active"
+        )
+        self.applicant_user = User.objects.create_user(
+            username="cand_charlie",
+            email="charlie@applicant.com",
+            password="Password123!"
+        )
+        self.application = Application.objects.create(
+            job=self.job,
+            applicant=self.applicant_user,
+            first_name="Charlie",
+            last_name="Applicant",
+            email="charlie@applicant.com",
+            status="Shortlisted",
+            ai_score=88,
+        )
+
+    def test_notification_read_isolation_between_hr_users(self):
+        """HR User 1 marking notifications as read does not alter HR User 2's unread notifications."""
+        from hr.models import HRNotification
+
+        # Clean notifications
+        HRNotification.objects.all().delete()
+
+        # Create two notifications visible to all HR staff
+        n1 = HRNotification.objects.create(
+            notification_type="NEW_APPLICATION",
+            title="Application 1",
+            message="Cand 1 applied",
+            is_read=False
+        )
+        n2 = HRNotification.objects.create(
+            notification_type="VIDEO_INTERVIEW_COMPLETED",
+            title="Interview 2",
+            message="Cand 2 completed interview",
+            is_read=False
+        )
+
+        # 1. Login as Alice and check unread count
+        self.client.force_login(self.hr_user_1)
+        feed_resp = self.client.get(reverse("hr_notifications_feed"))
+        self.assertEqual(feed_resp.json()["unread_count"], 2)
+
+        # 2. Login as Bob and check unread count
+        self.client.force_login(self.hr_user_2)
+        feed_resp_bob = self.client.get(reverse("hr_notifications_feed"))
+        self.assertEqual(feed_resp_bob.json()["unread_count"], 2)
+
+        # 3. Alice marks single notification n1 as read
+        self.client.force_login(self.hr_user_1)
+        mark_resp = self.client.post(
+            reverse("mark_notification_read"),
+            {"notification_id": n1.id},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(mark_resp.json()["unread_count"], 1)
+
+        # 4. Verify Bob still has 2 unread notifications!
+        self.client.force_login(self.hr_user_2)
+        feed_resp_bob2 = self.client.get(reverse("hr_notifications_feed"))
+        self.assertEqual(feed_resp_bob2.json()["unread_count"], 2)
+
+        # 5. Alice marks all notifications as read
+        self.client.force_login(self.hr_user_1)
+        mark_all_resp = self.client.post(
+            reverse("mark_notification_read"),
+            {},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(mark_all_resp.json()["unread_count"], 0)
+
+        # 6. Verify Bob STILL has 2 unread notifications!
+        self.client.force_login(self.hr_user_2)
+        feed_resp_bob3 = self.client.get(reverse("hr_notifications_feed"))
+        self.assertEqual(feed_resp_bob3.json()["unread_count"], 2)
+        bob_notifs = feed_resp_bob3.json()["notifications"]
+        self.assertFalse(bob_notifs[0]["is_read"])
+        self.assertFalse(bob_notifs[1]["is_read"])
+
+    def test_candidate_evaluation_locking_and_continue_button(self):
+        """When HR 1 evaluates a candidate, HR 2 cannot click Continue Evaluation or submit evaluation."""
+        from hr.models import Interview, CandidateEvaluation
+
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Alice Recruiter",
+            date=timezone.localdate(),
+            time="10:00:00",
+            status="Scheduled",
+        )
+        interview.applicants.add(self.application)
+        self.application.status = "Interview"
+        self.application.save()
+
+        # Alice starts evaluation
+        self.client.force_login(self.hr_user_1)
+        start_resp = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(start_resp.status_code, 200)
+        self.assertEqual(start_resp.json()["status"], "Ongoing")
+
+        # Verify CandidateEvaluation is in Draft and evaluator is Alice
+        eval_obj = CandidateEvaluation.objects.get(application=self.application)
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertEqual(eval_obj.evaluator, self.hr_user_1)
+
+        # Alice views evaluations tab: she sees "Continue Evaluation"
+        alice_view = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertContains(alice_view, "Continue Evaluation")
+        self.assertNotContains(alice_view, "In Evaluation (Alice Recruiter)")
+
+        # Bob views evaluations tab: he does NOT see "Continue Evaluation" link, but disabled locked button
+        self.client.force_login(self.hr_user_2)
+        bob_view = self.client.get(f"{reverse('interviews')}?tab=evaluations")
+        self.assertNotContains(bob_view, f'<a href="/hr/candidates/applicant/{self.application.pk}/#candidate-evaluation-section"')
+        self.assertContains(bob_view, "In Evaluation (Alice Recruiter)")
+        self.assertContains(bob_view, "disabled")
+
+        # Bob attempts to start evaluation via AJAX: blocked with 423
+        bob_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(bob_start.status_code, 423)
+        self.assertTrue(bob_start.json()["locked"])
+
+        # Bob attempts to submit evaluation: blocked with redirect and error message
+        bob_submit = self.client.post(
+            reverse("evaluate_candidate", kwargs={"pk": self.application.pk}),
+            {"interview_mode": "Face-to-Face", "technical_competence": 4}
+        )
+        self.assertEqual(bob_submit.status_code, 302)
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.status, "Draft")  # not completed by Bob
+
+        # Alice submits evaluation successfully
+        self.client.force_login(self.hr_user_1)
+        alice_submit = self.client.post(
+            reverse("evaluate_candidate", kwargs={"pk": self.application.pk}),
+            {"interview_mode": "Face-to-Face", "technical_competence": 5, "recommendation": "Strong Hire"}
+        )
+        self.assertEqual(alice_submit.status_code, 302)
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.status, "Completed")
+        self.assertEqual(eval_obj.technical_competence, 5)
+
+    def test_interview_scheduling_action_locking(self):
+        """Action lock prevents HR 2 from opening or submitting schedule while HR 1 is scheduling."""
+        from hr.models import HRActionLock
+
+        # Alice acquires lock on candidate for scheduling
+        self.client.force_login(self.hr_user_1)
+        acq_resp = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(acq_resp.status_code, 200)
+        self.assertTrue(acq_resp.json()["success"])
+
+        # Bob attempts to acquire lock: rejected
+        self.client.force_login(self.hr_user_2)
+        bob_acq = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertFalse(bob_acq.json()["success"])
+        self.assertTrue(bob_acq.json()["locked"])
+        self.assertEqual(bob_acq.json()["locked_by"], "Alice Recruiter")
+
+        # Bob views Waiting tab: Schedule button is disabled with Locked (Alice Recruiter)
+        bob_waiting = self.client.get(f"{reverse('interviews')}?tab=waiting")
+        self.assertContains(bob_waiting, "Locked (Alice Recruiter)")
+
+        # Bob attempts to submit schedule form anyway: backend rejects
+        bob_sched = self.client.post(
+            reverse("schedule_candidate_interview"),
+            {
+                "applicants": [self.application.pk],
+                "date": str(timezone.localdate()),
+                "time": "14:00",
+                "interview_type": "HR Interview",
+            }
+        )
+        self.assertEqual(bob_sched.status_code, 302)
+        self.application.refresh_from_db()
+        self.assertFalse(self.application.interview_scheduled)
+
+        # Alice releases lock
+        self.client.force_login(self.hr_user_1)
+        rel_resp = self.client.post(
+            reverse("hr_lock_release"),
+            json.dumps({"target_id": self.application.pk, "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(rel_resp.status_code, 200)
+
+        # Bob can now acquire lock and schedule
+        self.client.force_login(self.hr_user_2)
+        bob_sched_success = self.client.post(
+            reverse("schedule_candidate_interview"),
+            {
+                "applicants": [self.application.pk],
+                "date": str(timezone.localdate()),
+                "time": "14:00",
+                "interview_type": "HR Interview",
+            }
+        )
+        self.assertEqual(bob_sched_success.status_code, 302)
+        self.application.refresh_from_db()
+        self.assertTrue(self.application.interview_scheduled)
+
+    def test_reschedule_and_final_decision_concurrency_locking(self):
+        """Action lock prevents concurrent reschedule and conflicting final decision."""
+        from hr.models import Interview, HRActionLock
+
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Alice Recruiter",
+            date=timezone.localdate(),
+            time="11:00:00",
+            status="Scheduled",
+        )
+        interview.applicants.add(self.application)
+        self.application.status = "Interview"
+        self.application.save()
+
+        # Alice acquires RESCHEDULE lock
+        HRActionLock.objects.create(
+            target_model="Application",
+            target_id=self.application.pk,
+            action_type="RESCHEDULE",
+            user=self.hr_user_1,
+            user_name="Alice Recruiter",
+            expires_at=timezone.now() + timedelta(minutes=5)
+        )
+
+        # Bob attempts to reschedule: rejected
+        self.client.force_login(self.hr_user_2)
+        bob_resched = self.client.post(
+            reverse("reschedule_candidate_interview", kwargs={"pk": self.application.pk}),
+            {"date": str(timezone.localdate() + timedelta(days=2)), "time": "15:00"}
+        )
+        self.assertEqual(bob_resched.status_code, 302)
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Scheduled")  # not rescheduled by Bob
+
+        # Alice acquires FINAL_DECISION lock
+        HRActionLock.objects.create(
+            target_model="Application",
+            target_id=self.application.pk,
+            action_type="FINAL_DECISION",
+            user=self.hr_user_1,
+            user_name="Alice Recruiter",
+            expires_at=timezone.now() + timedelta(minutes=5)
+        )
+
+        # Bob attempts to finalize decision: rejected
+        bob_decide = self.client.post(
+            reverse("finalize_candidate_decision", kwargs={"pk": self.application.pk}),
+            {"decision": "Not Hired", "final_notes": "Rejected by Bob"}
+        )
+        self.assertEqual(bob_decide.status_code, 302)
+        self.application.refresh_from_db()
+        self.assertNotEqual(self.application.status, "Rejected")
 
 
 

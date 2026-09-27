@@ -91,4 +91,7 @@ urlpatterns = [
     path("interviews/<int:pk>/", views.interview_detail, name="interview_detail"),
     path("api/notifications/", views.hr_notifications_feed, name="hr_notifications_feed"),
     path("api/notifications/mark-read/", views.mark_notification_read, name="mark_notification_read"),
+    path("api/lock/acquire/", views.api_acquire_lock, name="hr_lock_acquire"),
+    path("api/lock/release/", views.api_release_lock, name="hr_lock_release"),
+    path("api/lock/heartbeat/", views.api_heartbeat_lock, name="hr_lock_heartbeat"),
 ]
