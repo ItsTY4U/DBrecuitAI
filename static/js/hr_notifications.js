@@ -17,6 +17,9 @@
                 }
             }
         }
+        return cookieValue;
+    }
+
     function getCSRFToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');
         if (meta && meta.content) return meta.content;
@@ -196,32 +199,6 @@
             }
         }
     });
-
-    // Real-time polling function (every 15 seconds)
-    function pollNotifications() {
-        fetch('/hr/api/notifications/', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const bell = document.getElementById('notif-bell-btn');
-                const badge = document.getElementById('notif-badge');
-                const pill = document.getElementById('notif-unread-pill');
-                const list = document.getElementById('notif-dropdown-list');
-
-                if (data.unread_count > 0) {
-                    if (bell) bell.classList.add('has-unread');
-                    if (badge) {
-                        badge.textContent = data.unread_count;
-                        badge.style.display = 'inline-flex';
-                    }
-                    if (pill) pill.textContent = data.unread_count + ' unread';
-                } else {
-                    if (bell) bell.classList.remove('has-unread');
-                    if (badge) badge.style.display = 'none';
-                    if (pill) pill.textContent = 'All caught up';
-                }
 
     window.renderNotificationsList = function(notifications) {
         const list = document.getElementById('notif-dropdown-list');
