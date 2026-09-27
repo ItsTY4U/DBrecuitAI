@@ -22,22 +22,36 @@
 
     let activeCategory = 'all';
 
+    function setDropdownState(isOpen) {
+        const dropdown = document.getElementById('notif-dropdown');
+        const bellBtn = document.getElementById('notif-bell-btn');
+        const heroSection = document.querySelector('.dashboard-hero-section');
+        const wrapper = document.getElementById('notif-wrapper');
+
+        if (!dropdown) return;
+
+        if (isOpen) {
+            dropdown.style.display = 'block';
+            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'true');
+            if (heroSection) heroSection.classList.add('has-notif-open');
+            if (wrapper) wrapper.classList.add('is-open');
+            // Reapply current category filter
+            applyCategoryFilter(activeCategory);
+        } else {
+            dropdown.style.display = 'none';
+            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
+            if (heroSection) heroSection.classList.remove('has-notif-open');
+            if (wrapper) wrapper.classList.remove('is-open');
+        }
+    }
+
     window.toggleNotificationDropdown = function(event) {
         if (event) event.stopPropagation();
         const dropdown = document.getElementById('notif-dropdown');
-        const bellBtn = document.getElementById('notif-bell-btn');
         if (!dropdown) return;
 
         const isCurrentlyOpen = dropdown.style.display !== 'none';
-        if (isCurrentlyOpen) {
-            dropdown.style.display = 'none';
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
-        } else {
-            dropdown.style.display = 'block';
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'true');
-            // Reapply current category filter
-            applyCategoryFilter(activeCategory);
-        }
+        setDropdownState(!isCurrentlyOpen);
     };
 
     window.filterNotifCategory = function(event, category) {
@@ -159,9 +173,7 @@
         const wrapper = document.getElementById('notif-wrapper');
         const dropdown = document.getElementById('notif-dropdown');
         if (wrapper && dropdown && !wrapper.contains(e.target)) {
-            dropdown.style.display = 'none';
-            const bellBtn = document.getElementById('notif-bell-btn');
-            if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
+            setDropdownState(false);
         }
     });
 
@@ -170,9 +182,7 @@
         if (e.key === 'Escape') {
             const dropdown = document.getElementById('notif-dropdown');
             if (dropdown && dropdown.style.display !== 'none') {
-                dropdown.style.display = 'none';
-                const bellBtn = document.getElementById('notif-bell-btn');
-                if (bellBtn) bellBtn.setAttribute('aria-expanded', 'false');
+                setDropdownState(false);
             }
         }
     });
