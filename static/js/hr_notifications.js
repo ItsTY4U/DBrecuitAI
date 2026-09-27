@@ -17,7 +17,12 @@
                 }
             }
         }
-        return cookieValue;
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content) return meta.content;
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) return input.value;
+        return getCookie('csrftoken') || '';
     }
 
     let activeCategory = 'all';
@@ -115,7 +120,7 @@
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCookie('csrftoken'),
+                'X-CSRFToken': getCSRFToken(),
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ all: true })
@@ -140,6 +145,10 @@
                 if (activeCategory === 'unread') {
                     applyCategoryFilter('unread');
                 }
+
+                if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+                    window.HRConcurrency.triggerSyncSoon(50);
+                }
             }
         })
         .catch(err => console.warn('Failed to mark notifications read:', err));
@@ -156,10 +165,11 @@
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': getCSRFToken(),
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ notification_id: notifId })
+                body: JSON.stringify({ notification_id: notifId }),
+                keepalive: true
             }).finally(() => {
                 if (targetLink) window.location.href = targetLink;
             });
@@ -213,55 +223,92 @@
                     if (pill) pill.textContent = 'All caught up';
                 }
 
-                if (list && data.notifications && data.notifications.length > 0) {
-                    let html = '';
-                    data.notifications.forEach(n => {
-                        let iconHtml = '<i class="fas fa-bell"></i>';
-                        if (n.type === 'NEW_APPLICATION') {
-                            iconHtml = '<i class="fas fa-user-plus"></i>';
-                        } else if (n.type === 'VIDEO_INTERVIEW_COMPLETED') {
-                            iconHtml = '<i class="fas fa-video"></i>';
-                        } else if (n.type === 'INTERVIEW_SCHEDULED') {
-                            iconHtml = '<i class="fas fa-calendar-check"></i>';
-                        } else if (n.type === 'EVALUATION_COMPLETED') {
-                            iconHtml = '<i class="fas fa-clipboard-check"></i>';
-                        } else if (n.type === 'HR_ACTION') {
-                            iconHtml = '<i class="fas fa-user-gear"></i>';
-                        }
+    window.renderNotificationsList = function(notifications) {
+        const list = document.getElementById('notif-dropdown-list');
+        if (!list || !notifications || notifications.length === 0) return;
 
-                        const unreadClass = !n.is_read ? 'is-unread' : '';
-                        const unreadDot = !n.is_read ? '<span class="notif-item-unread-dot"></span>' : '';
-                        const cat = n.category || 'system';
+        let html = '';
+        notifications.forEach(n => {
+            let iconHtml = '<i class="fas fa-bell"></i>';
+            if (n.type === 'NEW_APPLICATION') {
+                iconHtml = '<i class="fas fa-user-plus"></i>';
+            } else if (n.type === 'VIDEO_INTERVIEW_COMPLETED') {
+                iconHtml = '<i class="fas fa-video"></i>';
+            } else if (n.type === 'INTERVIEW_SCHEDULED') {
+                iconHtml = '<i class="fas fa-calendar-check"></i>';
+            } else if (n.type === 'EVALUATION_COMPLETED') {
+                iconHtml = '<i class="fas fa-clipboard-check"></i>';
+            } else if (n.type === 'HR_ACTION') {
+                iconHtml = '<i class="fas fa-user-gear"></i>';
+            }
 
-                        html += `
-                        <div class="notif-item ${unreadClass}"
-                             data-notif-id="${n.id}"
-                             data-category="${cat}"
-                             data-is-read="${n.is_read ? 'true' : 'false'}"
-                             data-link="${n.link}"
-                             onclick="handleNotificationClick(event, this)">
-                            <div class="notif-item-icon notif-icon-${n.type.toLowerCase()}">
-                                ${iconHtml}
-                            </div>
-                            <div class="notif-item-body">
-                                <div class="notif-item-title-row">
-                                    <h5 class="notif-item-title">${n.title}</h5>
-                                    <span class="notif-item-time">${n.time_ago}</span>
-                                </div>
-                                <p class="notif-item-msg">${n.message}</p>
-                            </div>
-                            ${unreadDot}
-                        </div>`;
-                    });
+            const unreadClass = !n.is_read ? 'is-unread' : '';
+            const unreadDot = !n.is_read ? '<span class="notif-item-unread-dot"></span>' : '';
+            const cat = n.category || 'system';
 
-                    html += `
-                    <div class="notif-empty-state" id="notif-category-empty" style="display: none;">
-                        <i class="fas fa-inbox"></i>
-                        <p>No notifications in this category.<br><span style="font-size:12px; color:#94a3b8;">Check other categories or "All".</span></p>
-                    </div>`;
+            html += `
+            <div class="notif-item ${unreadClass}"
+                 data-notif-id="${n.id}"
+                 data-category="${cat}"
+                 data-is-read="${n.is_read ? 'true' : 'false'}"
+                 data-link="${n.link}"
+                 onclick="handleNotificationClick(event, this)">
+                <div class="notif-item-icon notif-icon-${n.type.toLowerCase()}">
+                    ${iconHtml}
+                </div>
+                <div class="notif-item-body">
+                    <div class="notif-item-title-row">
+                        <h5 class="notif-item-title">${n.title}</h5>
+                        <span class="notif-item-time">${n.time_ago}</span>
+                    </div>
+                    <p class="notif-item-msg">${n.message}</p>
+                </div>
+                ${unreadDot}
+            </div>`;
+        });
 
-                    list.innerHTML = html;
-                    applyCategoryFilter(activeCategory);
+        html += `
+        <div class="notif-empty-state" id="notif-category-empty" style="display: none;">
+            <i class="fas fa-inbox"></i>
+            <p>No notifications in this category.<br><span style="font-size:12px; color:#94a3b8;">Check other categories or "All".</span></p>
+        </div>`;
+
+        list.innerHTML = html;
+        applyCategoryFilter(activeCategory);
+    };
+
+    // Real-time polling function (fallback)
+    function pollNotifications() {
+        if (window.HRConcurrency && typeof window.HRConcurrency.executeLiveSync === 'function') {
+            window.HRConcurrency.executeLiveSync();
+            return;
+        }
+
+        fetch('/hr/api/notifications/', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const bell = document.getElementById('notif-bell-btn');
+                const badge = document.getElementById('notif-badge');
+                const pill = document.getElementById('notif-unread-pill');
+
+                if (data.unread_count > 0) {
+                    if (bell) bell.classList.add('has-unread');
+                    if (badge) {
+                        badge.textContent = data.unread_count;
+                        badge.style.display = 'inline-flex';
+                    }
+                    if (pill) pill.textContent = data.unread_count + ' unread';
+                } else {
+                    if (bell) bell.classList.remove('has-unread');
+                    if (badge) badge.style.display = 'none';
+                    if (pill) pill.textContent = 'All caught up';
+                }
+
+                if (data.notifications) {
+                    window.renderNotificationsList(data.notifications);
                 }
             }
         })
@@ -270,6 +317,6 @@
 
     // Initialize polling interval once
     if (!window.__hrNotifPollInterval) {
-        window.__hrNotifPollInterval = setInterval(pollNotifications, 15000);
+        window.__hrNotifPollInterval = setInterval(pollNotifications, 10000);
     }
 })();

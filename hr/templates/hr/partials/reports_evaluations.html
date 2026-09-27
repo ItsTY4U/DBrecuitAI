@@ -260,6 +260,8 @@
                     <td style="padding: 14px 20px; text-align: right; white-space: nowrap;">
                         <button type="button" 
                                 class="btn btn-final-review" 
+                                data-action-btn="FINAL_DECISION"
+                                data-cand-id="{{ eval.application.pk }}"
                                 onclick="openFinalReviewModal({{ eval.application.pk }})" 
                                 style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #ffffff; border: none; padding: 7px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25); transition: all 0.2s ease;">
                             <i class="fas fa-gavel"></i> Final Review

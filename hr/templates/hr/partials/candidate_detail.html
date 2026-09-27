@@ -476,27 +476,34 @@
 
         <div class="hero-actions-stack">
             {% if candidate_evaluation and candidate_evaluation.status == "Completed" and not candidate_evaluation.final_decision %}
-            <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="hero-action-btn btn-final-review" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #fff; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);" title="Finalize hiring decision for {{ application.first_name }}">
+            <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="hero-action-btn btn-final-review" data-action-btn="FINAL_DECISION" data-cand-id="{{ application.pk }}" style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); color: #fff; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);" title="Finalize hiring decision for {{ application.first_name }}">
                 <i class="fas fa-gavel"></i>
                 <span>Final Review</span>
             </button>
-            {% elif application.status == "Interview" %}
-            <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" title="Evaluate interview performance for {{ application.first_name }}">
-                <i class="fas fa-clipboard-check"></i>
-                <span>Evaluate Candidate</span>
-            </button>
-            {% elif application.status == "Evaluation" %}
-            <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" title="Review or update candidate evaluation">
-                <i class="fas fa-clipboard-check"></i>
-                <span>Update Evaluation</span>
-            </button>
+            {% elif application.status == "Interview" or application.status == "Evaluation" %}
+                {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
+                <button type="button" class="hero-action-btn disabled" disabled style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Candidate is currently being evaluated by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
+                    <i class="fas fa-lock"></i>
+                    <span>In Evaluation (by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }})</span>
+                </button>
+                {% elif candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator == request.user %}
+                <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" title="Continue candidate evaluation">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>Continue Evaluation</span>
+                </button>
+                {% else %}
+                <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" title="Evaluate interview performance for {{ application.first_name }}">
+                    <i class="fas fa-clipboard-check"></i>
+                    <span>{% if application.status == "Evaluation" %}Update Evaluation{% else %}Evaluate Candidate{% endif %}</span>
+                </button>
+                {% endif %}
             {% elif application.status == "Shortlisted" %}
-            <a href="{% url 'interviews' %}?tab=waiting" class="hero-action-btn btn-schedule" title="Configure and schedule interview session for {{ application.first_name }}">
+            <a href="{% url 'interviews' %}?tab=waiting" class="hero-action-btn btn-schedule" data-action-btn="SCHEDULE" data-cand-id="{{ application.pk }}" title="Configure and schedule interview session for {{ application.first_name }}">
                 <i class="fas fa-calendar-plus"></i>
                 <span>Schedule Session</span>
             </a>
             {% elif application.status == "Screening" or application.status == "Pending" %}
-            <button type="button" onclick="openConfirmScheduleModal()" class="hero-action-btn btn-schedule" title="Shortlist and schedule interview for {{ application.first_name }}">
+            <button type="button" onclick="openConfirmScheduleModal()" class="hero-action-btn btn-schedule" data-action-btn="SCHEDULE" data-cand-id="{{ application.pk }}" title="Shortlist and schedule interview for {{ application.first_name }}">
                 <i class="fas fa-calendar-plus"></i>
                 <span>Schedule Interview</span>
             </button>
@@ -1145,7 +1152,7 @@
             </div>
             {% endif %}
 
-            {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
+            {% if is_eval_locked_by_other %}
             <!-- Candidate Evaluation In Progress by Another Evaluator Banner -->
             <div id="eval-locked-card" class="eval-locked-box" style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: #fef3c7; color: #b45309; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
@@ -1179,8 +1186,9 @@
             </div>
             {% endif %}
 
+            {% if not is_eval_locked_by_other %}
             <!-- Interactive Evaluation Form (Shown when evaluate requested or when editing) -->
-            <div id="eval-form-card" class="eval-form-container" style="{% if show_eval_form %}display: block;{% else %}display: none;{% endif %}">
+            <div id="eval-form-card" class="eval-form-container" data-app-id="{{ application.pk }}" style="{% if show_eval_form %}display: block;{% else %}display: none;{% endif %}">
                 <form method="POST" action="{% url 'evaluate_candidate' application.pk %}" enctype="multipart/form-data" id="candidateEvaluationForm" onsubmit="return handleEvaluationSubmit(event)">
                     {% csrf_token %}
 
@@ -1389,6 +1397,7 @@
                     </div>
                 </form>
             </div>
+            {% endif %}
         </div>
 
         <!-- Candidate Stage 5: Final Hiring Determination Details Box -->
@@ -1448,7 +1457,7 @@
                         {% endif %}
                     </div>
 
-                    <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn" style="background: #2d5a27; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn" data-action-btn="FINAL_DECISION" data-cand-id="{{ application.pk }}" style="background: #2d5a27; color: #ffffff; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-pen-to-square"></i> Modify Decision
                     </button>
                 </div>
@@ -1485,7 +1494,7 @@
                 <p style="margin: 0 auto 16px auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
                     The candidate has concluded the interview process with an evaluation score of <strong>{{ candidate_evaluation.overall_rating }}/5.0</strong> ({{ candidate_evaluation.recommendation }}). Finalize the official decision to hire or not hire this candidate.
                 </p>
-                <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn btn-primary" style="background: #2d5a27; color: #ffffff; padding: 10px 24px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45,90,39,0.25);">
+                <button type="button" onclick="openFinalReviewModal({{ application.pk }})" class="btn btn-primary" data-action-btn="FINAL_DECISION" data-cand-id="{{ application.pk }}" style="background: #2d5a27; color: #ffffff; padding: 10px 24px; border-radius: 8px; font-size: 13.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45,90,39,0.25);">
                     <i class="fas fa-gavel"></i> Conduct Final Review
                 </button>
             </div>

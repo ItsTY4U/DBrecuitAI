@@ -171,6 +171,8 @@
                                                 {% if cand.active_lock %}
                                                 <button type="button" 
                                                         class="btn-table-review disabled"
+                                                        data-action-btn="SCHEDULE"
+                                                        data-cand-id="{{ cand.id }}"
                                                         disabled
                                                         style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
                                                         title="Candidate is currently being scheduled by {{ cand.active_lock.user_name }}.">
@@ -180,6 +182,8 @@
                                                 {% else %}
                                                 <button type="button" 
                                                         class="btn-table-review" 
+                                                        data-action-btn="SCHEDULE"
+                                                        data-cand-id="{{ cand.id }}"
                                                         onclick="hrOpenScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
                                                         style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
                                                         title="Schedule candidate interview">
@@ -485,11 +489,24 @@ function syncBatchStartTimeDisplay(timeVal) {
     });
 }
 
+var _currentBatchLockedIds = [];
+
 function openBatchScheduleModal(jobId, jobTitle, deptName, count) {
-    document.getElementById('batchModalJobTitle').textContent = jobTitle;
-    document.getElementById('batchModalDept').textContent = deptName;
-    var form = document.getElementById('batchScheduleForm');
-    if (form) form.action = '/hr/interviews/schedule/' + jobId + '/';
+    var dataContainer = document.getElementById('batch-cands-data-' + jobId);
+    var candidateIds = [];
+    if (dataContainer) {
+        var items = dataContainer.querySelectorAll('.batch-applicant-item');
+        items.forEach(function(item) {
+            var appId = item.getAttribute('data-app-id');
+            if (appId) candidateIds.push(appId);
+        });
+    }
+
+    function doOpenBatch() {
+        document.getElementById('batchModalJobTitle').textContent = jobTitle;
+        document.getElementById('batchModalDept').textContent = deptName;
+        var form = document.getElementById('batchScheduleForm');
+        if (form) form.action = '/hr/interviews/schedule/' + jobId + '/';
 
     var listContainer = document.getElementById('batchApplicantsList');
     listContainer.innerHTML = '';
@@ -548,11 +565,29 @@ function openBatchScheduleModal(jobId, jobTitle, deptName, count) {
 
     var modal = document.getElementById('batchScheduleModal');
     if (modal) modal.style.display = 'flex';
+    }
+
+    if (window.HRConcurrency && candidateIds.length > 0) {
+        window.HRConcurrency.acquireBatchLock(candidateIds, 'SCHEDULE').then(function(res) {
+            if (!res.success) {
+                window.HRConcurrency.showConcurrencyAlert('One or more candidates in this batch are currently being scheduled by <strong>' + (res.locked_by || 'another HR staff member') + '</strong>.');
+                return;
+            }
+            _currentBatchLockedIds = res.locked_ids || candidateIds;
+            doOpenBatch();
+        });
+    } else {
+        doOpenBatch();
+    }
 }
 
 function closeBatchScheduleModal() {
     var modal = document.getElementById('batchScheduleModal');
     if (modal) modal.style.display = 'none';
+    if (_currentBatchLockedIds && _currentBatchLockedIds.length > 0 && window.HRConcurrency) {
+        window.HRConcurrency.releaseBatchLock(_currentBatchLockedIds, 'SCHEDULE');
+        _currentBatchLockedIds = [];
+    }
 }
 
 function toggleBatchSelectAll(masterCheckbox) {

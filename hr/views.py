@@ -21,6 +21,7 @@ from functools import wraps
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from collections import defaultdict
 import ast
@@ -165,6 +166,7 @@ def hr_logout(request):
     return redirect("hr_login")
 
 
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def dashboard(request):
     cache_key = "hr_dashboard_data"
@@ -425,9 +427,119 @@ def clean_expired_hr_locks():
 
 @never_cache
 @hr_required(login_url="hr_login")
+def api_live_sync(request):
+    """
+    High-performance real-time synchronization endpoint polled by HR portal frontend.
+    Returns:
+      - Isolated unread notification count & recent notifications for request.user
+      - Active action locks held across the portal (with lock holder details)
+      - Ongoing draft candidate evaluations (to lock/hide evaluation forms for others)
+    """
+    clean_expired_hr_locks()
+    hr_user = request.user
+
+    # 1. Unread count and recent notifications for hr_user
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
+    recent_notifs_qs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:15]
+    )
+
+    def format_time_ago(dt):
+        if not dt:
+            return ""
+        delta = timezone.now() - dt
+        seconds = int(delta.total_seconds())
+        if seconds < 60:
+            return "Just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = hours // 24
+        if days < 7:
+            return f"{days}d ago"
+        return dt.strftime("%b %d")
+
+    def get_category(notif_type):
+        if notif_type == "NEW_APPLICATION":
+            return "applications"
+        elif notif_type == "VIDEO_INTERVIEW_COMPLETED":
+            return "interviews"
+        elif notif_type in ("HR_ACTION", "INTERVIEW_SCHEDULED", "EVALUATION_COMPLETED"):
+            return "team"
+        return "system"
+
+    notifications_data = [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.notification_type,
+            "category": get_category(n.notification_type),
+            "link": n.link or reverse("candidates"),
+            "is_read": (n.id in read_ids),
+            "time_ago": format_time_ago(n.created_at),
+        }
+        for n in recent_notifs_qs
+    ]
+
+    # 2. Active Action Locks (Application target_id -> lock details)
+    locks_qs = HRActionLock.objects.filter(
+        expires_at__gt=timezone.now()
+    ).select_related("user")
+
+    active_locks = [
+        {
+            "target_model": lock.target_model,
+            "target_id": lock.target_id,
+            "action_type": lock.action_type,
+            "user_id": lock.user_id,
+            "user_name": lock.user_name,
+            "is_me": (lock.user_id == hr_user.id),
+        }
+        for lock in locks_qs
+    ]
+
+    # 3. Ongoing Candidate Evaluations (draft evaluations with evaluator)
+    ongoing_evals_qs = CandidateEvaluation.objects.filter(
+        status="Draft"
+    ).select_related("evaluator", "application")
+
+    ongoing_evaluations = [
+        {
+            "application_id": ev.application_id,
+            "evaluator_id": ev.evaluator_id,
+            "evaluator_name": ev.evaluator_name or (ev.evaluator.get_full_name() if ev.evaluator else "Another HR"),
+            "is_my_evaluation": (ev.evaluator_id == hr_user.id or not ev.evaluator_id),
+            "status": ev.status,
+        }
+        for ev in ongoing_evals_qs
+    ]
+
+    return JsonResponse({
+        "status": "success",
+        "current_user_id": hr_user.id,
+        "unread_count": unread_count,
+        "notifications": notifications_data,
+        "active_locks": active_locks,
+        "ongoing_evaluations": ongoing_evaluations,
+    })
+
+
+@never_cache
+@hr_required(login_url="hr_login")
 def api_acquire_lock(request):
     """
     Acquires or refreshes an operational action lock on an entity (e.g. Application).
+    Supports single target_id or batch target_ids.
     Guarantees concurrency isolation so only one HR user can schedule, reschedule, or evaluate.
     """
     if request.method != "POST":
@@ -443,52 +555,57 @@ def api_acquire_lock(request):
         data = request.POST
 
     target_model = data.get("target_model", "Application")
+    target_ids = data.get("target_ids")
     target_id = data.get("target_id")
     action_type = data.get("action_type", "SCHEDULE")
 
-    if not target_id:
-        return JsonResponse({"success": False, "message": "Missing target_id"}, status=400)
+    ids = []
+    if target_ids and isinstance(target_ids, list):
+        ids = [int(i) for i in target_ids if str(i).isdigit()]
+    elif target_id and str(target_id).isdigit():
+        ids = [int(target_id)]
 
-    try:
-        target_id = int(target_id)
-    except (ValueError, TypeError):
-        return JsonResponse({"success": False, "message": "Invalid target_id"}, status=400)
+    if not ids:
+        return JsonResponse({"success": False, "message": "Missing or invalid target_id"}, status=400)
 
     clean_expired_hr_locks()
 
     # Check if active lock held by another HR staff member
-    active_lock = HRActionLock.objects.filter(
+    conflict_locks = HRActionLock.objects.filter(
         target_model=target_model,
-        target_id=target_id,
+        target_id__in=ids,
         action_type=action_type,
         expires_at__gt=timezone.now()
-    ).first()
+    ).exclude(user=request.user)
 
-    if active_lock and active_lock.user != request.user:
+    if conflict_locks.exists():
+        first_lock = conflict_locks.first()
         return JsonResponse({
             "success": False,
             "locked": True,
-            "locked_by": active_lock.user_name,
-            "action": active_lock.get_action_type_display(),
-            "message": f"This candidate is currently being handled by {active_lock.user_name}."
+            "locked_by": first_lock.user_name,
+            "action": first_lock.get_action_type_display(),
+            "message": f"Candidate is currently being handled by {first_lock.user_name}."
         })
 
     user_name = request.user.get_full_name() or request.user.username
-    lock, _ = HRActionLock.objects.update_or_create(
-        target_model=target_model,
-        target_id=target_id,
-        action_type=action_type,
-        defaults={
-            "user": request.user,
-            "user_name": user_name,
-            "expires_at": timezone.now() + timedelta(minutes=5)
-        }
-    )
+    exp_time = timezone.now() + timedelta(minutes=5)
+    for tid in ids:
+        HRActionLock.objects.update_or_create(
+            target_model=target_model,
+            target_id=tid,
+            action_type=action_type,
+            defaults={
+                "user": request.user,
+                "user_name": user_name,
+                "expires_at": exp_time
+            }
+        )
 
     return JsonResponse({
         "success": True,
-        "message": f"Lock acquired for {lock.get_action_type_display()}.",
-        "expires_at": lock.expires_at.isoformat()
+        "message": f"Lock acquired for {action_type}.",
+        "expires_at": exp_time.isoformat()
     })
 
 
@@ -511,22 +628,25 @@ def api_release_lock(request):
         data = request.POST
 
     target_model = data.get("target_model", "Application")
+    target_ids = data.get("target_ids")
     target_id = data.get("target_id")
     action_type = data.get("action_type")
 
-    if target_id:
-        try:
-            target_id = int(target_id)
-            qs = HRActionLock.objects.filter(
-                target_model=target_model,
-                target_id=target_id,
-                user=request.user
-            )
-            if action_type:
-                qs = qs.filter(action_type=action_type)
-            qs.delete()
-        except (ValueError, TypeError):
-            pass
+    ids = []
+    if target_ids and isinstance(target_ids, list):
+        ids = [int(i) for i in target_ids if str(i).isdigit()]
+    elif target_id and str(target_id).isdigit():
+        ids = [int(target_id)]
+
+    if ids:
+        qs = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            user=request.user
+        )
+        if action_type:
+            qs = qs.filter(action_type=action_type)
+        qs.delete()
 
     return JsonResponse({"success": True})
 
@@ -732,6 +852,7 @@ def create_job(request):
     return redirect("job_management")
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def job_management(request):
     selected_department = request.GET.get("department", "").strip()
@@ -915,6 +1036,7 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         }
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
@@ -1095,6 +1217,7 @@ def candidate_department(request, department):
     return redirect(f"{reverse('candidates')}?department={quote(department)}")
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def candidate_detail(request, pk):
     application = get_object_or_404(
@@ -1109,7 +1232,7 @@ def candidate_detail(request, pk):
         invalidate_hr_cache()
 
     # Auto re-analyze candidate with AI if score is 0, pending, or not yet processed
-    has_resume = bool(application.resume or (application.applicant and application.applicant.default_resume))
+    has_resume = bool(application.resume or (application.applicant and getattr(application.applicant, "default_resume", None)))
     if has_resume and (not application.resume_processed or application.ai_score == 0 or application.ai_recommendation == "Pending Review"):
         try:
             from jobs.ai import screen_application
@@ -1159,7 +1282,8 @@ def candidate_detail(request, pk):
     # Determine whether the evaluation form should be open or show the "not initiated" banner
     evaluate_param = request.GET.get("evaluate") == "1"
     is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
-    show_eval_form = evaluate_param or is_draft
+    is_eval_locked_by_other = bool(is_draft and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
+    show_eval_form = (evaluate_param or is_draft) and not is_eval_locked_by_other
     
     return render(request, "hr/candidate_detail.html", {
         "application": application,
@@ -1173,6 +1297,7 @@ def candidate_detail(request, pk):
         "candidate_rank": candidate_rank,
         "total_job_applicants": total_job_applicants,
         "show_eval_form": show_eval_form,
+        "is_eval_locked_by_other": is_eval_locked_by_other,
     })
 
 
@@ -1347,6 +1472,7 @@ def send_candidate_email(request, pk):
     return redirect("candidate_detail", pk=pk)
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def interviews(request):
     # 1. Combine 5 separate COUNT queries into 1 single aggregate query
@@ -2454,6 +2580,7 @@ def finalize_candidate_decision(request, pk):
 
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def reports_dashboard(request):
     """

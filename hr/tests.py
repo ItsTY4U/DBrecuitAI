@@ -3114,6 +3114,167 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.application.refresh_from_db()
         self.assertNotEqual(self.application.status, "Rejected")
 
+    def test_live_sync_api(self):
+        """api_live_sync returns active locks, evaluations, unread count, and isolates current user."""
+        from hr.models import HRActionLock, CandidateEvaluation
+
+        # Create active lock by Alice
+        HRActionLock.objects.create(
+            target_model="Application",
+            target_id=self.application.pk,
+            action_type="SCHEDULE",
+            user=self.hr_user_1,
+            user_name="Alice Recruiter",
+            expires_at=timezone.now() + timedelta(minutes=5)
+        )
+
+        # Create draft evaluation by Alice
+        CandidateEvaluation.objects.create(
+            application=self.application,
+            evaluator=self.hr_user_1,
+            evaluator_name="Alice Recruiter",
+            status="Draft"
+        )
+
+        # Log an action by Alice
+        from hr.utils import log_hr_action
+        log_hr_action(
+            user=self.hr_user_1,
+            action_type="Interview Scheduled",
+            description=f"Scheduled interview for candidate {self.application.first_name}",
+            target_model="Application",
+            target_id=self.application.pk,
+            department="Engineering"
+        )
+
+        # Alice hits live-sync: unread count is 0 (her own action was auto-read), current_user_id is Alice
+        self.client.force_login(self.hr_user_1)
+        resp_alice = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(resp_alice.status_code, 200)
+        data_alice = resp_alice.json()
+        self.assertEqual(data_alice["status"], "success")
+        self.assertEqual(data_alice["current_user_id"], self.hr_user_1.pk)
+        self.assertEqual(data_alice["unread_count"], 0)
+        self.assertEqual(len(data_alice["active_locks"]), 1)
+        self.assertEqual(len(data_alice["ongoing_evaluations"]), 1)
+
+        # Bob hits live-sync: unread count is 1 (sees Alice's action), current_user_id is Bob
+        self.client.force_login(self.hr_user_2)
+        resp_bob = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(resp_bob.status_code, 200)
+        data_bob = resp_bob.json()
+        self.assertEqual(data_bob["status"], "success")
+        self.assertEqual(data_bob["current_user_id"], self.hr_user_2.pk)
+        self.assertEqual(data_bob["unread_count"], 1)
+
+    def test_evaluation_form_hidden_for_other_evaluator(self):
+        """Candidate evaluation form is hidden on candidate_detail if another evaluator is evaluating."""
+        from hr.models import CandidateEvaluation
+
+        # Alice starts evaluation
+        CandidateEvaluation.objects.create(
+            application=self.application,
+            evaluator=self.hr_user_1,
+            evaluator_name="Alice Recruiter",
+            status="Draft"
+        )
+
+        # Alice views candidate detail: eval-form-card is rendered
+        self.client.force_login(self.hr_user_1)
+        resp_alice = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
+        self.assertEqual(resp_alice.status_code, 200)
+        self.assertContains(resp_alice, 'id="eval-form-card"')
+        self.assertNotContains(resp_alice, 'id="eval-locked-card"')
+
+        # Bob views candidate detail: eval-form-card is NOT rendered; eval-locked-card is shown
+        self.client.force_login(self.hr_user_2)
+        resp_bob = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
+        self.assertEqual(resp_bob.status_code, 200)
+        self.assertNotContains(resp_bob, 'id="eval-form-card"')
+        self.assertContains(resp_bob, 'id="eval-locked-card"')
+        self.assertContains(resp_bob, "Alice Recruiter")
+
+    def test_notification_isolation_and_own_action_auto_read(self):
+        """HR 1's action is auto-marked as read for HR 1, and marking all read does not affect HR 2."""
+        from hr.models import HRNotification
+        from hr.utils import log_hr_action
+
+        # Alice logs an action
+        log_hr_action(
+            user=self.hr_user_1,
+            action_type="Candidate Evaluation",
+            description="Alice evaluated candidate",
+            target_model="Application",
+            target_id=self.application.pk,
+            department="Engineering"
+        )
+
+        notif = HRNotification.objects.latest("created_at")
+        self.assertIn(self.hr_user_1, notif.read_by.all())
+        self.assertNotIn(self.hr_user_2, notif.read_by.all())
+
+        # Bob marks all read: only Bob is added, Alice unaffected
+        self.client.force_login(self.hr_user_2)
+        mark_resp = self.client.post(reverse("mark_all_notifications_read"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(mark_resp.status_code, 200)
+        notif.refresh_from_db()
+        self.assertIn(self.hr_user_2, notif.read_by.all())
+        self.assertIn(self.hr_user_1, notif.read_by.all())
+
+    def test_batch_lock_acquire_and_release(self):
+        """Batch locking acquires locks for multiple candidates and blocks other users from any in the batch."""
+        app2 = Application.objects.create(
+            job=self.job,
+            first_name="Batch",
+            last_name="Candidate",
+            email="batch@test.com",
+            phone="1234567890",
+            status="Screening",
+            ai_score=85
+        )
+
+        # Alice acquires batch lock for self.application and app2
+        self.client.force_login(self.hr_user_1)
+        acq_resp = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_ids": [self.application.pk, app2.pk], "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(acq_resp.status_code, 200)
+        self.assertTrue(acq_resp.json()["success"])
+
+        # Bob tries to acquire single lock on app2: fails
+        self.client.force_login(self.hr_user_2)
+        bob_resp = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": app2.pk, "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(bob_resp.status_code, 200)
+        self.assertFalse(bob_resp.json()["success"])
+        self.assertTrue(bob_resp.json()["locked"])
+
+        # Alice releases batch lock
+        self.client.force_login(self.hr_user_1)
+        rel_resp = self.client.post(
+            reverse("hr_lock_release"),
+            json.dumps({"target_ids": [self.application.pk, app2.pk], "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(rel_resp.status_code, 200)
+        self.assertTrue(rel_resp.json()["success"])
+
+        # Bob can now acquire lock on app2
+        self.client.force_login(self.hr_user_2)
+        bob_success = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": app2.pk, "action_type": "SCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(bob_success.status_code, 200)
+        self.assertTrue(bob_success.json()["success"])
+
+
 
 
 

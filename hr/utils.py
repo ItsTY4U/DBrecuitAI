@@ -24,42 +24,51 @@ def get_client_ip(request):
     return request.META.get("REMOTE_ADDR", "")
 
 
-def log_hr_action(request, action, target_repr="", details="", target_model="", target_id=None):
+def log_hr_action(request=None, action=None, target_repr="", details="", target_model="", target_id=None, user=None, action_type=None, description=None, **kwargs):
     """
     Safely creates an AuditLog record. Catches all exceptions so normal HR flows are never blocked.
     """
     try:
-        user = getattr(request, "user", None)
-        user_obj = user if (user and user.is_authenticated) else None
+        user_obj = user
+        if not user_obj and request:
+            if hasattr(request, "user"):
+                u = getattr(request, "user", None)
+                user_obj = u if (u and u.is_authenticated) else None
+            elif hasattr(request, "is_authenticated") and request.is_authenticated:
+                user_obj = request
 
         user_name = "System"
         if user_obj:
-            full_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
-            user_name = full_name or user_obj.username
+            full_name = f"{getattr(user_obj, 'first_name', '')} {getattr(user_obj, 'last_name', '')}".strip()
+            user_name = full_name or getattr(user_obj, "username", "System")
+
+        act = action or action_type or ""
+        act_upper = act.upper().replace(" ", "_")
+        det = details or description or ""
 
         action_map = dict(AuditLog.ACTION_CHOICES)
-        action_display = action_map.get(action, action.replace("_", " ").title())
+        action_display = action_map.get(act, action_map.get(act_upper, act.replace("_", " ").title()))
         ip_addr = get_client_ip(request)
 
         audit_obj = AuditLog.objects.create(
             user=user_obj,
             user_name=user_name,
-            action=action,
+            action=act_upper or act,
             action_display=action_display,
             target_model=target_model or "",
             target_id=str(target_id) if target_id is not None else "",
             target_repr=str(target_repr)[:255] if target_repr else "",
-            details=details or "",
+            details=det or "",
             ip_address=ip_addr,
             timestamp=timezone.now(),
         )
 
         # Trigger team notification for HR user actions
-        if user_obj and action in (
+        if user_obj and act_upper in (
             "FINAL_DECISION_HIRED", "FINAL_DECISION_NOT_HIRED",
             "HIRE_APPLICATION", "REJECT_APPLICATION", "SHORTLIST_APPLICATION",
             "INTERVIEW_SCHEDULED", "INTERVIEW_RESCHEDULED", "INTERVIEW_CANCELLED",
-            "EVALUATION_COMPLETED", "JOB_CREATED", "JOB_UPDATED", "DEPARTMENT_CREATED"
+            "EVALUATION_COMPLETED", "CANDIDATE_EVALUATION", "JOB_CREATED", "JOB_UPDATED", "DEPARTMENT_CREATED"
         ):
             target_link = "/hr/candidates/"
             if target_model == "Application" and target_id:
@@ -68,17 +77,18 @@ def log_hr_action(request, action, target_repr="", details="", target_model="", 
                 target_link = "/hr/interviews/"
             elif target_model == "Job":
                 target_link = "/hr/jobs/"
-            elif "FINAL_DECISION" in action:
+            elif "FINAL_DECISION" in act_upper:
                 target_link = "/hr/reports/?tab=final_decision"
-            elif action == "EVALUATION_COMPLETED":
+            elif act_upper in ("EVALUATION_COMPLETED", "CANDIDATE_EVALUATION"):
                 target_link = "/hr/reports/?tab=evaluations"
 
             create_hr_notification(
                 notification_type="HR_ACTION",
-                title=f"{action_display}: {target_repr}",
-                message=f"{user_name}: {details or action_display} ({target_repr})".strip(),
+                title=f"{action_display}: {target_repr}".strip(": "),
+                message=f"{user_name}: {det or action_display} ({target_repr})".strip(" ()"),
                 link=target_link,
                 recipient=None,
+                read_by_user=user_obj,
             )
 
         return audit_obj
@@ -181,13 +191,13 @@ def seed_applicant_management_logs_if_empty():
         logger.warning(f"Failed to seed applicant management logs: {e}")
 
 
-def create_hr_notification(title, message, notification_type="SYSTEM", link="", recipient=None):
+def create_hr_notification(title, message, notification_type="SYSTEM", link="", recipient=None, read_by_user=None):
     """
     Safely creates an HRNotification record.
     """
     from .models import HRNotification
     try:
-        return HRNotification.objects.create(
+        notif = HRNotification.objects.create(
             recipient=recipient,
             notification_type=notification_type,
             title=title[:150],
@@ -196,6 +206,9 @@ def create_hr_notification(title, message, notification_type="SYSTEM", link="", 
             is_read=False,
             created_at=timezone.now(),
         )
+        if read_by_user and getattr(read_by_user, "is_authenticated", False):
+            notif.read_by.add(read_by_user)
+        return notif
     except Exception as e:
         logger.warning(f"Failed to create HRNotification: {e}")
         return None
