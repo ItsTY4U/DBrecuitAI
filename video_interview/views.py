@@ -2,7 +2,7 @@ import random
 import threading
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -13,6 +13,7 @@ from django.db.models import Q
 from jobs.models import Application
 from .models import InterviewSession, InterviewResponse, BehavioralQuestion
 from .ai import analyze_interview_session
+from .tts import generate_question_speech
 
 def _run_ai_analysis_async(session_id):
     """
@@ -215,6 +216,35 @@ def interview_room_view(request, application_id):
         "questions_data": questions_data,
         "total_questions": len(questions_data),
     })
+
+
+@never_cache
+@login_required(login_url="applicant_login")
+def question_audio_api(request, application_id, question_number):
+    """
+    Returns the MP3 TTS audio for a specific interview question.
+    """
+    application = get_object_or_404(Application, application_id=application_id)
+    if not request.user.is_staff and application.applicant != request.user:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    session = _get_or_create_session(application)
+    response_item = get_object_or_404(
+        InterviewResponse,
+        session=session,
+        question_number=question_number
+    )
+
+    audio_bytes = generate_question_speech(response_item.question_text)
+    if audio_bytes:
+        http_response = HttpResponse(audio_bytes, content_type="audio/mpeg")
+        http_response["Cache-Control"] = "public, max-age=86400"
+        return http_response
+
+    return JsonResponse(
+        {"error": "TTS audio unavailable", "fallback_tts": True},
+        status=404
+    )
 
 
 @never_cache
