@@ -55,6 +55,38 @@ class Job(models.Model):
         help_text="Applicant-facing requirements shown directly on the job posting (education, general experience, etc.)."
     )
     
+    skills_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Skills Weight",
+        help_text="Weight percentage for Skills in candidate screening."
+    )
+    education_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Education Weight",
+        help_text="Weight percentage for Education in candidate screening."
+    )
+    experience_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Experience Weight",
+        help_text="Weight percentage for Experience in candidate screening."
+    )
+    qualification_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Qualification Weight",
+        help_text="Weight percentage for Key Qualifications in candidate screening."
+    )
+
+    @property
+    def criteria_weights(self):
+        return {
+            "qualification_weight": self.qualification_weight if self.qualification_weight is not None else 25,
+            "experience_weight": self.experience_weight if self.experience_weight is not None else 25,
+            "skills_weight": self.skills_weight if self.skills_weight is not None else 25,
+            "education_weight": self.education_weight if self.education_weight is not None else 25,
+        }
+
+    def get_criteria_weights(self):
+        return self.criteria_weights
 
     def __str__(self):
         return self.title

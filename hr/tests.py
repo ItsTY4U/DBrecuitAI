@@ -356,6 +356,56 @@ class CandidateManagementTests(TestCase):
         saved_reqs = list(self.job_sales_staff.requirements_list.values_list("text", flat=True))
         self.assertEqual(saved_reqs, ["Enterprise Sales", "Contract Negotiation", "SaaS"])
 
+    def test_create_job_saves_criteria_weights(self):
+        url = reverse("create_job")
+        post_data = {
+            "title": "Data Engineer",
+            "department": "Engineering",
+            "job_type": "FULL-TIME",
+            "schedule": "Monday to Friday",
+            "shift": "8:00 AM - 5:00 PM",
+            "description": "Build scalable data pipelines.",
+            "requirements": "3+ years Python & SQL",
+            "criteria_skills_weight": "35",
+            "criteria_experience_weight": "25",
+            "criteria_education_weight": "15",
+            "criteria_qualification_weight": "25",
+            "key_qualifications": ["Python", "SQL", "Spark"],
+        }
+        response = self.client.post(url, post_data)
+        self.assertRedirects(response, reverse("job_management"))
+
+        job = Job.objects.get(title="Data Engineer")
+        self.assertEqual(job.skills_weight, 35)
+        self.assertEqual(job.experience_weight, 25)
+        self.assertEqual(job.education_weight, 15)
+        self.assertEqual(job.qualification_weight, 25)
+        self.assertEqual(job.criteria_weights["skills_weight"], 35)
+
+    def test_manage_job_updates_criteria_weights(self):
+        url = reverse("manage_job", args=[self.job_sales_staff.id])
+        post_data = {
+            "title": "Lead Sales Executive",
+            "department": "Sales",
+            "job_type": "FULL-TIME",
+            "description": "Lead enterprise client acquisition.",
+            "requirements": "5+ years enterprise SaaS experience",
+            "status": "Active",
+            "criteria_skills_weight": "30",
+            "criteria_experience_weight": "40",
+            "criteria_education_weight": "10",
+            "criteria_qualification_weight": "20",
+            "key_qualifications": ["B2B Sales"],
+        }
+        response = self.client.post(url, post_data)
+        self.assertRedirects(response, reverse("job_management"))
+
+        self.job_sales_staff.refresh_from_db()
+        self.assertEqual(self.job_sales_staff.skills_weight, 30)
+        self.assertEqual(self.job_sales_staff.experience_weight, 40)
+        self.assertEqual(self.job_sales_staff.education_weight, 10)
+        self.assertEqual(self.job_sales_staff.qualification_weight, 20)
+
     def test_job_management_active_jobs_separated_per_department(self):
         response = self.client.get(reverse("job_management"))
         self.assertEqual(response.status_code, 200)

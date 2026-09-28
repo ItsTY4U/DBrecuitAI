@@ -190,7 +190,7 @@
                                         max="100"
                                         step="1"
                                         placeholder="0"
-                                        value="25"
+                                        value="{{ job.skills_weight|default:25 }}"
                                         aria-label="Skills weight">
                                     <span class="criteria-percent">%</span>
                                 </div>
@@ -209,7 +209,7 @@
                                         max="100"
                                         step="1"
                                         placeholder="0"
-                                        value="25"
+                                        value="{{ job.education_weight|default:25 }}"
                                         aria-label="Education weight">
                                     <span class="criteria-percent">%</span>
                                 </div>
@@ -228,7 +228,7 @@
                                         max="100"
                                         step="1"
                                         placeholder="0"
-                                        value="25"
+                                        value="{{ job.experience_weight|default:25 }}"
                                         aria-label="Experience weight">
                                     <span class="criteria-percent">%</span>
                                 </div>
@@ -247,7 +247,7 @@
                                         max="100"
                                         step="1"
                                         placeholder="0"
-                                        value="25"
+                                        value="{{ job.qualification_weight|default:25 }}"
                                         aria-label="Qualifications weight">
                                     <span class="criteria-percent">%</span>
                                 </div>
@@ -256,12 +256,12 @@
 
                         <div class="criteria-total-row">
                             <span class="criteria-total-label">Total Weight</span>
-                            <span class="criteria-total is-invalid" id="edit-criteria-total">0%</span>
+                            <span class="criteria-total is-valid" id="edit-criteria-total">100%</span>
                         </div>
 
-                        <div class="criteria-validation" id="edit-criteria-validation">
-                            <i class="fas fa-circle-info"></i>
-                            <span>Criteria weights must total 100%</span>
+                        <div class="criteria-validation is-valid" id="edit-criteria-validation">
+                            <i class="fas fa-circle-check"></i>
+                            <span>Criteria weights are valid.</span>
                         </div>
 
                         <small class="form-help criteria-help">

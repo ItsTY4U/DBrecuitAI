@@ -798,6 +798,31 @@ def create_department(request):
     messages.success(request, "New department created successfully!")
     return redirect("job_management")
 
+def _parse_criteria_weight(val, default=25):
+    try:
+        w = int(val)
+        return max(0, min(100, w))
+    except (ValueError, TypeError):
+        return default
+
+def _normalize_job_weights(s, edu, exp, qual):
+    total = s + edu + exp + qual
+    if total == 100:
+        return s, edu, exp, qual
+    if total > 0:
+        scaled = {
+            "s": round(s * 100.0 / total),
+            "edu": round(edu * 100.0 / total),
+            "exp": round(exp * 100.0 / total),
+            "qual": round(qual * 100.0 / total),
+        }
+        drift = 100 - sum(scaled.values())
+        if drift:
+            max_k = max(scaled, key=scaled.get)
+            scaled[max_k] += drift
+        return scaled["s"], scaled["edu"], scaled["exp"], scaled["qual"]
+    return 25, 25, 25, 25
+
 @never_cache
 @hr_required(login_url="hr_login")
 def create_job(request):
@@ -805,6 +830,12 @@ def create_job(request):
         dept_name = request.POST.get("department", "").strip()
         if dept_name:
             Department.objects.get_or_create(name=dept_name)
+
+        skills_w = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), 25)
+        edu_w = _parse_criteria_weight(request.POST.get("criteria_education_weight"), 25)
+        exp_w = _parse_criteria_weight(request.POST.get("criteria_experience_weight"), 25)
+        qual_w = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), 25)
+        skills_w, edu_w, exp_w, qual_w = _normalize_job_weights(skills_w, edu_w, exp_w, qual_w)
 
         job = Job.objects.create(
             title=request.POST.get("title", "").strip(),
@@ -814,6 +845,10 @@ def create_job(request):
             shift=request.POST.get("shift", "").strip(),
             description=request.POST.get("description", "").strip(),
             requirements=request.POST.get("requirements", "").strip(),
+            skills_weight=skills_w,
+            education_weight=edu_w,
+            experience_weight=exp_w,
+            qualification_weight=qual_w,
             status="Active",
         )
 
@@ -881,6 +916,13 @@ def manage_job(request, pk):
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)
+        if any(k in request.POST for k in ["criteria_skills_weight", "criteria_education_weight", "criteria_experience_weight", "criteria_qualification_weight"]):
+            sw = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), job.skills_weight if job.skills_weight is not None else 25)
+            ew = _parse_criteria_weight(request.POST.get("criteria_education_weight"), job.education_weight if job.education_weight is not None else 25)
+            expw = _parse_criteria_weight(request.POST.get("criteria_experience_weight"), job.experience_weight if job.experience_weight is not None else 25)
+            qw = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), job.qualification_weight if job.qualification_weight is not None else 25)
+            job.skills_weight, job.education_weight, job.experience_weight, job.qualification_weight = _normalize_job_weights(sw, ew, expw, qw)
+
         job.save()
         
         key_qualifications = request.POST.getlist(

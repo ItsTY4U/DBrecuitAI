@@ -613,25 +613,40 @@ def calculate_job_match(profile, job):
         analyzed["highest_education_level"], job_text
     )
 
-    # Heuristic per-job weights (a stand-in for the LLM's per-job
-    # reasoning in ai.py, since we don't call Gemini for every job in a
-    # bulk recommendation pass). Bump education weight when the JD itself
-    # calls for a specific degree, mirroring how qualification weight
-    # reacts to a detected mandatory license.
-    requires_degree = any(
-        w in job_text for w in ["bachelor", "degree required", "college graduate"]
-    )
-    q_weight = 35 if has_mandatory_license else 20
-    s_weight = 35 if len(analyzed["skills"]) >= 3 else 25
-    exp_weight = 30 if ("senior" in job_text or "lead" in job_text) else 25
-    edu_weight = 25 if requires_degree else 15
+    # Use the HR-defined screening weights from the Job if available,
+    # otherwise fall back to domain heuristics.
+    weights = None
+    if hasattr(job, "get_criteria_weights") and callable(getattr(job, "get_criteria_weights", None)):
+        try:
+            cand_w = job.get_criteria_weights()
+            if isinstance(cand_w, dict) and all(isinstance(v, (int, float)) for v in cand_w.values()) and sum(cand_w.values()) == 100:
+                weights = cand_w
+        except Exception:
+            weights = None
 
-    weights = _normalize_weights(
-        qualification=q_weight,
-        experience=exp_weight,
-        skills=s_weight,
-        education=edu_weight,
-    )
+    if not weights and hasattr(job, "criteria_weights"):
+        try:
+            cand_w = getattr(job, "criteria_weights")
+            if isinstance(cand_w, dict) and all(isinstance(v, (int, float)) for v in cand_w.values()) and sum(cand_w.values()) == 100:
+                weights = cand_w
+        except Exception:
+            weights = None
+
+    if not weights:
+        requires_degree = any(
+            w in job_text for w in ["bachelor", "degree required", "college graduate"]
+        )
+        q_weight = 35 if has_mandatory_license else 20
+        s_weight = 35 if len(analyzed["skills"]) >= 3 else 25
+        exp_weight = 30 if ("senior" in job_text or "lead" in job_text) else 25
+        edu_weight = 25 if requires_degree else 15
+
+        weights = _normalize_weights(
+            qualification=q_weight,
+            experience=exp_weight,
+            skills=s_weight,
+            education=edu_weight,
+        )
 
     # Calculate domain & title alignment between resume experience and job
     experiences = analyzed.get("experience", [])

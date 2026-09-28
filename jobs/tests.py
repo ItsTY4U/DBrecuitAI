@@ -625,6 +625,12 @@ class JobsAIEngineTests(TestCase):
         mock_client.models.generate_content.return_value = mock_response
         mock_get_client.return_value = mock_client
 
+        self.job.qualification_weight = 25
+        self.job.experience_weight = 35
+        self.job.skills_weight = 25
+        self.job.education_weight = 15
+        self.job.save()
+
         resume_sample = "Software Engineer with 4 years building Django REST APIs and PostgreSQL backends."
         result = analyze_resume(resume_sample, self.job)
 
@@ -634,6 +640,7 @@ class JobsAIEngineTests(TestCase):
         self.assertEqual(len(result["strengths"]), 2)
         self.assertIn("Extensive Django experience", result["strengths"])
         self.assertFalse(result["hard_fail"])
+        self.assertEqual(result["criteria_weights"], self.job.criteria_weights)
 
     @patch("jobs.ai.get_genai_client")
     def test_parse_resume_sha256_caching(self, mock_get_client):
@@ -886,5 +893,63 @@ class RecommendationLogicTests(unittest.TestCase):
         empty_profile.resume_text = ""
         empty_profile.default_resume = None
         self.assertEqual(get_recommended_jobs(empty_profile), [])
+
+    @patch("jobs.ai.get_genai_client")
+    def test_ai_screening_enforces_hr_criteria_weights(self, mock_get_client):
+        """Screening strictly uses HR-configured weights and overrides any weights returned by the AI."""
+        from jobs.ai import analyze_resume
+
+        # Custom HR weights totaling 100%
+        custom_job = Job.objects.create(
+            title="Senior QA Engineer",
+            department="Engineering",
+            skills_weight=40,
+            experience_weight=20,
+            qualification_weight=30,
+            education_weight=10,
+        )
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        # AI attempts to decide different weights (e.g., all 25%)
+        mock_response.text = json.dumps({
+            "skills_match": 100,       # 100 * 0.40 = 40.0
+            "experience_match": 80,    # 80 * 0.20 = 16.0
+            "qualification_match": 90, # 90 * 0.30 = 27.0
+            "education_match": 70,     # 70 * 0.10 = 7.0
+            "criteria_weights": {      # Sum = 90.0 under HR weights (vs 85.0 under AI 25% weights)
+                "qualification_weight": 25,
+                "experience_weight": 25,
+                "skills_weight": 25,
+                "education_weight": 25,
+            },
+            "weight_reasoning": {
+                "qualification": "AI proposed rationale",
+                "experience": "AI proposed rationale",
+                "skills": "AI proposed rationale",
+                "education": "AI proposed rationale",
+            },
+            "matched_qualifications": ["Selenium"],
+            "missing_qualifications": [],
+            "strengths": ["Automated Testing"],
+            "weaknesses": [],
+            "summary": "Great QA engineer."
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume = "QA automation engineer with extensive Selenium, Python, and testing expertise."
+        result = analyze_resume(resume, custom_job)
+
+        # Result criteria weights MUST match HR weights, not AI weights
+        self.assertEqual(result["criteria_weights"]["skills_weight"], 40)
+        self.assertEqual(result["criteria_weights"]["experience_weight"], 20)
+        self.assertEqual(result["criteria_weights"]["qualification_weight"], 30)
+        self.assertEqual(result["criteria_weights"]["education_weight"], 10)
+
+        # Final score must be 90.0 based on HR weights (40 + 16 + 27 + 7)
+        self.assertEqual(result["score"], 90.0)
+        self.assertEqual(result["recommendation"], "Qualified")
+        self.assertEqual(result["match_level"], "Exceptional")
 
 
