@@ -831,19 +831,16 @@ def create_job(request):
         if dept_name:
             Department.objects.get_or_create(name=dept_name)
 
-<<<<<<< HEAD
         skills_w = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), 25)
         edu_w = _parse_criteria_weight(request.POST.get("criteria_education_weight"), 25)
         exp_w = _parse_criteria_weight(request.POST.get("criteria_experience_weight"), 25)
         qual_w = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), 25)
         skills_w, edu_w, exp_w, qual_w = _normalize_job_weights(skills_w, edu_w, exp_w, qual_w)
-=======
         vacancies_raw = request.POST.get("vacancies", "1").strip()
         try:
             vacancies = max(1, int(vacancies_raw))
         except (ValueError, TypeError):
             vacancies = 1
->>>>>>> 2f25400ca939f7f22dc688c84d9c9239de0ecd1a
 
         job = Job.objects.create(
             title=request.POST.get("title", "").strip(),
@@ -925,7 +922,6 @@ def manage_job(request, pk):
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)
-<<<<<<< HEAD
         if any(k in request.POST for k in ["criteria_skills_weight", "criteria_education_weight", "criteria_experience_weight", "criteria_qualification_weight"]):
             sw = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), job.skills_weight if job.skills_weight is not None else 25)
             ew = _parse_criteria_weight(request.POST.get("criteria_education_weight"), job.education_weight if job.education_weight is not None else 25)
@@ -933,14 +929,12 @@ def manage_job(request, pk):
             qw = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), job.qualification_weight if job.qualification_weight is not None else 25)
             job.skills_weight, job.education_weight, job.experience_weight, job.qualification_weight = _normalize_job_weights(sw, ew, expw, qw)
 
-=======
         vacancies_raw = request.POST.get("vacancies", "").strip()
         if vacancies_raw:
             try:
                 job.vacancies = max(1, int(vacancies_raw))
             except (ValueError, TypeError):
                 pass
->>>>>>> 2f25400ca939f7f22dc688c84d9c9239de0ecd1a
         job.save()
         
         key_qualifications = request.POST.getlist(
