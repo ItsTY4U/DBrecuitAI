@@ -48,17 +48,22 @@
                         <input type="text" id="edit-title" name="title" value="{{ job.title }}" class="form-input" required>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
+                        <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
+                    </div>
+
                     <div class="form-row-2col">
-                        <div class="form-group">
-                            <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
-                            <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
-                        </div>
                         <div class="form-group">
                             <label class="form-label" for="edit-type">Employment Type</label>
                             <select id="edit-type" name="job_type" class="form-select">
                                 <option value="FULL-TIME" {% if job.job_type == "FULL-TIME" %}selected{% endif %}>Full-Time</option>
                                 <option value="PART-TIME" {% if job.job_type == "PART-TIME" %}selected{% endif %}>Part-Time</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-vacancies">Number of Vacancies <span class="required-star">*</span></label>
+                            <input type="number" id="edit-vacancies" name="vacancies" value="{{ job.vacancies|default:1 }}" class="form-input" min="1" required>
                         </div>
                     </div>
 

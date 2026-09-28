@@ -41,9 +41,14 @@
             <i class="fas fa-pen-to-square"></i> Edit Details
         </a>
         {% if job.applicant_count %}
-        <a href="{% url 'candidates' %}?department={{ job.department|urlencode }}&job={{ job.id }}" class="btn-job-view">
+        <button type="button"
+                class="btn-job-view"
+                hx-get="{% url 'job_candidates_modal' job.id %}"
+                hx-target="#job-candidates-modal-container"
+                hx-swap="innerHTML"
+                title="View candidates for {{ job.title }}">
             <i class="fas fa-users-viewfinder"></i> Candidates
-        </a>
+        </button>
         {% else %}
         <button type="button" class="btn-job-view" disabled title="No applicants yet for this position">
             <i class="fas fa-users-viewfinder"></i> Candidates

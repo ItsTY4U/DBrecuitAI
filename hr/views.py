@@ -806,12 +806,19 @@ def create_job(request):
         if dept_name:
             Department.objects.get_or_create(name=dept_name)
 
+        vacancies_raw = request.POST.get("vacancies", "1").strip()
+        try:
+            vacancies = max(1, int(vacancies_raw))
+        except (ValueError, TypeError):
+            vacancies = 1
+
         job = Job.objects.create(
             title=request.POST.get("title", "").strip(),
             department=dept_name,
             job_type=request.POST.get("job_type", "FULL-TIME"),
             schedule=request.POST.get("schedule", "").strip(),
             shift=request.POST.get("shift", "").strip(),
+            vacancies=vacancies,
             description=request.POST.get("description", "").strip(),
             requirements=request.POST.get("requirements", "").strip(),
             status="Active",
@@ -881,6 +888,12 @@ def manage_job(request, pk):
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)
+        vacancies_raw = request.POST.get("vacancies", "").strip()
+        if vacancies_raw:
+            try:
+                job.vacancies = max(1, int(vacancies_raw))
+            except (ValueError, TypeError):
+                pass
         job.save()
         
         key_qualifications = request.POST.getlist(
@@ -929,6 +942,33 @@ def manage_job(request, pk):
         return render(request, "hr/partials/edit_job_modal.html", context)
 
     return render(request, "hr/manage_job.html", context)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def job_candidates_modal(request, pk):
+    """
+    Renders the in-page candidates modal for a specific job (active or inactive)
+    within Job Management (/hr/jobs/), allowing HR to review applicants without
+    navigating away.
+    """
+    job = get_object_or_404(Job, pk=pk)
+    applications = list(
+        Application.objects.filter(job=job)
+        .only(
+            "id", "application_id", "first_name", "middle_initial", "last_name",
+            "email", "phone", "ai_score", "status", "created_at", "resume"
+        )
+        .order_by("-ai_score", "-created_at")
+    )
+    hired_count = sum(1 for app in applications if app.status == "Hired")
+    context = {
+        "job": job,
+        "applications": applications,
+        "hired_count": hired_count,
+        "total_applicants": len(applications),
+    }
+    return render(request, "hr/partials/job_candidates_modal.html", context)
 
 TABLE_PAGE_SIZE = 5
 
@@ -1050,9 +1090,10 @@ def candidates(request):
     elif active_tab not in ["recent", "all"]:
         active_tab = "recent"
 
-    # Recent candidate submissions across all jobs
+    # Recent candidate submissions across active jobs
     recent_applications = list(
-        Application.objects.select_related("job")
+        Application.objects.filter(job__status="Active")
+        .select_related("job")
         .only(
             "id", "application_id", "first_name", "middle_initial", "last_name",
             "email", "phone", "ai_score", "status", "created_at",
@@ -1061,8 +1102,8 @@ def candidates(request):
         .order_by("-created_at", "-id")[:50]
     )
 
-    # Single aggregate query for all candidate status counts
-    counts = Application.objects.aggregate(
+    # Single aggregate query for candidate status counts of active jobs
+    counts = Application.objects.filter(job__status="Active").aggregate(
         total=Count("id"),
         screening=Count("id", filter=Q(status="Screening")),
         interview=Count("id", filter=Q(status__in=["Interview", "Shortlisted"])),
@@ -1285,7 +1326,10 @@ def candidate_detail(request, pk):
     is_eval_locked_by_other = bool(is_draft and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
     show_eval_form = (evaluate_param or is_draft) and not is_eval_locked_by_other
     
-    return render(request, "hr/candidate_detail.html", {
+    scroll_to = request.GET.get("scroll_to", "").strip()
+    is_modal = bool(request.headers.get("HX-Request") or request.GET.get("modal") == "1")
+
+    context = {
         "application": application,
         "strengths": strengths,
         "weaknesses": weaknesses,
@@ -1298,7 +1342,14 @@ def candidate_detail(request, pk):
         "total_job_applicants": total_job_applicants,
         "show_eval_form": show_eval_form,
         "is_eval_locked_by_other": is_eval_locked_by_other,
-    })
+        "scroll_to": scroll_to,
+        "is_modal": is_modal,
+    }
+
+    if is_modal:
+        return render(request, "hr/partials/candidate_profile_modal.html", context)
+
+    return render(request, "hr/candidate_detail.html", context)
 
 
 @never_cache
@@ -1389,6 +1440,23 @@ def update_application_status(request, pk):
                 target_model="Application",
                 target_id=application.pk,
             )
+
+            # Auto-inactivate active job if vacancies are fulfilled
+            if new_status == "Hired":
+                job = application.job
+                if job and job.status == "Active":
+                    hired_count = Application.objects.filter(job=job, status="Hired").count()
+                    if hired_count >= job.vacancies:
+                        job.status = "Inactive"
+                        job.save(update_fields=["status"])
+                        log_hr_action(
+                            request,
+                            action="JOB_INACTIVATED",
+                            target_repr=job.title,
+                            details=f"Job posting '{job.title}' automatically set to Inactive as all {job.vacancies} vacancies have been filled by hired candidates.",
+                            target_model="Job",
+                            target_id=job.pk,
+                        )
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
@@ -2341,6 +2409,14 @@ def start_candidate_evaluation(request, pk):
             "message": "Candidate evaluation set to Ongoing."
         })
 
+    if request.headers.get("HX-Request") or request.GET.get("modal") == "1":
+        q = request.GET.copy()
+        q["modal"] = "1"
+        q["evaluate"] = "1"
+        q["scroll_to"] = "candidate-evaluation-section"
+        request.GET = q
+        return candidate_detail(request, pk)
+
     return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}?evaluate=1#candidate-evaluation-section")
 
 
@@ -2542,6 +2618,23 @@ def finalize_candidate_decision(request, pk):
     new_status = "Hired" if decision == "Hired" else "Rejected"
     application.status = new_status
     application.save(update_fields=["status"])
+
+    # Auto-inactivate active job if vacancies are fulfilled
+    if new_status == "Hired":
+        job = application.job
+        if job and job.status == "Active":
+            hired_count = Application.objects.filter(job=job, status="Hired").count()
+            if hired_count >= job.vacancies:
+                job.status = "Inactive"
+                job.save(update_fields=["status"])
+                log_hr_action(
+                    request,
+                    action="JOB_INACTIVATED",
+                    target_repr=job.title,
+                    details=f"Job posting '{job.title}' automatically set to Inactive as all {job.vacancies} vacancies have been filled by hired candidates.",
+                    target_model="Job",
+                    target_id=job.pk,
+                )
 
     # Release any final decision locks held by user
     HRActionLock.objects.filter(

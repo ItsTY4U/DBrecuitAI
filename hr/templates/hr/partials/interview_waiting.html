@@ -131,7 +131,11 @@
                                                 </div>
                                                 <div class="applicant-meta">
                                                     <span class="table-candidate-name">
-                                                        <a href="{% url 'candidate_detail' cand.id %}" style="color: inherit; text-decoration: none;">
+                                                        <a href="{% url 'candidate_detail' cand.id %}"
+                                                           hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
+                                                           hx-target="#candidate-profile-modal-container"
+                                                           hx-swap="innerHTML"
+                                                           style="color: inherit; text-decoration: none;">
                                                             {{ cand.first_name }}
                                                             {% if cand.middle_initial %}{{ cand.middle_initial }}.{% endif %}
                                                             {{ cand.last_name }}
@@ -191,9 +195,14 @@
                                                     <span>Schedule</span>
                                                 </button>
                                                 {% endif %}
-                                                <a href="{% url 'candidate_detail' cand.id %}" class="btn-table-review" title="View Full Profile">
+                                                <button type="button"
+                                                        class="btn-table-review"
+                                                        hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
+                                                        hx-target="#candidate-profile-modal-container"
+                                                        hx-swap="innerHTML"
+                                                        title="View Full Profile">
                                                     <i class="fas fa-user"></i>
-                                                </a>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>

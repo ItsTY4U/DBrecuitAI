@@ -54,6 +54,22 @@ document.addEventListener("click", function (e) {
         return;
     }
 
+    // Close job candidates modal
+    const closeJobCandsBtn = e.target.closest('#close-job-candidates-modal, .close-job-candidates-modal-btn');
+    if (closeJobCandsBtn) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    // Close candidate profile modal
+    const closeCandProfileBtn = e.target.closest('#close-candidate-profile-modal, .close-candidate-profile-modal-btn');
+    if (closeCandProfileBtn) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
     // Backdrop clicks
     const postModal = document.getElementById('post-job-modal');
     if (postModal && e.target === postModal) {
@@ -69,6 +85,18 @@ document.addEventListener("click", function (e) {
     if (editModal && e.target === editModal) {
         const editContainer = document.getElementById('edit-job-modal-container');
         if (editContainer) editContainer.innerHTML = '';
+    }
+
+    const jobCandsModal = document.getElementById('job-candidates-modal');
+    if (jobCandsModal && e.target === jobCandsModal) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+    }
+
+    const candProfileModal = document.getElementById('candidate-profile-modal');
+    if (candProfileModal && e.target === candProfileModal) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
     }
 
     // ==========================================
@@ -135,6 +163,16 @@ document.addEventListener("keydown", function (e) {
         const editContainer = document.getElementById('edit-job-modal-container');
         if (editContainer && editContainer.innerHTML.trim() !== '') {
             editContainer.innerHTML = '';
+        }
+
+        const candProfileContainer = document.getElementById('candidate-profile-modal-container');
+        if (candProfileContainer && candProfileContainer.innerHTML.trim() !== '') {
+            candProfileContainer.innerHTML = '';
+        }
+
+        const jobCandsContainer = document.getElementById('job-candidates-modal-container');
+        if (jobCandsContainer && jobCandsContainer.innerHTML.trim() !== '') {
+            jobCandsContainer.innerHTML = '';
         }
     }
 });

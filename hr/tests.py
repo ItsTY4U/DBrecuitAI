@@ -573,11 +573,11 @@ class CandidateManagementTests(TestCase):
 
         # For job with 0 applicants: disabled button with tooltip
         self.assertContains(response, '<button type="button" class="btn-job-view" disabled title="No applicants yet for this position">')
-        # For job with applicants: link to candidates
-        expected_active_link = f'href="{reverse("candidates")}?department=Sales&job={self.job_sales_staff.id}" class="btn-job-view"'
+        # For job with applicants: modal button to view candidates
+        expected_active_link = f'hx-get="{reverse("job_candidates_modal", kwargs={"pk": self.job_sales_staff.id})}"'
         self.assertContains(response, expected_active_link)
         # Not linked for job_sales_mgr
-        unexpected_link = f'href="{reverse("candidates")}?department=Sales&job={self.job_sales_mgr.id}"'
+        unexpected_link = f'hx-get="{reverse("job_candidates_modal", kwargs={"pk": self.job_sales_mgr.id})}"'
         self.assertNotContains(response, unexpected_link)
 
     def test_inactive_job_candidates_button_disabled_when_zero_applicants(self):
@@ -607,12 +607,12 @@ class CandidateManagementTests(TestCase):
         response = self.client.get(reverse("job_management"))
         self.assertEqual(response.status_code, 200)
 
-        # The inactive job with applicants should have a clickable candidates link
-        expected_inactive_link = f'href="{reverse("candidates")}?department=Sales&job={inactive_job_with_apps.id}" class="btn-job-view"'
+        # The inactive job with applicants should have a clickable candidates modal button
+        expected_inactive_link = f'hx-get="{reverse("job_candidates_modal", kwargs={"pk": inactive_job_with_apps.id})}"'
         self.assertContains(response, expected_inactive_link)
 
-        # The inactive job without applicants should NOT have a clickable candidates link
-        unexpected_inactive_link = f'href="{reverse("candidates")}?department=Sales&job={inactive_job_no_apps.id}"'
+        # The inactive job without applicants should NOT have a clickable candidates modal button
+        unexpected_inactive_link = f'hx-get="{reverse("job_candidates_modal", kwargs={"pk": inactive_job_no_apps.id})}"'
         self.assertNotContains(response, unexpected_inactive_link)
 
     def test_sidebar_alert_container_present_above_sidebar_footer(self):
@@ -3273,6 +3273,200 @@ class HRMultiUserConcurrencyTests(TestCase):
         )
         self.assertEqual(bob_success.status_code, 200)
         self.assertTrue(bob_success.json()["success"])
+
+
+class JobVacanciesAndModalsTests(TestCase):
+    """
+    Tests for Job vacancies, auto-inactivation when vacancies are filled,
+    Manage Jobs candidates modal, Interviews candidate profile modal,
+    and scoping /hr/candidates/ to active jobs only.
+    """
+
+    def setUp(self):
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.hr_user = User.objects.create_user(
+            username="hr_recruiter_vacancies",
+            email="hr_vacancies@test.com",
+            password="Password123!",
+            is_staff=True,
+        )
+        self.hr_user.groups.add(self.hr_group)
+        self.client.force_login(self.hr_user)
+
+        self.department = Department.objects.create(name="Engineering")
+        self.active_job = Job.objects.create(
+            title="Fullstack Developer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            status="Active",
+            vacancies=2,
+        )
+
+    def test_job_vacancies_creation_and_update(self):
+        """Creating and editing a job persists vacancies."""
+        resp = self.client.post(
+            reverse("create_job"),
+            {
+                "title": "DevOps Engineer",
+                "department": "Engineering",
+                "job_type": "FULL-TIME",
+                "vacancies": "4",
+                "schedule": "Mon-Fri",
+                "shift": "9-5",
+            }
+        )
+        self.assertIn(resp.status_code, [200, 302])
+        job = Job.objects.get(title="DevOps Engineer")
+        self.assertEqual(job.vacancies, 4)
+
+        # Update via manage_job
+        resp2 = self.client.post(
+            reverse("manage_job", kwargs={"pk": job.pk}),
+            {
+                "title": "DevOps Lead",
+                "department": "Engineering",
+                "job_type": "FULL-TIME",
+                "vacancies": "5",
+                "status": "Active",
+            }
+        )
+        self.assertIn(resp2.status_code, [200, 302])
+        job.refresh_from_db()
+        self.assertEqual(job.vacancies, 5)
+        self.assertEqual(job.title, "DevOps Lead")
+
+    def test_auto_inactivation_when_vacancies_fulfilled_and_one_way_latch(self):
+        """Active job switches to Inactive when hired candidates equal vacancies, and stays Inactive if decision changes."""
+        job = self.active_job
+        self.assertEqual(job.status, "Active")
+        self.assertEqual(job.vacancies, 2)
+
+        # Create two applicants
+        cand1 = Application.objects.create(
+            job=job, first_name="Alice", last_name="Smith",
+            email="alice@test.com", status="Evaluation"
+        )
+        cand2 = Application.objects.create(
+            job=job, first_name="Bob", last_name="Jones",
+            email="bob@test.com", status="Evaluation"
+        )
+
+        # Hire candidate 1 via finalize_candidate_decision
+        resp1 = self.client.post(
+            reverse("finalize_candidate_decision", kwargs={"pk": cand1.pk}),
+            {"decision": "Hired", "final_notes": "Great fit"}
+        )
+        self.assertIn(resp1.status_code, [200, 302])
+        job.refresh_from_db()
+        cand1.refresh_from_db()
+        self.assertEqual(cand1.status, "Hired")
+        # 1 hired out of 2 vacancies -> Job remains Active
+        self.assertEqual(job.status, "Active")
+
+        # Hire candidate 2 via finalize_candidate_decision
+        resp2 = self.client.post(
+            reverse("finalize_candidate_decision", kwargs={"pk": cand2.pk}),
+            {"decision": "Hired", "final_notes": "Strong candidate"}
+        )
+        self.assertIn(resp2.status_code, [200, 302])
+        job.refresh_from_db()
+        cand2.refresh_from_db()
+        self.assertEqual(cand2.status, "Hired")
+        # 2 hired out of 2 vacancies -> Job auto-switches to Inactive!
+        self.assertEqual(job.status, "Inactive")
+
+        # Now change candidate 1's decision to Not Hired
+        resp3 = self.client.post(
+            reverse("finalize_candidate_decision", kwargs={"pk": cand1.pk}),
+            {"decision": "Not Hired", "final_notes": "Candidate declined offer"}
+        )
+        self.assertIn(resp3.status_code, [200, 302])
+        cand1.refresh_from_db()
+        self.assertEqual(cand1.status, "Rejected")
+        job.refresh_from_db()
+        # Job must REMAIN Inactive (one-way latch)
+        self.assertEqual(job.status, "Inactive")
+
+    def test_job_candidates_modal_endpoint(self):
+        """job_candidates_modal returns 200 with applicants for both active and inactive jobs."""
+        cand = Application.objects.create(
+            job=self.active_job, first_name="Claire", last_name="Taylor",
+            email="claire@test.com", status="Screening", ai_score=85
+        )
+        # Active job modal
+        resp_active = self.client.get(reverse("job_candidates_modal", kwargs={"pk": self.active_job.pk}))
+        self.assertEqual(resp_active.status_code, 200)
+        self.assertContains(resp_active, "Claire")
+        self.assertContains(resp_active, "Fullstack Developer")
+        self.assertContains(resp_active, "job-candidates-modal")
+
+        # Inactivate job and test modal
+        self.active_job.status = "Inactive"
+        self.active_job.save(update_fields=["status"])
+
+        resp_inactive = self.client.get(reverse("job_candidates_modal", kwargs={"pk": self.active_job.pk}))
+        self.assertEqual(resp_inactive.status_code, 200)
+        self.assertContains(resp_inactive, "Claire")
+        self.assertContains(resp_inactive, "Inactive")
+
+    def test_candidates_page_excludes_inactive_job_candidates(self):
+        """/hr/candidates/ KPI counts and recent list exclude applicants of inactive jobs."""
+        # Active job applicant
+        active_app = Application.objects.create(
+            job=self.active_job, first_name="Dan", last_name="Active",
+            email="dan@test.com", status="Screening"
+        )
+        # Inactive job & applicant
+        inactive_job = Job.objects.create(
+            title="Archived Role", department="Engineering",
+            status="Inactive", vacancies=1
+        )
+        inactive_app = Application.objects.create(
+            job=inactive_job, first_name="Eve", last_name="Inactive",
+            email="eve@test.com", status="Screening"
+        )
+
+        resp = self.client.get(reverse("candidates"))
+        self.assertEqual(resp.status_code, 200)
+
+        # Active applicant is present in recent applications
+        recent_ids = [a.id for a in resp.context["recent_applications"]]
+        self.assertIn(active_app.id, recent_ids)
+        # Inactive applicant is NOT present in recent applications
+        self.assertNotIn(inactive_app.id, recent_ids)
+
+        # Total count only counts active job applicants
+        self.assertEqual(resp.context["total_candidates"], 1)
+
+    def test_interview_modal_endpoints(self):
+        """candidate_detail renders modal template when requested via modal=1 or HX-Request."""
+        cand = Application.objects.create(
+            job=self.active_job, first_name="Frank", last_name="Miller",
+            email="frank@test.com", status="Interview"
+        )
+
+        # 1. Candidate detail as modal
+        resp_modal = self.client.get(
+            reverse("candidate_detail", kwargs={"pk": cand.pk}) + "?modal=1"
+        )
+        self.assertEqual(resp_modal.status_code, 200)
+        self.assertContains(resp_modal, "candidate-profile-modal")
+        self.assertContains(resp_modal, "Frank")
+
+        # 2. View evaluation with scroll_to
+        resp_scroll = self.client.get(
+            reverse("candidate_detail", kwargs={"pk": cand.pk}) + "?modal=1&scroll_to=candidate-evaluation-section"
+        )
+        self.assertEqual(resp_scroll.status_code, 200)
+        self.assertContains(resp_scroll, "candidate-evaluation-section")
+
+        # 3. Start candidate evaluation with modal=1
+        resp_start_eval = self.client.get(
+            reverse("start_candidate_evaluation", kwargs={"pk": cand.pk}) + "?modal=1"
+        )
+        self.assertEqual(resp_start_eval.status_code, 200)
+        self.assertContains(resp_start_eval, "candidate-profile-modal")
+        self.assertTrue(resp_start_eval.context.get("show_eval_form"))
 
 
 
