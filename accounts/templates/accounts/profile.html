@@ -406,39 +406,46 @@
          RECOMMENDED JOBS
     ========================================== -->
 
+    <!-- =========================================
+         RECOMMENDED JOBS
+    ========================================== -->
+
     <section class="profile-section">
 
-        <div class="section-header">
+        <div class="recommendations-card">
 
-            <div>
-                <h2>Recommended for you</h2>
+            <div class="recommendations-card-header">
 
-                <p>
-                    {% if strongest_field_display %}
-                        Curated jobs matching your primary field in <strong>{{ strongest_field_display }}</strong>.
-                    {% else %}
-                        Jobs that may match your skills and experience.
-                    {% endif %}
-                </p>
+                <div>
+                    <h2>Recommended for you</h2>
+
+                    <p>
+                        {% if strongest_field_display %}
+                            Curated jobs matching your primary field in <strong>{{ strongest_field_display }}</strong>.
+                        {% else %}
+                            Jobs that may match your skills and experience.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <a href="{% url 'jobs' %}" class="view-all-btn">
+                    View All Jobs
+                </a>
+
             </div>
 
-            <a href="{% url 'jobs' %}" class="view-all-btn">
-                View All Jobs
-            </a>
-
-        </div>
-
-
-        <div id="profile-recommendations"
-             hx-get="{% url 'profile_recommendations' %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-            <div class="no-recommendations" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px; background: rgba(255, 255, 255, 0.6); border-radius: 12px;">
-                <div class="spinner-border" style="width: 2rem; height: 2rem; border: 3px solid rgba(45, 90, 39, 0.2); border-top-color: #2d5a27; border-radius: 50%; animation: spin 0.8s linear infinite;" role="status"></div>
-                <p style="color: #666; font-size: 14px; margin: 0; font-weight: 500;">
-                    <i class="fas fa-sparkles" style="color: #2d5a27; margin-right: 6px;"></i> Finding the best job matches for your profile...
-                </p>
+            <div id="profile-recommendations"
+                 hx-get="{% url 'profile_recommendations' %}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="no-recommendations" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px; background: rgba(255, 255, 255, 0.6); border-radius: 12px;">
+                    <div class="spinner-border" style="width: 2rem; height: 2rem; border: 3px solid rgba(45, 90, 39, 0.2); border-top-color: #2d5a27; border-radius: 50%; animation: spin 0.8s linear infinite;" role="status"></div>
+                    <p style="color: #666; font-size: 14px; margin: 0; font-weight: 500;">
+                        <i class="fas fa-sparkles" style="color: #2d5a27; margin-right: 6px;"></i> Finding the best job matches for your profile...
+                    </p>
+                </div>
             </div>
+
         </div>
 
     </section>
@@ -450,9 +457,9 @@
 
     <section class="profile-section">
 
-        <div class="section-header">
+        <div class="applications-card">
 
-            <div>
+            <div class="applications-card-header">
 
                 <h2>Track Applications</h2>
 
@@ -461,11 +468,6 @@
                 </p>
 
             </div>
-
-        </div>
-
-
-        <div class="applications-card">
 
             <div class="applications-table-wrapper">
 
@@ -490,59 +492,57 @@
 
                             {% for application in applications %}
 
-                                <tr>
+                                <tr class="application-card-row">
 
-                                    <td>
+                                    <td class="app-td-id" data-label="Application ID">
                                         <strong>
                                             {{ application.application_id }}
                                         </strong>
                                     </td>
 
-                            <td>
-                                {{ application.job.title }}
-                            </td>
+                                    <td class="app-td-position" data-label="Position">
+                                        {{ application.job.title }}
+                                    </td>
 
-                            <td>
-                                {{ application.created_at|date:"F d, Y" }}
-                            </td>
+                                    <td class="app-td-date" data-label="Applied Date">
+                                        {{ application.created_at|date:"F d, Y" }}
+                                    </td>
 
-                                    <td>
-
+                                    <td class="app-td-status" data-label="Status">
                                         <span class="status-badge">
                                             {{ application.status }}
                                         </span>
-
                                     </td>
 
-                            <td>
-                                {% if application.video_interview.status == "COMPLETED" %}
-                                <button type="button" class="track-btn" disabled
-                                    style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-circle-check"></i> Completed
-                                </button>
-                                {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
-                                <button type="button" class="track-btn" disabled
-                                    style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-lock"></i> Attempted
-                                </button>
-                                {% elif application.video_interview.can_retake %}
-                                <a href="{% url 'video_interview:welcome' application.application_id %}"
-                                    class="track-btn"
-                                    style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-rotate-right"></i> Retake Interview
-                                </a>
-                                {% else %}
-                                <a href="{% url 'video_interview:welcome' application.application_id %}"
-                                    class="track-btn"
-                                    style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
-                                    <i class="fas fa-video"></i> Take Video Interview
-                                </a>
-                                {% endif %}
-                            </td>
+                                    <td class="app-td-action" data-label="Video Interview">
+                                        {% if application.video_interview.status == "COMPLETED" %}
+                                        <button type="button" class="track-btn track-btn-completed" disabled
+                                            style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-circle-check"></i> Completed
+                                        </button>
+                                        {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
+                                        <button type="button" class="track-btn track-btn-attempted" disabled
+                                            style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-lock"></i> Attempted
+                                        </button>
+                                        {% elif application.video_interview.can_retake %}
+                                        <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                            class="track-btn track-btn-retake"
+                                            style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-rotate-right"></i> Retake Interview
+                                        </a>
+                                        {% else %}
+                                        <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                            class="track-btn track-btn-take"
+                                            style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
+                                            <i class="fas fa-video"></i> Take Video Interview
+                                        </a>
+                                        {% endif %}
+                                    </td>
 
-                        </tr>
+                                </tr>
 
-                        {% endfor %}
+                            {% endfor %}
 
                         {% else %}
                         <tr>
