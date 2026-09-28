@@ -1437,16 +1437,51 @@ input[readonly].form-control-readonly:focus {
     box-shadow: none !important;
 }
 
-/* Recommended Jobs */
+/* Recommended Jobs Card & Section */
+.recommendations-card {
+    background: var(--glass-card);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: clamp(18px, 3vw, 24px);
+    overflow: hidden;
+}
+
+.recommendations-card-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(45, 90, 39, 0.1);
+}
+
+.recommendations-card-header h2 {
+    margin: 0;
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+.recommendations-card-header p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.recommendations-card .job-recommendations,
 .job-recommendations {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    padding: 18px 20px;
-    background: #ffffff;
-    border: 1px solid #dceee2;
-    border-radius: 16px;
-    box-shadow: 0 5px 18px rgba(35, 90, 55, 0.04);
+}
+
+.recommendations-card .job-recommendations {
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 
 .recommendation-card {
@@ -1813,6 +1848,24 @@ input[readonly].form-control-readonly:focus {
     box-shadow: var(--shadow-sm);
 }
 
+.applications-card-header {
+    padding: clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px) 14px;
+    border-bottom: 1px solid rgba(45, 90, 39, 0.1);
+}
+
+.applications-card-header h2 {
+    margin: 0;
+    font-size: clamp(18px, 3vw, 22px);
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+.applications-card-header p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
 .applications-table-wrapper {
     width: 100%;
     overflow-x: auto;
@@ -1990,10 +2043,141 @@ input[readonly].form-control-readonly:focus {
         box-sizing: border-box;
     }
 
+    .recommendations-card {
+        padding: 16px 14px;
+    }
+
+    .recommendations-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+    }
+
+    .recommendations-card-header .view-all-btn {
+        align-self: flex-start;
+    }
+
+    .recommendations-card .job-recommendations,
     .job-recommendations {
         grid-template-columns: 1fr;
-        padding: 14px 12px;
         gap: 10px;
+        padding: 0;
+    }
+
+    /* Track Applications Card Header on Mobile */
+    .applications-card-header {
+        padding: 16px 14px 12px;
+    }
+
+    /* Track Applications Table to Mobile Card View */
+    .applications-table-wrapper {
+        padding: 12px 14px 14px;
+        overflow-x: visible;
+    }
+
+    .applications-table {
+        min-width: 0 !important;
+        width: 100%;
+        display: block;
+    }
+
+    .applications-table thead {
+        display: none;
+    }
+
+    .applications-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+
+    .applications-table tr.application-card-row {
+        display: block;
+        background: #ffffff;
+        border: 1px solid #dceee2;
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(35, 90, 55, 0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .applications-table tr.application-card-row:hover {
+        box-shadow: 0 4px 14px rgba(35, 90, 55, 0.08);
+    }
+
+    .applications-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 0;
+        border: none;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        white-space: normal;
+        text-align: right;
+    }
+
+    .applications-table td::before {
+        content: attr(data-label);
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        text-align: left;
+        margin-right: 12px;
+        flex-shrink: 0;
+    }
+
+    .applications-table td.app-td-id strong {
+        color: var(--primary);
+        font-family: monospace;
+        font-size: 13px;
+    }
+
+    .applications-table td.app-td-position {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .applications-table td.app-td-date {
+        color: #64748b;
+        font-size: 12.5px;
+    }
+
+    .applications-table td.app-td-action {
+        border-bottom: none;
+        padding-top: 12px;
+        padding-bottom: 2px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .applications-table td.app-td-action::before {
+        display: none;
+    }
+
+    .applications-table td.app-td-action .track-btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 14px;
+        font-size: 13.5px;
+        border-radius: 8px;
+    }
+
+    .applications-table td.no-applications {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 30px 16px;
+    }
+
+    .applications-table td.no-applications::before {
+        display: none;
     }
 
     .change-resume-modal-actions {
@@ -2045,6 +2229,17 @@ input[readonly].form-control-readonly:focus {
         width: clamp(34px, 10vw, 42px) !important;
         height: 44px !important;
         font-size: 18px !important;
+    }
+
+    .recommendations-card,
+    .applications-card-header,
+    .applications-table-wrapper {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .applications-table tr.application-card-row {
+        padding: 12px 14px;
     }
 
     .section-header {

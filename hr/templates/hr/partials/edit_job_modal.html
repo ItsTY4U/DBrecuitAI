@@ -62,6 +62,11 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="form-label" for="edit-modal-vacancies">Number of Vacancies <span class="required-star">*</span></label>
+                        <input type="number" id="edit-modal-vacancies" name="vacancies" value="{{ job.vacancies|default:1 }}" class="form-input" min="1" required>
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label" for="edit-modal-schedule">Work Schedule</label>
                         <input type="text" id="edit-modal-schedule" name="schedule" value="{{ job.schedule|default:'' }}" class="form-input" placeholder="e.g. Monday to Friday">
                     </div>

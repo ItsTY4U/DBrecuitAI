@@ -1,11 +1,13 @@
 {% load job_filters %}
 
+{% if not is_modal %}
 <div class="page-nav-header">
     <a href="{% url 'candidates' %}?department={{ application.job.department|urlencode }}" class="back-link-pill">
         <i class="fas fa-arrow-left"></i>
         <span>Back to {{ application.job.department }} Candidates</span>
     </a>
 </div>
+{% endif %}
 
 <!-- Candidate Recruitment Pipeline (5 Stages) -->
 <div class="pipeline-stepper-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
@@ -1188,7 +1190,7 @@
 
             {% if not is_eval_locked_by_other %}
             <!-- Interactive Evaluation Form (Shown when evaluate requested or when editing) -->
-            <div id="eval-form-card" class="eval-form-container" data-app-id="{{ application.pk }}" style="{% if show_eval_form %}display: block;{% else %}display: none;{% endif %}">
+            <div id="eval-form-card" class="eval-form-container" style="{% if show_eval_form %}display: block;{% else %}display: none;{% endif %}" data-app-id="{{ application.pk }}">
                 <form method="POST" action="{% url 'evaluate_candidate' application.pk %}" enctype="multipart/form-data" id="candidateEvaluationForm" onsubmit="return handleEvaluationSubmit(event)">
                     {% csrf_token %}
 

@@ -146,7 +146,11 @@
                                                 </div>
                                                 <div class="applicant-meta">
                                                     <span class="table-candidate-name">
-                                                        <a href="{% url 'candidate_detail' applicant.id %}" style="color: inherit; text-decoration: none;">
+                                                        <a href="{% url 'candidate_detail' applicant.id %}"
+                                                           hx-get="{% url 'candidate_detail' applicant.id %}?modal=1"
+                                                           hx-target="#candidate-profile-modal-container"
+                                                           hx-swap="innerHTML"
+                                                           style="color: inherit; text-decoration: none;">
                                                             {{ applicant.first_name }}
                                                             {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
                                                             {{ applicant.last_name }}
@@ -223,24 +227,30 @@
                                         <td class="td-action text-right">
                                             <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px; flex-wrap: wrap;">
                                                 {% if applicant.candidate_status == 'Completed' %}
-                                                <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
-                                                   class="btn-table-review"
-                                                   style="background: #dcfce7; color: #15803d !important; border-color: #bbf7d0;"
-                                                   title="View recorded candidate evaluation">
+                                                <button type="button"
+                                                        class="btn-table-review"
+                                                        hx-get="{% url 'candidate_detail' applicant.id %}?modal=1&scroll_to=candidate-evaluation-section"
+                                                        hx-target="#candidate-profile-modal-container"
+                                                        hx-swap="innerHTML"
+                                                        style="background: #dcfce7; color: #15803d !important; border-color: #bbf7d0;"
+                                                        title="View recorded candidate evaluation">
                                                     <i class="fas fa-eye"></i>
                                                     <span>View Evaluation</span>
-                                                </a>
+                                                </button>
                                                 {% elif applicant.candidate_status == 'Ongoing' %}
                                                     {% if applicant.is_my_evaluation or applicant.evaluation.evaluator == request.user or not applicant.evaluation.evaluator %}
-                                                    <a href="{% url 'candidate_detail' applicant.id %}#candidate-evaluation-section"
-                                                       class="btn-table-review"
-                                                       data-action-btn="EVALUATE"
-                                                       data-cand-id="{{ applicant.id }}"
-                                                       style="background: #fef3c7; color: #b45309 !important; border-color: #fde68a;"
-                                                       title="Continue recording candidate evaluation">
+                                                    <button type="button"
+                                                            class="btn-table-review"
+                                                            data-action-btn="EVALUATE"
+                                                            data-cand-id="{{ applicant.id }}"
+                                                            hx-get="{% url 'candidate_detail' applicant.id %}?modal=1&evaluate=1&scroll_to=candidate-evaluation-section"
+                                                            hx-target="#candidate-profile-modal-container"
+                                                            hx-swap="innerHTML"
+                                                            style="background: #fef3c7; color: #b45309 !important; border-color: #fde68a;"
+                                                            title="Continue recording candidate evaluation">
                                                         <i class="fas fa-play"></i>
                                                         <span>Continue Evaluation</span>
-                                                    </a>
+                                                    </button>
                                                     {% else %}
                                                     <button type="button"
                                                             class="btn-table-review disabled"
@@ -254,15 +264,18 @@
                                                     </button>
                                                     {% endif %}
                                                 {% else %}
-                                                <a href="{% url 'start_candidate_evaluation' applicant.id %}"
-                                                   class="btn-table-review"
-                                                   data-action-btn="EVALUATE"
-                                                   data-cand-id="{{ applicant.id }}"
-                                                   style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
-                                                   title="Start recording candidate evaluation">
+                                                <button type="button"
+                                                        class="btn-table-review"
+                                                        data-action-btn="EVALUATE"
+                                                        data-cand-id="{{ applicant.id }}"
+                                                        hx-get="{% url 'start_candidate_evaluation' applicant.id %}?modal=1"
+                                                        hx-target="#candidate-profile-modal-container"
+                                                        hx-swap="innerHTML"
+                                                        style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
+                                                        title="Start recording candidate evaluation">
                                                     <i class="fas fa-clipboard-check"></i>
                                                     <span>Evaluate</span>
-                                                </a>
+                                                </button>
                                                 {% endif %}
 
                                                 {% if applicant.candidate_status != 'Completed' and applicant.active_interview %}
@@ -280,7 +293,7 @@
                                                     {% else %}
                                                     <!-- Combined Manage Interview Button (Reschedule / Cancel) -->
                                                     <button type="button" 
-                                                            class="btn-table-review"
+                                                            class="btn-table-review" 
                                                             data-action-btn="RESCHEDULE"
                                                             data-cand-id="{{ applicant.id }}"
                                                             onclick="hrOpenManageInterviewModal('{{ applicant.id }}', '{{ applicant.first_name|escapejs }} {{ applicant.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ applicant.active_interview.date|date:"Y-m-d" }}', '{{ applicant.active_interview.time|time:"H:i" }}', '{{ applicant.active_interview.interviewer|default:""|escapejs }}', '{{ applicant.active_interview.location|default:""|escapejs }}')"
@@ -292,11 +305,14 @@
                                                     {% endif %}
                                                 {% endif %}
 
-                                                <a href="{% url 'candidate_detail' applicant.id %}" 
-                                                   class="btn-table-review" 
-                                                   title="View Full Profile">
+                                                <button type="button"
+                                                        class="btn-table-review" 
+                                                        hx-get="{% url 'candidate_detail' applicant.id %}?modal=1"
+                                                        hx-target="#candidate-profile-modal-container"
+                                                        hx-swap="innerHTML"
+                                                        title="View Full Profile">
                                                     <i class="fas fa-user"></i>
-                                                </a>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>

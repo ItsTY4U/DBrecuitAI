@@ -54,6 +54,11 @@ class Job(models.Model):
         verbose_name="General Requirements",
         help_text="Applicant-facing requirements shown directly on the job posting (education, general experience, etc.)."
     )
+    vacancies = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Number of Vacancies",
+        help_text="Number of open positions available for this job."
+    )
     
     skills_weight = models.PositiveIntegerField(
         default=25,
