@@ -3324,6 +3324,118 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.assertEqual(bob_success.status_code, 200)
         self.assertTrue(bob_success.json()["success"])
 
+    def test_evaluation_lifecycle_modal_close_and_manage_button_lock(self):
+        """
+        Verify that:
+        1. When HR1 evaluates a candidate:
+           - api_acquire_lock for RESCHEDULE by HR2 is locked.
+           - api_live_sync shows HR1 as active evaluator and locks others.
+           - interviews view shows status Ongoing and Manage button is locked.
+        2. When HR1 closes the modal / calls cancel_candidate_evaluation:
+           - evaluation is released (evaluator=None, is_evaluating=False).
+           - api_live_sync returns empty ongoing_evaluations for both HR1 and HR2.
+           - Neither HR1 nor HR2 is locked out.
+           - HR1 can immediately return and re-evaluate.
+           - HR2 can acquire RESCHEDULE lock without being blocked.
+        """
+        from hr.models import CandidateEvaluation, Interview, HRActionLock
+
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Alice Recruiter",
+            date=timezone.localdate(),
+            time="10:00",
+            status="Scheduled"
+        )
+        intv.applicants.add(self.application)
+
+        # 1. HR1 starts candidate evaluation
+        self.client.force_login(self.hr_user_1)
+        resp_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_start.status_code, 200)
+        data_start = resp_start.json()
+        self.assertTrue(data_start["success"])
+
+        # Check DB state
+        eval_obj = CandidateEvaluation.objects.get(application=self.application)
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertTrue(eval_obj.is_evaluating)
+        self.assertEqual(eval_obj.evaluator, self.hr_user_1)
+
+        # Check HR2 acquire RESCHEDULE lock is BLOCKED
+        self.client.force_login(self.hr_user_2)
+        resp_lock = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_lock.status_code, 200)
+        data_lock = resp_lock.json()
+        self.assertTrue(data_lock.get("locked"))
+
+        # Check live sync for HR2
+        resp_sync2 = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(resp_sync2.status_code, 200)
+        data_sync2 = resp_sync2.json()
+        self.assertEqual(len(data_sync2["ongoing_evaluations"]), 1)
+        self.assertFalse(data_sync2["ongoing_evaluations"][0]["is_my_evaluation"])
+
+        # Check interviews view for HR2 renders Locked Manage button
+        resp_intv2 = self.client.get(reverse("interviews") + "?tab=evaluations")
+        self.assertEqual(resp_intv2.status_code, 200)
+        self.assertContains(resp_intv2, 'data-action-btn="RESCHEDULE"')
+
+        # 2. HR1 closes the modal (cancel_candidate_evaluation)
+        self.client.force_login(self.hr_user_1)
+        resp_cancel = self.client.post(
+            reverse("cancel_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_cancel.status_code, 200)
+
+        # Check DB state after cancel
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertFalse(eval_obj.is_evaluating)
+        self.assertIsNone(eval_obj.evaluator)
+
+        # Check live sync for both users is EMPTY (neither locked out)
+        resp_sync1_after = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(len(resp_sync1_after.json()["ongoing_evaluations"]), 0)
+
+        self.client.force_login(self.hr_user_2)
+        resp_sync2_after = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(len(resp_sync2_after.json()["ongoing_evaluations"]), 0)
+
+        # HR2 can now acquire RESCHEDULE lock
+        resp_lock2 = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_lock2.status_code, 200)
+        self.assertTrue(resp_lock2.json().get("success"))
+
+        # Release lock so HR1 can evaluate again
+        self.client.post(
+            reverse("hr_lock_release"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+
+        # HR1 can continue/start evaluation again without being locked out
+        self.client.force_login(self.hr_user_1)
+        resp_restart = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_restart.status_code, 200)
+        self.assertTrue(resp_restart.json()["success"])
+
+
 
 class JobVacanciesAndModalsTests(TestCase):
     """

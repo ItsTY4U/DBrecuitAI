@@ -317,23 +317,87 @@
             const actionType = el.getAttribute('data-action-btn');
             if (!candId) return;
 
-            // Remember original state
-            if (!el.hasAttribute('data-orig-html')) {
-                el.setAttribute('data-orig-html', el.innerHTML);
-            }
-            if (!el.hasAttribute('data-orig-style')) {
-                el.setAttribute('data-orig-style', el.getAttribute('style') || '');
-            }
-            if (!el.hasAttribute('data-orig-onclick')) {
-                el.setAttribute('data-orig-onclick', el.getAttribute('onclick') || '');
+            // Remember original state ONLY if element is NOT currently disabled/locked
+            const isCurrentlyDisabled = el.disabled || el.classList.contains('disabled');
+            const currentHtml = el.innerHTML;
+            const hasLockText = currentHtml.indexOf('fa-lock') !== -1 || currentHtml.indexOf('In Evaluation') !== -1 || currentHtml.indexOf('Locked') !== -1;
+            if (!isCurrentlyDisabled && !hasLockText) {
+                if (!el.hasAttribute('data-orig-html')) {
+                    el.setAttribute('data-orig-html', currentHtml);
+                }
+                if (!el.hasAttribute('data-orig-style')) {
+                    el.setAttribute('data-orig-style', el.getAttribute('style') || '');
+                }
+                if (!el.hasAttribute('data-orig-onclick')) {
+                    el.setAttribute('data-orig-onclick', el.getAttribute('onclick') || '');
+                }
             }
 
+            const ongoingEval = ongoingEvalsMap.get(String(candId));
             const specificLock = locksMap.get(`${candId}:${actionType}`) || (actionType !== 'EVALUATE' ? locksMap.get(String(candId)) : null);
 
-            if (actionType === 'EVALUATE') {
-                const ongoingEval = ongoingEvalsMap.get(String(candId));
+            // 1. MANAGE / RESCHEDULE ACTION BUTTON
+            if (actionType === 'RESCHEDULE') {
                 if (ongoingEval) {
-                    if (ongoingEval.evaluator_id !== currentUserId) {
+                    // Candidate is actively being evaluated -> Manage button must be LOCKED for EVERYONE!
+                    el.disabled = true;
+                    el.classList.add('disabled');
+                    el.style.cssText = 'background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;';
+                    el.innerHTML = '<i class="fas fa-lock"></i> <span>Locked</span>';
+                    el.title = `Interview cannot be managed while candidate evaluation is ongoing (by ${ongoingEval.evaluator_name}).`;
+                    el.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    return;
+                } else if (specificLock) {
+                    // Button is locked by another user!
+                    el.disabled = true;
+                    el.classList.add('disabled');
+                    el.style.cssText = 'background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;';
+                    el.innerHTML = `<i class="fas fa-lock"></i> <span>Locked (${specificLock.user_name})</span>`;
+                    el.title = `Currently being handled by ${specificLock.user_name}.`;
+                    el.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    return;
+                } else {
+                    // Button is free
+                    if (el.disabled || el.classList.contains('disabled')) {
+                        el.disabled = false;
+                        el.classList.remove('disabled');
+                        let origHtml = el.getAttribute('data-orig-html');
+                        if (!origHtml || origHtml.indexOf('fa-lock') !== -1 || origHtml.indexOf('Locked') !== -1) {
+                            origHtml = '<i class="fas fa-sliders"></i> <span>Manage</span>';
+                        }
+                        el.innerHTML = origHtml;
+                        let origStyle = el.getAttribute('data-orig-style');
+                        if (!origStyle || origStyle.indexOf('not-allowed') !== -1) {
+                            origStyle = 'background: #ffffff; color: #334155 !important; border-color: #cbd5e1; cursor: pointer;';
+                        }
+                        el.style.cssText = origStyle;
+                        const origClick = el.getAttribute('data-orig-onclick');
+                        if (origClick && origClick.indexOf('hrOpenManageInterviewModal') !== -1) {
+                            el.setAttribute('onclick', origClick);
+                        } else if (el.hasAttribute('data-cand-id')) {
+                            const cId = el.getAttribute('data-cand-id');
+                            const cName = el.getAttribute('data-cand-name') || '';
+                            const jTitle = el.getAttribute('data-job-title') || '';
+                            const iDate = el.getAttribute('data-intv-date') || '';
+                            const iTime = el.getAttribute('data-intv-time') || '';
+                            const iInterviewer = el.getAttribute('data-intv-interviewer') || '';
+                            const iLoc = el.getAttribute('data-intv-location') || '';
+                            el.onclick = function() {
+                                if (typeof window.hrOpenManageInterviewModal === 'function') {
+                                    window.hrOpenManageInterviewModal(cId, cName, jTitle, iDate, iTime, iInterviewer, iLoc);
+                                }
+                            };
+                        }
+                        el.title = 'Manage Interview (Reschedule or Cancel)';
+                    }
+                    return;
+                }
+            }
+
+            // 2. EVALUATE ACTION BUTTON
+            if (actionType === 'EVALUATE') {
+                if (ongoingEval) {
+                    if (ongoingEval.evaluator_id && ongoingEval.evaluator_id !== currentUserId) {
                         // Locked by other evaluator
                         el.disabled = true;
                         el.classList.add('disabled');
@@ -345,22 +409,58 @@
                         // My evaluation -> Continue Evaluation
                         el.disabled = false;
                         el.classList.remove('disabled');
-                        el.style.cssText = 'background: #2d5a27; color: #ffffff !important; border: 1.5px solid transparent; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;';
-                        el.innerHTML = '<i class="fas fa-clipboard-check"></i> <span>Continue Evaluation</span>';
+                        el.style.cssText = 'background: #fef3c7; color: #b45309 !important; border: 1.5px solid #fde68a; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;';
+                        el.innerHTML = '<i class="fas fa-play"></i> <span>Continue Evaluation</span>';
+                        el.title = 'Continue recording candidate evaluation';
+                        el.onclick = null;
                         if (el.tagName.toLowerCase() === 'a') {
                             el.setAttribute('href', `/hr/candidates/applicant/${candId}/?evaluate=true`);
+                        } else if (el.tagName.toLowerCase() === 'button') {
+                            el.setAttribute('hx-get', `/hr/candidates/applicant/${candId}/?modal=1&evaluate=1&scroll_to=candidate-evaluation-section`);
+                            el.setAttribute('hx-target', '#candidate-profile-modal-container');
+                            el.setAttribute('hx-swap', 'innerHTML');
+                            if (window.htmx) {
+                                window.htmx.process(el);
+                            }
                         }
                     }
                 } else {
                     // Normal Evaluate button
-                    el.disabled = false;
-                    el.classList.remove('disabled');
-                    el.style.cssText = el.getAttribute('data-orig-style');
-                    el.innerHTML = el.getAttribute('data-orig-html');
-                    const origClick = el.getAttribute('data-orig-onclick');
-                    if (origClick) el.setAttribute('onclick', origClick);
+                    if (el.disabled || el.classList.contains('disabled') || el.innerHTML.indexOf('In Evaluation') !== -1 || el.innerHTML.indexOf('Continue Evaluation') !== -1) {
+                        el.disabled = false;
+                        el.classList.remove('disabled');
+                        let origHtml = el.getAttribute('data-orig-html');
+                        if (!origHtml || origHtml.indexOf('fa-lock') !== -1 || origHtml.indexOf('In Evaluation') !== -1 || origHtml.indexOf('Continue Evaluation') !== -1) {
+                            origHtml = '<i class="fas fa-clipboard-check"></i> <span>Evaluate</span>';
+                        }
+                        el.innerHTML = origHtml;
+                        let origStyle = el.getAttribute('data-orig-style');
+                        if (!origStyle || origStyle.indexOf('not-allowed') !== -1) {
+                            origStyle = 'background: #2d5a27; color: #ffffff !important; border-color: #2d5a27; cursor: pointer;';
+                        }
+                        el.style.cssText = origStyle;
+                        const origClick = el.getAttribute('data-orig-onclick');
+                        if (origClick) {
+                            el.setAttribute('onclick', origClick);
+                        } else {
+                            el.onclick = null;
+                        }
+                        if (el.tagName.toLowerCase() === 'button') {
+                            el.setAttribute('hx-get', `/hr/candidates/applicant/${candId}/evaluation/start/?modal=1`);
+                            el.setAttribute('hx-target', '#candidate-profile-modal-container');
+                            el.setAttribute('hx-swap', 'innerHTML');
+                            if (window.htmx) {
+                                window.htmx.process(el);
+                            }
+                        }
+                        el.title = 'Start recording candidate evaluation';
+                    }
                 }
-            } else if (specificLock) {
+                return;
+            }
+
+            // 3. OTHER ACTION BUTTONS
+            if (specificLock) {
                 // Button is locked by another user!
                 el.disabled = true;
                 el.classList.add('disabled');
@@ -369,7 +469,7 @@
                 el.title = `Currently being handled by ${specificLock.user_name}.`;
             } else {
                 // Button is free
-                if (el.disabled && el.classList.contains('disabled')) {
+                if (el.disabled || el.classList.contains('disabled')) {
                     el.disabled = false;
                     el.classList.remove('disabled');
                     el.style.cssText = el.getAttribute('data-orig-style');
@@ -377,6 +477,44 @@
                     const origClick = el.getAttribute('data-orig-onclick');
                     if (origClick) el.setAttribute('onclick', origClick);
                     el.title = '';
+                }
+            }
+        });
+
+        // 4b. Sync evaluation table status pills (Scheduled vs Ongoing)
+        document.querySelectorAll('tr.eval-cand-row').forEach(row => {
+            const appId = row.getAttribute('data-app-id');
+            if (!appId) return;
+            const ongoingEval = ongoingEvalsMap.get(String(appId));
+            const statusCell = row.querySelector('.td-status');
+            if (!statusCell) return;
+            const currentStatus = row.getAttribute('data-status');
+            if (currentStatus === 'completed') return;
+
+            if (ongoingEval) {
+                row.setAttribute('data-status', 'ongoing');
+                statusCell.innerHTML = `
+                    <span class="status-pill status-ongoing" style="background: #fef3c7; color: #b45309; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-spinner fa-spin"></i> Ongoing
+                    </span>
+                `;
+            } else if (currentStatus === 'ongoing') {
+                const baseStatus = row.getAttribute('data-base-status') || 'scheduled';
+                row.setAttribute('data-status', baseStatus);
+                if (baseStatus === 'rescheduled') {
+                    statusCell.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                            <span class="status-pill status-rescheduled" style="background: #ffedd5; color: #c2410c; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #fdba74;">
+                                <i class="fas fa-calendar-alt"></i> RESCHEDULED
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    statusCell.innerHTML = `
+                        <span class="status-pill status-scheduled" style="background: #dbeafe; color: #1e40af; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                            <i class="fas fa-clock"></i> Scheduled
+                        </span>
+                    `;
                 }
             }
         });
@@ -391,7 +529,7 @@
             const pageAppId = candidateDetailContainer.getAttribute('data-app-id') || document.getElementById('schedApplicantId')?.value;
             const currentEval = pageAppId ? ongoingEvalsMap.get(String(pageAppId)) : null;
 
-            if (currentEval && currentEval.evaluator_id !== currentUserId) {
+            if (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) {
                 // Candidate is being evaluated by ANOTHER evaluator -> HIDE FORM!
                 candidateDetailContainer.style.setProperty('display', 'none', 'important');
                 if (candidatePendingCard) candidatePendingCard.style.display = 'none';
@@ -413,6 +551,13 @@
                     heroEvaluateBtn.disabled = false;
                     heroEvaluateBtn.classList.remove('disabled');
                     heroEvaluateBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> <span>Continue Evaluation</span>';
+                }
+            } else {
+                // Not actively evaluated by anyone
+                if (candidateLockedCard) candidateLockedCard.style.display = 'none';
+                if (heroEvaluateBtn) {
+                    heroEvaluateBtn.disabled = false;
+                    heroEvaluateBtn.classList.remove('disabled');
                 }
             }
         }
@@ -462,6 +607,14 @@
 
     // Wrapper for openManageInterviewModal in interview_evaluations.html
     window.hrOpenManageInterviewModal = async function(appId, appName, jobTitle, date, time, interviewer, location) {
+        if (lastSyncData && Array.isArray(lastSyncData.ongoing_evaluations)) {
+            const ongoing = lastSyncData.ongoing_evaluations.find(ev => String(ev.application_id) === String(appId));
+            if (ongoing) {
+                showConcurrencyAlert(`Interview for <strong>${appName}</strong> cannot be managed while candidate evaluation is actively ongoing (by <strong>${ongoing.evaluator_name}</strong>).`);
+                return;
+            }
+        }
+
         const result = await acquireLock(appId, 'RESCHEDULE');
         if (!result.success) {
             showConcurrencyAlert(`Interview for <strong>${appName}</strong> is currently being managed/rescheduled by <strong>${result.locked_by || 'another HR staff member'}</strong>.`);
@@ -516,6 +669,11 @@
         }
     };
 
+    function getOngoingEvaluation(appId) {
+        if (!lastSyncData || !Array.isArray(lastSyncData.ongoing_evaluations)) return null;
+        return lastSyncData.ongoing_evaluations.find(ev => String(ev.application_id) === String(appId)) || null;
+    }
+
     // Expose APIs globally
     window.HRConcurrency = {
         acquireLock,
@@ -526,7 +684,8 @@
         currentLocks,
         triggerSyncSoon,
         executeLiveSync,
-        getCSRFToken
+        getCSRFToken,
+        getOngoingEvaluation
     };
 
     // Auto-start real-time sync on DOM ready

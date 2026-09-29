@@ -21,7 +21,7 @@ from functools import wraps
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
 from collections import defaultdict
 import ast
@@ -508,9 +508,10 @@ def api_live_sync(request):
         for lock in locks_qs
     ]
 
-    # 3. Ongoing Candidate Evaluations (draft evaluations with evaluator)
+    # 3. Ongoing Candidate Evaluations (actively evaluating draft evaluations with evaluator)
     ongoing_evals_qs = CandidateEvaluation.objects.filter(
-        status="Draft"
+        status="Draft",
+        evaluator__isnull=False,
     ).select_related("evaluator", "application")
 
     ongoing_evaluations = [
@@ -518,7 +519,7 @@ def api_live_sync(request):
             "application_id": ev.application_id,
             "evaluator_id": ev.evaluator_id,
             "evaluator_name": ev.evaluator_name or (ev.evaluator.get_full_name() if ev.evaluator else "Another HR"),
-            "is_my_evaluation": (ev.evaluator_id == hr_user.id or not ev.evaluator_id),
+            "is_my_evaluation": (ev.evaluator_id == hr_user.id),
             "status": ev.status,
         }
         for ev in ongoing_evals_qs
@@ -571,12 +572,20 @@ def api_acquire_lock(request):
     clean_expired_hr_locks()
 
     # Check if active lock held by another HR staff member
-    conflict_locks = HRActionLock.objects.filter(
-        target_model=target_model,
-        target_id__in=ids,
-        action_type=action_type,
-        expires_at__gt=timezone.now()
-    ).exclude(user=request.user)
+    if action_type in ("SCHEDULE", "RESCHEDULE", "EVALUATE"):
+        conflict_locks = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            action_type__in=["SCHEDULE", "RESCHEDULE", "EVALUATE"],
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user)
+    else:
+        conflict_locks = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            action_type=action_type,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user)
 
     if conflict_locks.exists():
         first_lock = conflict_locks.first()
@@ -587,6 +596,24 @@ def api_acquire_lock(request):
             "action": first_lock.get_action_type_display(),
             "message": f"Candidate is currently being handled by {first_lock.user_name}."
         })
+
+    # If attempting to schedule or reschedule, candidate must not have an active ongoing evaluation
+    if action_type in ("SCHEDULE", "RESCHEDULE") and target_model == "Application":
+        active_eval = CandidateEvaluation.objects.filter(
+            application_id__in=ids,
+            status="Draft",
+            is_evaluating=True,
+            evaluator__isnull=False
+        ).exclude(evaluator=request.user).first()
+        if active_eval:
+            eval_name = active_eval.evaluator_name or (active_eval.evaluator.get_full_name() if active_eval.evaluator else "another HR staff member")
+            return JsonResponse({
+                "success": False,
+                "locked": True,
+                "locked_by": eval_name,
+                "action": "Evaluation",
+                "message": f"Candidate is currently being evaluated by {eval_name}."
+            })
 
     user_name = request.user.get_full_name() or request.user.username
     exp_time = timezone.now() + timedelta(minutes=5)
@@ -1364,8 +1391,9 @@ def candidate_detail(request, pk):
     # Determine whether the evaluation form should be open or show the "not initiated" banner
     evaluate_param = request.GET.get("evaluate") == "1"
     is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
-    is_eval_locked_by_other = bool(is_draft and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
-    show_eval_form = (evaluate_param or is_draft) and not is_eval_locked_by_other
+    is_eval_active = bool(is_draft and (getattr(candidate_evaluation, "is_evaluating", False) or candidate_evaluation.evaluator_id is not None))
+    is_eval_locked_by_other = bool(is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
+    show_eval_form = (evaluate_param or is_eval_active) and not is_eval_locked_by_other
     
     scroll_to = request.GET.get("scroll_to", "").strip()
     is_modal = bool(request.headers.get("HX-Request") or request.GET.get("modal") == "1")
@@ -1699,9 +1727,9 @@ def interviews(request):
         has_eval = hasattr(app, "evaluation") and app.evaluation is not None
         if has_eval and app.evaluation.status == "Completed":
             app.candidate_status = "Completed"
-        elif has_eval and app.evaluation.status == "Draft" and getattr(app.evaluation, "is_evaluating", False):
+        elif has_eval and app.evaluation.status == "Draft" and app.evaluation.evaluator:
             app.candidate_status = "Ongoing"
-            app.is_my_evaluation = (app.evaluation.evaluator == request.user or not app.evaluation.evaluator)
+            app.is_my_evaluation = (app.evaluation.evaluator == request.user)
             app.evaluator_display_name = app.evaluation.evaluator_name or (app.evaluation.evaluator.get_full_name() if app.evaluation.evaluator else "Another HR")
         elif latest_intv.status == "Rescheduled":
             app.candidate_status = "Rescheduled"
@@ -2307,7 +2335,13 @@ def evaluate_candidate(request, pk):
 
     if request.method == "POST":
         existing_eval = CandidateEvaluation.objects.filter(application=application).first()
-        if existing_eval and existing_eval.status == "Draft" and existing_eval.evaluator and existing_eval.evaluator != request.user:
+        if (
+            existing_eval 
+            and existing_eval.status == "Draft" 
+            and getattr(existing_eval, "is_evaluating", False) 
+            and existing_eval.evaluator 
+            and existing_eval.evaluator != request.user
+        ):
             lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
             if lease_seconds < 7200:
                 messages.error(request, f"This candidate's evaluation is currently locked and being conducted by {existing_eval.evaluator_name or existing_eval.evaluator.username}.")
@@ -2407,6 +2441,11 @@ def evaluate_candidate(request, pk):
                 interview.status = "Ongoing"
             interview.save(update_fields=["status"])
 
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id
+        ).delete()
+
         invalidate_hr_cache()
 
         log_hr_action(
@@ -2456,9 +2495,15 @@ def start_candidate_evaluation(request, pk):
 
     user_name = request.user.get_full_name() or request.user.username
 
-    # Check if existing evaluation is in Draft and evaluated by another active user
+    # Check if existing evaluation is actively ongoing by another user
     existing_eval = CandidateEvaluation.objects.filter(application=application).first()
-    if existing_eval and existing_eval.status == "Draft" and existing_eval.evaluator and existing_eval.evaluator != request.user:
+    if (
+        existing_eval 
+        and existing_eval.status == "Draft" 
+        and getattr(existing_eval, "is_evaluating", False) 
+        and existing_eval.evaluator 
+        and existing_eval.evaluator != request.user
+    ):
         lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
         if lease_seconds < 7200:  # 2 hours
             locked_name = existing_eval.evaluator_name or existing_eval.evaluator.username
@@ -2498,6 +2543,18 @@ def start_candidate_evaluation(request, pk):
         evaluation.evaluator_name = user_name
         evaluation.save()
 
+    # Register concurrency action lock for real-time live sync across other HR users
+    HRActionLock.objects.update_or_create(
+        target_model="Application",
+        target_id=application.id,
+        action_type="EVALUATE",
+        defaults={
+            "user": request.user,
+            "user_name": user_name,
+            "expires_at": timezone.now() + timedelta(minutes=60),
+        }
+    )
+
     # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
     if interview and interview.status in ("Scheduled", "Rescheduled"):
         interview.status = "Ongoing"
@@ -2526,6 +2583,7 @@ def start_candidate_evaluation(request, pk):
 
 
 @never_cache
+@csrf_exempt
 @hr_required(login_url="hr_login")
 def cancel_candidate_evaluation(request, pk):
     """
@@ -2579,6 +2637,7 @@ def cancel_candidate_evaluation(request, pk):
         evaluation.status = "Draft"
         evaluation.is_evaluating = False
         evaluation.evaluator = None
+        evaluation.evaluator_name = ""
         evaluation.save()
 
     # Revert session status if no other candidate has active evaluation
@@ -2594,6 +2653,12 @@ def cancel_candidate_evaluation(request, pk):
             else:
                 interview.status = "Scheduled"
             interview.save(update_fields=["status"])
+
+    # Release any active action lock on this application
+    HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id
+    ).delete()
 
     invalidate_hr_cache()
 

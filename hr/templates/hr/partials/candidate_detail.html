@@ -483,12 +483,12 @@
                 <span>Final Review</span>
             </button>
             {% elif application.status == "Interview" or application.status == "Evaluation" %}
-                {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
+                {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.is_evaluating and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
                 <button type="button" class="hero-action-btn disabled" disabled style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Candidate is currently being evaluated by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
                     <i class="fas fa-lock"></i>
                     <span>In Evaluation (by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }})</span>
                 </button>
-                {% elif candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.evaluator == request.user %}
+                {% elif candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.is_evaluating and candidate_evaluation.evaluator == request.user %}
                 <button type="button" onclick="openEvaluationForm()" class="hero-action-btn btn-evaluate" data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" title="Continue candidate evaluation">
                     <i class="fas fa-clipboard-check"></i>
                     <span>Continue Evaluation</span>
@@ -1563,11 +1563,28 @@ window._activeCandidateEvaluationAppId = "{{ application.pk }}";
 window._activeCandidateEvaluationCancelUrl = "{% url 'cancel_candidate_evaluation' application.pk %}";
 {% endif %}
 
+function getCandidateCSRFToken(formData) {
+    if (window.HRConcurrency && typeof window.HRConcurrency.getCSRFToken === 'function') {
+        var t = window.HRConcurrency.getCSRFToken();
+        if (t) return t;
+    }
+    if (formData && typeof formData.get === 'function') {
+        var ft = formData.get('csrfmiddlewaretoken');
+        if (ft) return ft;
+    }
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    var inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inp && inp.value) return inp.value;
+    return '{{ csrf_token }}';
+}
+
 function openEvaluationForm() {
+    var csrfToken = getCandidateCSRFToken();
     fetch("{% url 'start_candidate_evaluation' application.pk %}", {
         method: "POST",
         headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
+            "X-CSRFToken": csrfToken,
             "X-Requested-With": "XMLHttpRequest",
         }
     }).then(function(res) {
@@ -1593,6 +1610,10 @@ function openEvaluationForm() {
         if (viewCard) viewCard.style.display = "none";
         var section = document.getElementById("candidate-evaluation-section");
         if (section) section.scrollIntoView({ behavior: "smooth" });
+
+        if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+            window.HRConcurrency.triggerSyncSoon(0);
+        }
     }).catch(function(e) {});
 }
 
@@ -1612,14 +1633,23 @@ function cancelEvaluationForm() {
     }
     var toggleText = document.getElementById("toggle-eval-text");
     if (toggleText) toggleText.textContent = "Edit Evaluation";
+    var csrfToken = getCandidateCSRFToken(formData);
     fetch("{% url 'cancel_candidate_evaluation' application.pk %}", {
         method: "POST",
         headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
+            "X-CSRFToken": csrfToken,
             "X-Requested-With": "XMLHttpRequest",
         },
         body: formData
-    }).catch(function(e) {});
+    }).then(function() {
+        if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+            window.HRConcurrency.triggerSyncSoon(0);
+        }
+    }).catch(function(e) {
+        if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+            window.HRConcurrency.triggerSyncSoon(0);
+        }
+    });
 }
 
 function toggleEvaluationForm() {
@@ -1628,10 +1658,11 @@ function toggleEvaluationForm() {
     var toggleText = document.getElementById("toggle-eval-text");
     if (!formCard) return;
     if (formCard.style.display === "none") {
+        var csrfToken = getCandidateCSRFToken();
         fetch("{% url 'start_candidate_evaluation' application.pk %}", {
             method: "POST",
             headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
+                "X-CSRFToken": csrfToken,
                 "X-Requested-With": "XMLHttpRequest",
             }
         }).then(function(res) {
@@ -1652,6 +1683,9 @@ function toggleEvaluationForm() {
             formCard.style.display = "block";
             if (viewCard) viewCard.style.display = "none";
             if (toggleText) toggleText.textContent = "Cancel Edit";
+            if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+                window.HRConcurrency.triggerSyncSoon(0);
+            }
         }).catch(function(e) {});
     } else {
         cancelEvaluationForm();
@@ -1665,10 +1699,11 @@ if (!window._evalUnloadAttached) {
             var form = document.getElementById("candidateEvaluationForm");
             var formData = form ? new FormData(form) : new FormData();
             window._isCandidateEvaluationActive = false;
+            var csrfToken = getCandidateCSRFToken(formData);
             fetch(window._activeCandidateEvaluationCancelUrl, {
                 method: "POST",
                 headers: {
-                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-CSRFToken": csrfToken,
                     "X-Requested-With": "XMLHttpRequest",
                 },
                 body: formData,
