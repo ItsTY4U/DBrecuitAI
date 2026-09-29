@@ -126,7 +126,7 @@
                             <table class="candidate-data-table" id="eval-table-{{ item.job.id }}">
                                 <thead>
                                     <tr>
-                                        <th class="th-candidate">Candidate</th>
+                                        <th class="th-candidate" style="width: 190px;">Candidate</th>
                                         <th class="th-schedule">Interview Schedule</th>
                                         <th class="th-interviewer">Interviewer &amp; Location</th>
                                         <th class="th-status" style="width: 170px;">Interview Status</th>
@@ -155,9 +155,6 @@
                                                             {% if applicant.middle_initial %}{{ applicant.middle_initial }}.{% endif %}
                                                             {{ applicant.last_name }}
                                                         </a>
-                                                    </span>
-                                                    <span class="table-candidate-sub">
-                                                        {{ applicant.email }}{% if applicant.phone %} &bull; {{ applicant.phone }}{% endif %}
                                                     </span>
                                                     <span class="app-id-tag" style="margin-top: 3px; display: inline-block;">
                                                         <i class="fas fa-hashtag"></i> {{ applicant.application_id }}
@@ -279,7 +276,18 @@
                                                 {% endif %}
 
                                                 {% if applicant.candidate_status != 'Completed' and applicant.active_interview %}
-                                                    {% if applicant.active_lock %}
+                                                    {% if applicant.candidate_status == 'Ongoing' %}
+                                                    <button type="button" 
+                                                            class="btn-table-review disabled"
+                                                            data-action-btn="RESCHEDULE"
+                                                            data-cand-id="{{ applicant.id }}"
+                                                            disabled
+                                                            style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
+                                                            title="Interview cannot be managed while candidate evaluation is ongoing.">
+                                                        <i class="fas fa-lock"></i>
+                                                        <span>Locked</span>
+                                                    </button>
+                                                    {% elif applicant.active_lock %}
                                                     <button type="button" 
                                                             class="btn-table-review disabled"
                                                             data-action-btn="RESCHEDULE"

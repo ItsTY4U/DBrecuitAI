@@ -1247,8 +1247,8 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .stat-card:hover { 
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06); 
+    transform: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04); 
 }
 
 .stat-header { 
@@ -9616,5 +9616,120 @@ table .btn-review-applicant {
         padding: 16px;
     }
 }
+
+/* =========================================================
+   HOVER STABILITY & CURSOR RULES
+   Ensure non-clickable elements never move when hovered.
+   Ensure all clickable elements display pointer (hand) cursor.
+   ========================================================= */
+
+/* Non-clickable elements must not translate/scale on hover */
+.stat-card,
+.stat-card:hover,
+.dept-section-block,
+.dept-section-block:hover,
+.content-box,
+.content-box:hover,
+.candidate-row,
+.candidate-row:hover,
+.today-dept-pos-card,
+.today-dept-pos-card:hover,
+.upcoming-interview-card,
+.upcoming-interview-card:hover,
+.overdue-interview-item,
+.overdue-interview-item:hover,
+.interview-reminder-alert,
+.interview-reminder-alert:hover,
+.candidate-card,
+.candidate-card:hover,
+.batch-applicant-card,
+.batch-applicant-card:hover,
+.dept-card,
+.dept-card:hover,
+.empty-state-box,
+.empty-state-box:hover,
+.table-responsive,
+.table-responsive:hover,
+.table-candidates-waiting,
+.table-candidates-waiting:hover,
+.table-candidates-eval,
+.table-candidates-eval:hover,
+table,
+table:hover,
+tbody tr,
+tbody tr:hover,
+th,
+th:hover,
+td,
+td:hover,
+.modal-content,
+.modal-content:hover,
+.pipeline-stepper-card,
+.pipeline-stepper-card:hover,
+.post-job-card,
+.post-job-card:hover {
+    transform: none !important;
+}
+
+/* Clickable elements must display pointer (hand) cursor */
+button:not(:disabled),
+.btn:not(.disabled):not(:disabled),
+a,
+a:not([aria-disabled="true"]),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+select:not(:disabled),
+label[for],
+label.decision-card-label,
+label.toggle-switch,
+.toggle-switch,
+.toggle-switch input,
+.toggle-switch .toggle-slider,
+.clickable,
+[onclick],
+[data-action],
+.interview-subnav-tab,
+.candidates-subnav-tab,
+.btn-table-review,
+.btn-table-schedule,
+.btn-table-action,
+.btn-action-eval-start,
+.btn-action-eval-completed,
+.btn-action-reschedule,
+.btn-action-cancel,
+.btn-action-manage,
+.btn-action-note,
+.btn-schedule-single,
+.btn-open-batch,
+.close-modal-btn,
+.btn-modal-close,
+.modal-close,
+.pagination-btn,
+.page-link,
+.dropdown-toggle,
+.dropdown-item,
+.filter-btn,
+.tab-btn,
+.pill-tab {
+    cursor: pointer !important;
+}
+
+/* Disabled elements must show not-allowed cursor and never move */
+button:disabled,
+button[disabled],
+.btn:disabled,
+.btn[disabled],
+.btn.disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+.disabled {
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
 
 

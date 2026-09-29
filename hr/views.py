@@ -1699,7 +1699,7 @@ def interviews(request):
         has_eval = hasattr(app, "evaluation") and app.evaluation is not None
         if has_eval and app.evaluation.status == "Completed":
             app.candidate_status = "Completed"
-        elif has_eval and app.evaluation.status == "Draft":
+        elif has_eval and app.evaluation.status == "Draft" and getattr(app.evaluation, "is_evaluating", False):
             app.candidate_status = "Ongoing"
             app.is_my_evaluation = (app.evaluation.evaluator == request.user or not app.evaluation.evaluator)
             app.evaluator_display_name = app.evaluation.evaluator_name or (app.evaluation.evaluator.get_full_name() if app.evaluation.evaluator else "Another HR")
@@ -1921,6 +1921,23 @@ def schedule_interview(request, job_id):
             status="Interview",
             interview_scheduled=True
         )
+
+        send_email_invitation = request.POST.get("send_email_invitation") in ("1", "true", "on") or request.POST.get("action_type") == "confirm_and_email"
+        if send_email_invitation:
+            from main.emailer import send_interview_invitation_email
+            for slot_app in Application.objects.filter(id__in=ids).select_related("job", "applicant"):
+                cand_intv = slot_app.interview.order_by("-date", "-time").first()
+                if cand_intv:
+                    send_interview_invitation_email(slot_app, cand_intv, async_send=True)
+                    log_hr_action(
+                        request,
+                        action="EMAIL_SENT",
+                        target_repr=f"{slot_app.first_name} {slot_app.last_name}",
+                        details=f"Interview invitation sent for {cand_intv.interview_type} on {cand_intv.date} at {cand_intv.time}.",
+                        target_model="Application",
+                        target_id=slot_app.id,
+                    )
+
         invalidate_hr_cache()
 
         # Release locks held by user
@@ -1934,15 +1951,21 @@ def schedule_interview(request, job_id):
             request,
             action="INTERVIEW_SCHEDULED",
             target_repr=f"Batch for {job.title} ({len(ids)} candidates)",
-            details=f"Batch scheduled {interview_type} on {date} with interviewer {interviewer}.",
+            details=f"Batch scheduled {interview_type} on {date} with interviewer {interviewer}." + (" (Email invitations dispatched)" if send_email_invitation else ""),
             target_model="Job",
             target_id=job.pk,
         )
 
-        messages.success(
-            request,
-            f"Successfully batch scheduled interview for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
-        )
+        if send_email_invitation:
+            messages.success(
+                request,
+                f"Successfully batch scheduled interview and sent email invitations for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
+            )
+        else:
+            messages.success(
+                request,
+                f"Successfully batch scheduled interview for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
+            )
         return redirect(f"{reverse('interviews')}?tab=evaluations")
 
     return redirect(f"{reverse('interviews')}?tab=waiting")
@@ -2030,6 +2053,21 @@ def schedule_candidate_interview(request):
             status="Interview",
             interview_scheduled=True
         )
+
+        send_email_invitation = request.POST.get("send_email_invitation") in ("1", "true", "on") or request.POST.get("action_type") == "confirm_and_email"
+        if send_email_invitation:
+            from main.emailer import send_interview_invitation_email
+            for app in Application.objects.filter(id__in=applicant_ids).select_related("job", "applicant"):
+                send_interview_invitation_email(app, interview, async_send=True)
+                log_hr_action(
+                    request,
+                    action="EMAIL_SENT",
+                    target_repr=f"{app.first_name} {app.last_name}",
+                    details=f"Interview invitation sent for {interview.interview_type} on {date_str} at {time_str}.",
+                    target_model="Application",
+                    target_id=app.id,
+                )
+
         invalidate_hr_cache()
 
         # Release locks held by user
@@ -2043,15 +2081,21 @@ def schedule_candidate_interview(request):
             request,
             action="INTERVIEW_SCHEDULED",
             target_repr=f"{len(applicant_ids)} candidate(s)",
-            details=f"Scheduled {interview_type} on {date_str} at {time_str} with {interviewer_name}.",
+            details=f"Scheduled {interview_type} on {date_str} at {time_str} with {interviewer_name}." + (" (Email invitations dispatched)" if send_email_invitation else ""),
             target_model="Interview",
             target_id=interview.pk,
         )
 
-        messages.success(
-            request,
-            f"Interview successfully scheduled for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
-        )
+        if send_email_invitation:
+            messages.success(
+                request,
+                f"Interview successfully scheduled and email invitation(s) sent for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
+            )
+        else:
+            messages.success(
+                request,
+                f"Interview successfully scheduled for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
+            )
         return redirect(f"{reverse('interviews')}?tab=evaluations")
 
     return redirect(f"{reverse('interviews')}?tab=waiting")
@@ -2066,6 +2110,14 @@ def reschedule_candidate_interview(request, pk):
     """
     application = get_object_or_404(Application, pk=pk)
     if request.method == "POST":
+        # Check if candidate evaluation is actively ongoing
+        if hasattr(application, "evaluation") and application.evaluation and getattr(application.evaluation, "is_evaluating", False):
+            messages.error(
+                request,
+                "Cannot reschedule interview: Candidate evaluation is currently ongoing."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
         # Check if candidate is locked by another HR user
         locked = HRActionLock.objects.filter(
             target_model="Application",
@@ -2156,6 +2208,14 @@ def cancel_candidate_interview(request, pk):
     """
     application = get_object_or_404(Application, pk=pk)
     if request.method == "POST":
+        # Check if candidate evaluation is actively ongoing
+        if hasattr(application, "evaluation") and application.evaluation and getattr(application.evaluation, "is_evaluating", False):
+            messages.error(
+                request,
+                "Cannot cancel interview: Candidate evaluation is currently ongoing."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
         # Check if candidate is locked by another HR user
         locked = HRActionLock.objects.filter(
             target_model="Application",
@@ -2292,6 +2352,7 @@ def evaluate_candidate(request, pk):
             evaluation.recommendation = rec
 
         evaluation.status = "Completed"
+        evaluation.is_evaluating = False
 
         # Handle uploaded audio recording or live recorded audio blob
         audio_file = request.FILES.get("audio_file")
@@ -2417,6 +2478,7 @@ def start_candidate_evaluation(request, pk):
         application=application,
         defaults={
             "status": "Draft",
+            "is_evaluating": True,
             "interview": interview,
             "evaluator": request.user,
             "evaluator_name": user_name,
@@ -2424,15 +2486,17 @@ def start_candidate_evaluation(request, pk):
     )
     if not created and evaluation.status != "Completed":
         evaluation.status = "Draft"
+        evaluation.is_evaluating = True
         evaluation.evaluator = request.user
         evaluation.evaluator_name = user_name
         if not evaluation.interview and interview:
             evaluation.interview = interview
-        evaluation.save(update_fields=["status", "evaluator", "evaluator_name", "updated_at"] if not evaluation.interview else ["status", "evaluator", "evaluator_name", "interview", "updated_at"])
+        evaluation.save()
     elif created:
+        evaluation.is_evaluating = True
         evaluation.evaluator = request.user
         evaluation.evaluator_name = user_name
-        evaluation.save(update_fields=["evaluator", "evaluator_name"])
+        evaluation.save()
 
     # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
     if interview and interview.status in ("Scheduled", "Rescheduled"):
@@ -2465,20 +2529,65 @@ def start_candidate_evaluation(request, pk):
 @hr_required(login_url="hr_login")
 def cancel_candidate_evaluation(request, pk):
     """
-    Called when HR cancels the candidate evaluation modal without saving.
-    Reverts this candidate's Draft evaluation, making them Scheduled again.
+    Called when HR cancels the candidate evaluation modal without saving or leaves the page.
+    Preserves draft evaluation fields (rubric scores, notes, etc.) if provided or existing,
+    sets is_evaluating = False, releases evaluator lock, and sets status = 'Draft'.
     If no other candidate in the session has an active evaluation, reverts session to Scheduled or Rescheduled.
     """
     application = get_object_or_404(Application, pk=pk)
-    # 1. Delete Draft evaluation for this candidate so they become Scheduled (if owned by user or unassigned)
-    if hasattr(application, "evaluation") and application.evaluation and application.evaluation.status == "Draft":
-        if application.evaluation.evaluator == request.user or not application.evaluation.evaluator:
-            application.evaluation.delete()
+    evaluation = CandidateEvaluation.objects.filter(application=application).first()
 
-    # 2. Check if the shared interview session still has any remaining evaluations
+    if evaluation and evaluation.status != "Completed":
+        # If user submitted draft form data, save it into the evaluation draft
+        if request.method == "POST":
+            # Interview mode
+            interview_mode = request.POST.get("interview_mode")
+            if interview_mode:
+                evaluation.interview_mode = interview_mode
+
+            # Evaluator name
+            evaluator_name = request.POST.get("evaluator_name", "").strip()
+            if evaluator_name:
+                evaluation.evaluator_name = evaluator_name
+
+            # Rubric ratings
+            for field in ["technical_competence", "communication_skills", "problem_solving", "cultural_fit", "leadership_potential"]:
+                val = request.POST.get(field)
+                if val:
+                    try:
+                        setattr(evaluation, field, int(val))
+                    except (ValueError, TypeError):
+                        pass
+
+            # Notes
+            for field in ["strengths_notes", "weaknesses_notes", "general_notes"]:
+                val = request.POST.get(field)
+                if val is not None:
+                    setattr(evaluation, field, val.strip())
+
+            # Practical details
+            for field in ["expected_salary", "notice_period", "availability_date"]:
+                val = request.POST.get(field)
+                if val is not None:
+                    setattr(evaluation, field, val.strip())
+
+            # Recommendation
+            rec = request.POST.get("recommendation")
+            if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
+                evaluation.recommendation = rec
+
+        evaluation.status = "Draft"
+        evaluation.is_evaluating = False
+        evaluation.evaluator = None
+        evaluation.save()
+
+    # Revert session status if no other candidate has active evaluation
     interview = application.interview.order_by("-date", "-time").first()
     if interview:
-        has_active_evals = CandidateEvaluation.objects.filter(interview=interview).exists()
+        has_active_evals = CandidateEvaluation.objects.filter(
+            interview=interview,
+            is_evaluating=True
+        ).exists()
         if not has_active_evals and interview.status == "Ongoing":
             if interview.notes and "[Rescheduled on" in interview.notes:
                 interview.status = "Rescheduled"

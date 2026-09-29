@@ -34,9 +34,73 @@
 
 <script>
 function closeCandidateProfileModal() {
+    var wasEvaluating = window._isCandidateEvaluationActive;
+    if (window._isCandidateEvaluationActive && window._activeCandidateEvaluationCancelUrl) {
+        var form = document.getElementById("candidateEvaluationForm");
+        var formData = form ? new FormData(form) : new FormData();
+        window._isCandidateEvaluationActive = false;
+        fetch(window._activeCandidateEvaluationCancelUrl, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: formData,
+            keepalive: true
+        }).then(function() {
+            if (wasEvaluating && window.location.pathname.indexOf('/interviews') !== -1) {
+                window.location.reload();
+            }
+        }).catch(function(e) {
+            if (wasEvaluating && window.location.pathname.indexOf('/interviews') !== -1) {
+                window.location.reload();
+            }
+        });
+    }
     const container = document.getElementById('candidate-profile-modal-container');
     if (container) container.innerHTML = '';
 }
+
+// Close when clicking outside modal content
+(function() {
+    var modalOverlay = document.getElementById('candidate-profile-modal');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) {
+                closeCandidateProfileModal();
+            }
+        });
+    }
+
+    // Close on Escape key
+    function handleEscKey(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            closeCandidateProfileModal();
+            document.removeEventListener('keydown', handleEscKey);
+        }
+    }
+    document.addEventListener('keydown', handleEscKey);
+
+    // Save draft and release lock if page unloads / user navigates away
+    function handleUnloadEvaluation() {
+        if (window._isCandidateEvaluationActive && window._activeCandidateEvaluationCancelUrl) {
+            var form = document.getElementById("candidateEvaluationForm");
+            var formData = form ? new FormData(form) : new FormData();
+            window._isCandidateEvaluationActive = false;
+            fetch(window._activeCandidateEvaluationCancelUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: formData,
+                keepalive: true
+            });
+        }
+    }
+    window.addEventListener('pagehide', handleUnloadEvaluation);
+    window.addEventListener('beforeunload', handleUnloadEvaluation);
+})();
 
 // Auto scroll to target section if requested
 (function() {

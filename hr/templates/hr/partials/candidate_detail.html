@@ -1557,6 +1557,12 @@ var recordInterval = null;
 var recordSeconds = 0;
 var recordedAudioBlob = null;
 
+{% if show_eval_form %}
+window._isCandidateEvaluationActive = true;
+window._activeCandidateEvaluationAppId = "{{ application.pk }}";
+window._activeCandidateEvaluationCancelUrl = "{% url 'cancel_candidate_evaluation' application.pk %}";
+{% endif %}
+
 function openEvaluationForm() {
     fetch("{% url 'start_candidate_evaluation' application.pk %}", {
         method: "POST",
@@ -1575,6 +1581,10 @@ function openEvaluationForm() {
             }
             return;
         }
+        window._isCandidateEvaluationActive = true;
+        window._activeCandidateEvaluationAppId = "{{ application.pk }}";
+        window._activeCandidateEvaluationCancelUrl = "{% url 'cancel_candidate_evaluation' application.pk %}";
+
         var pendingCard = document.getElementById("eval-pending-card");
         if (pendingCard) pendingCard.style.display = "none";
         var formCard = document.getElementById("eval-form-card");
@@ -1587,6 +1597,10 @@ function openEvaluationForm() {
 }
 
 function cancelEvaluationForm() {
+    var form = document.getElementById("candidateEvaluationForm");
+    var formData = form ? new FormData(form) : new FormData();
+    window._isCandidateEvaluationActive = false;
+
     var formCard = document.getElementById("eval-form-card");
     if (formCard) formCard.style.display = "none";
     var viewCard = document.getElementById("eval-view-card");
@@ -1603,7 +1617,8 @@ function cancelEvaluationForm() {
         headers: {
             "X-CSRFToken": "{{ csrf_token }}",
             "X-Requested-With": "XMLHttpRequest",
-        }
+        },
+        body: formData
     }).catch(function(e) {});
 }
 
@@ -1630,6 +1645,10 @@ function toggleEvaluationForm() {
                 }
                 return;
             }
+            window._isCandidateEvaluationActive = true;
+            window._activeCandidateEvaluationAppId = "{{ application.pk }}";
+            window._activeCandidateEvaluationCancelUrl = "{% url 'cancel_candidate_evaluation' application.pk %}";
+
             formCard.style.display = "block";
             if (viewCard) viewCard.style.display = "none";
             if (toggleText) toggleText.textContent = "Cancel Edit";
@@ -1637,6 +1656,28 @@ function toggleEvaluationForm() {
     } else {
         cancelEvaluationForm();
     }
+}
+
+if (!window._evalUnloadAttached) {
+    window._evalUnloadAttached = true;
+    function handleWindowUnloadEval() {
+        if (window._isCandidateEvaluationActive && window._activeCandidateEvaluationCancelUrl) {
+            var form = document.getElementById("candidateEvaluationForm");
+            var formData = form ? new FormData(form) : new FormData();
+            window._isCandidateEvaluationActive = false;
+            fetch(window._activeCandidateEvaluationCancelUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: formData,
+                keepalive: true
+            });
+        }
+    }
+    window.addEventListener('pagehide', handleWindowUnloadEval);
+    window.addEventListener('beforeunload', handleWindowUnloadEval);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -1747,6 +1788,7 @@ function handleEvaluationSubmit(event) {
             }
         }
     }
+    window._isCandidateEvaluationActive = false;
     var submitBtn = document.getElementById("btn-submit-eval");
     if (submitBtn) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving Evaluation...';
