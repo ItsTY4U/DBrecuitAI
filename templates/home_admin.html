@@ -118,6 +118,8 @@
     <!-- Real-Time Subtle Toast Stream & HTMX 2.5s Poller -->
     <div id="hr-toast-stream" class="hr-toast-stream" aria-live="polite"></div>
     <div id="hr-live-toast-poller"
+         class="silent-poller"
+         data-silent="true"
          hx-get="{% url 'hr_live_toast_feed' %}"
          hx-trigger="every 2.5s"
          hx-vals="js:{last_log_id: window.hrLastToastId || 0, is_dashboard: document.getElementById('stat-total-val') ? 'true' : 'false'}"
