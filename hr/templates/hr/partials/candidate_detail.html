@@ -482,9 +482,14 @@
                 <i class="fas fa-gavel"></i>
                 <span>Final Review</span>
             </button>
-            {% elif application.status == "Interview" or application.status == "Evaluation" %}
+            {% elif is_manage_locked_by_other %}
+            <button type="button" class="hero-action-btn disabled btn-evaluate" disabled data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Interview is currently being managed by {{ active_manage_lock.user_name }}.">
+                <i class="fas fa-lock"></i>
+                <span>Locked ({{ active_manage_lock.user_name }})</span>
+            </button>
+            {% elif application.status == "Interview" or application.status == "Evaluation" or scheduled_interview %}
                 {% if candidate_evaluation and candidate_evaluation.status == "Draft" and candidate_evaluation.is_evaluating and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user %}
-                <button type="button" class="hero-action-btn disabled" disabled style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Candidate is currently being evaluated by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
+                <button type="button" class="hero-action-btn disabled btn-evaluate" disabled data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Candidate is currently being evaluated by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
                     <i class="fas fa-lock"></i>
                     <span>In Evaluation (by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }})</span>
                 </button>
@@ -977,12 +982,16 @@
                             {% else %}Needs Review{% endif %}
                         </span>
                     </div>
-                    {% if is_eval_locked_by_other %}
-                    <button type="button" class="btn disabled" id="btn-toggle-eval-form" disabled style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Evaluation is currently being edited by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
+                    {% if is_manage_locked_by_other %}
+                    <button type="button" class="btn disabled" id="btn-toggle-eval-form" disabled data-cand-id="{{ application.pk }}" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Interview is currently being managed by {{ active_manage_lock.user_name }}.">
+                        <i class="fas fa-lock"></i> <span id="toggle-eval-text">Locked ({{ active_manage_lock.user_name }})</span>
+                    </button>
+                    {% elif is_eval_locked_by_other %}
+                    <button type="button" class="btn disabled" id="btn-toggle-eval-form" disabled data-cand-id="{{ application.pk }}" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Evaluation is currently being edited by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
                         <i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked ({{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }})</span>
                     </button>
                     {% else %}
-                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn" id="btn-toggle-eval-form" data-cand-id="{{ application.pk }}" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>
                     </button>
                     {% endif %}
@@ -1169,9 +1178,22 @@
             </div>
             {% endif %}
 
-            {% if is_eval_locked_by_other %}
+            {% if is_manage_locked_by_other %}
+            <!-- Candidate Interview Management In Progress Banner -->
+            <div id="eval-locked-card" class="eval-locked-box" data-app-id="{{ application.pk }}" style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #fef3c7; color: #b45309; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #92400e;">
+                    Interview Management In Progress (Locked by {{ active_manage_lock.user_name }})
+                </h4>
+                <p style="margin: 0 auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
+                    This candidate's interview is currently being managed (rescheduled or cancelled) by <strong>{{ active_manage_lock.user_name }}</strong>. Evaluation and editing are locked to prevent conflicting updates.
+                </p>
+            </div>
+            {% elif is_eval_locked_by_other %}
             <!-- Candidate Evaluation In Progress by Another Evaluator Banner -->
-            <div id="eval-locked-card" class="eval-locked-box" style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;">
+            <div id="eval-locked-card" class="eval-locked-box" data-app-id="{{ application.pk }}" style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: #fef3c7; color: #b45309; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
                     <i class="fas fa-lock"></i>
                 </div>
@@ -1184,7 +1206,7 @@
             </div>
             {% elif not candidate_evaluation or candidate_evaluation.status != "Completed" %}
             <!-- Candidate Evaluation Not Yet Initiated Placeholder Banner -->
-            <div id="eval-pending-card" class="eval-pending-box" style="{% if show_eval_form %}display: none;{% else %}display: block;{% endif %} background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 32px 24px; text-align: center; margin-bottom: 20px;">
+            <div id="eval-pending-card" class="eval-pending-box" data-app-id="{{ application.pk }}" style="{% if show_eval_form %}display: none;{% else %}display: block;{% endif %} background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 32px 24px; text-align: center; margin-bottom: 20px;">
                 <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(45, 90, 39, 0.08); color: #2d5a27; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
                     <i class="fas fa-clipboard-question"></i>
                 </div>

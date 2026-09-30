@@ -1547,6 +1547,14 @@ def candidate_detail(request, pk):
     total_job_applicants = len(all_job_app_ids)
 
     # Determine whether the evaluation form should be open or show the "not initiated" banner
+    clean_expired_hr_locks()
+    active_manage_lock = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type__in=["SCHEDULE", "RESCHEDULE"],
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+
     evaluate_param = request.GET.get("evaluate") == "1"
     is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
     is_eval_active = bool(
@@ -1555,7 +1563,11 @@ def candidate_detail(request, pk):
             or (is_draft and candidate_evaluation.evaluator_id is not None)
         )
     )
-    is_eval_locked_by_other = bool(is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
+    is_manage_locked_by_other = bool(active_manage_lock)
+    is_eval_locked_by_other = bool(
+        (is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
+        or is_manage_locked_by_other
+    )
     show_eval_form = (evaluate_param or is_eval_active) and not is_eval_locked_by_other
     
     scroll_to = request.GET.get("scroll_to", "").strip()
@@ -1574,6 +1586,8 @@ def candidate_detail(request, pk):
         "total_job_applicants": total_job_applicants,
         "show_eval_form": show_eval_form,
         "is_eval_locked_by_other": is_eval_locked_by_other,
+        "is_manage_locked_by_other": is_manage_locked_by_other,
+        "active_manage_lock": active_manage_lock,
         "scroll_to": scroll_to,
         "is_modal": is_modal,
     }
@@ -1883,13 +1897,15 @@ def interviews(request):
 
     # 7. Collect scheduled applications grouped by Department and Position for the Evaluation section
     clean_expired_hr_locks()
-    active_locks = {
-        lock.target_id: lock
-        for lock in HRActionLock.objects.filter(
-            target_model="Application",
-            expires_at__gt=timezone.now()
-        ).exclude(user=request.user)
-    }
+    active_locks_qs = HRActionLock.objects.filter(
+        target_model="Application",
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user)
+    active_locks = {}
+    for lock in active_locks_qs:
+        curr = active_locks.get(lock.target_id)
+        if curr is None or lock.action_type in ("RESCHEDULE", "SCHEDULE"):
+            active_locks[lock.target_id] = lock
 
     scheduled_applications = list(
         Application.objects.filter(interview__isnull=False)
@@ -2529,6 +2545,17 @@ def evaluate_candidate(request, pk):
     )
 
     if request.method == "POST":
+        clean_expired_hr_locks()
+        active_manage = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            action_type__in=["SCHEDULE", "RESCHEDULE"],
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if active_manage:
+            messages.error(request, f"This candidate's interview is currently being managed by {active_manage.user_name}.")
+            return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
         existing_eval = CandidateEvaluation.objects.filter(application=application).first()
         if (
             existing_eval 

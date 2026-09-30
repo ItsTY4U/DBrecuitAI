@@ -3534,7 +3534,10 @@ class HRMultiUserConcurrencyTests(TestCase):
         While HR1 manages a candidate interview (holding RESCHEDULE or SCHEDULE lock):
         1. HR2 is locked out from starting candidate evaluation (HTTP 423).
         2. HR2 sees locked Evaluate button on interview_evaluations page.
-        3. When HR1 releases the lock, HR2 can start evaluation.
+        3. HR2 sees locked Manage button on interview_evaluations page.
+        4. HR2 sees locked hero Evaluate button and locked banner on candidate_detail page.
+        5. HR2's evaluate submission attempt is blocked.
+        6. When HR1 releases the lock, HR2 can start evaluation and view unlocked buttons.
         """
         from hr.models import Interview, HRActionLock
 
@@ -3546,6 +3549,8 @@ class HRMultiUserConcurrencyTests(TestCase):
             status="Scheduled"
         )
         intv.applicants.add(self.application)
+        self.application.status = "Interview"
+        self.application.save()
 
         # Alice acquires RESCHEDULE lock (e.g. opening Manage Interview modal)
         self.client.force_login(self.hr_user_1)
@@ -3567,10 +3572,27 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.assertTrue(resp_eval.json()["locked"])
         self.assertIn("Alice Recruiter", resp_eval.json()["message"])
 
-        # Bob views interviews evaluations tab: Evaluate button rendered with lock
+        # Bob views interviews evaluations tab: BOTH Evaluate AND Manage buttons rendered with lock
         resp_page = self.client.get(reverse("interviews") + "?tab=evaluations")
         self.assertEqual(resp_page.status_code, 200)
-        self.assertContains(resp_page, "Locked (Alice Recruiter)")
+        content_eval = resp_page.content.decode("utf-8")
+        self.assertIn("Locked (Alice Recruiter)", content_eval)
+        self.assertIn('data-action-btn="EVALUATE"', content_eval)
+        self.assertIn('data-action-btn="RESCHEDULE"', content_eval)
+
+        # Bob views candidate detail page: hero button is locked and locked card is shown
+        resp_detail = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
+        self.assertEqual(resp_detail.status_code, 200)
+        content_detail = resp_detail.content.decode("utf-8")
+        self.assertIn("Interview Management In Progress (Locked by Alice Recruiter)", content_detail)
+        self.assertIn("Locked (Alice Recruiter)", content_detail)
+
+        # Bob attempts to POST evaluate_candidate: blocked because interview is being managed
+        resp_submit_eval = self.client.post(
+            reverse("evaluate_candidate", kwargs={"pk": self.application.pk}),
+            {"interview_mode": "Face-to-Face", "technical_competence": 4}
+        )
+        self.assertEqual(resp_submit_eval.status_code, 302)
 
         # Alice closes Manage modal (releases lock)
         self.client.force_login(self.hr_user_1)
@@ -3581,8 +3603,13 @@ class HRMultiUserConcurrencyTests(TestCase):
         )
         self.assertEqual(resp_rel.status_code, 200)
 
-        # Bob can now start candidate evaluation
+        # Bob can now view candidate detail and buttons are unlocked
         self.client.force_login(self.hr_user_2)
+        resp_detail_unlocked = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
+        self.assertEqual(resp_detail_unlocked.status_code, 200)
+        self.assertNotContains(resp_detail_unlocked, "Interview Management In Progress (Locked by Alice Recruiter)")
+
+        # Bob can now start candidate evaluation
         resp_bob_start = self.client.post(
             reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
             HTTP_X_REQUESTED_WITH="XMLHttpRequest"
