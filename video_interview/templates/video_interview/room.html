@@ -93,7 +93,7 @@
                 <i class="fas fa-forward"></i> Skip Question
             </button>
 
-            <button type="button" id="btn-next" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45, 90, 39, 0.3);">
+            <button type="button" id="btn-next" class="btn btn-primary" disabled style="padding: 12px 28px; font-size: 15px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; gap: 8px; cursor: not-allowed; opacity: 0.5; pointer-events: none; box-shadow: 0 4px 12px rgba(45, 90, 39, 0.3);">
                 <span id="next-btn-text">Next Question</span> <i class="fas fa-arrow-right"></i>
             </button>
         </div>
@@ -372,6 +372,7 @@ function startPreparationPhase(q) {
     btnNext.disabled = true;
     btnNext.style.opacity = '0.5';
     btnNext.style.cursor = 'not-allowed';
+    btnNext.style.pointerEvents = 'none';
 
     // Play TTS audio
     playQuestionAudio(q);
@@ -409,6 +410,7 @@ function endPrepAndStartRecording() {
     btnNext.disabled = false;
     btnNext.style.opacity = '1';
     btnNext.style.cursor = 'pointer';
+    btnNext.style.pointerEvents = 'auto';
 
     startRecordingAndTimer();
 }
@@ -471,11 +473,18 @@ function updateTimerDisplay() {
 }
 
 function finishCurrentQuestion(isSkipped) {
+    // Strictly prevent advancing or finishing during preparation phase unless explicitly skipped
+    if (isPrepPhase && !isSkipped) {
+        console.warn("finishCurrentQuestion called during prep phase without skip. Action blocked.");
+        return;
+    }
+
     if (prepInterval) clearInterval(prepInterval);
     if (timerInterval) clearInterval(timerInterval);
     stopAnyActiveAudio();
 
     btnNext.disabled = true;
+    btnNext.style.pointerEvents = "none";
     btnSkip.disabled = true;
     prepOverlayBar.style.display = "none";
 
@@ -487,17 +496,35 @@ function finishCurrentQuestion(isSkipped) {
     const currentQ = questionsData[currentIdx];
 
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        try {
+            if (typeof mediaRecorder.requestData === "function") {
+                mediaRecorder.requestData();
+            }
+        } catch (e) {
+            console.warn("requestData error:", e);
+        }
+
         mediaRecorder.onstop = function() {
-            const blob = isSkipped ? null : new Blob(recordedChunks, { type: mediaRecorder.mimeType || "video/webm" });
+            const mimeType = mediaRecorder.mimeType || "video/webm";
+            const blob = (!isSkipped && recordedChunks.length > 0) ? new Blob(recordedChunks, { type: mimeType }) : null;
             uploadQuestionAnswer(currentQ.number, blob, isSkipped, durationSeconds);
         };
-        mediaRecorder.stop();
+
+        try {
+            mediaRecorder.stop();
+        } catch (e) {
+            console.error("Error stopping mediaRecorder:", e);
+            const mimeType = mediaRecorder.mimeType || "video/webm";
+            const blob = (!isSkipped && recordedChunks.length > 0) ? new Blob(recordedChunks, { type: mimeType }) : null;
+            uploadQuestionAnswer(currentQ.number, blob, isSkipped, durationSeconds);
+        }
     } else {
         uploadQuestionAnswer(currentQ.number, null, isSkipped, durationSeconds);
     }
 }
 
-async function uploadQuestionAnswer(qNum, videoBlob, isSkipped, durationSeconds) {
+async function uploadQuestionAnswer(qNum, videoBlob, isSkipped, durationSeconds, retryCount = 0) {
+    const maxRetries = 3;
     const formData = new FormData();
     formData.append("question_number", qNum);
     formData.append("skipped", isSkipped ? "true" : "false");
@@ -508,26 +535,44 @@ async function uploadQuestionAnswer(qNum, videoBlob, isSkipped, durationSeconds)
         formData.append("video", videoBlob, "q" + qNum + ".webm");
     }
 
+    overlayMsg.textContent = isSkipped
+        ? "Skipping question..."
+        : (retryCount > 0 ? `Uploading answer (Attempt ${retryCount + 1}/${maxRetries})...` : "Saving question response...");
+
+    let uploadOk = false;
     try {
         const resp = await fetch(submitUrl, {
             method: "POST",
             body: formData
         });
-        const data = await resp.json();
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.success) {
+                uploadOk = true;
+            } else {
+                console.error("Server reported error saving response:", data.error);
+            }
+        } else {
+            console.error("Server returned HTTP error status:", resp.status);
+        }
     } catch (err) {
-        console.error("Error saving response:", err);
+        console.error("Network upload error:", err);
+    }
+
+    if (!uploadOk && !isSkipped && videoBlob && retryCount < maxRetries) {
+        overlayMsg.textContent = `Upload delay detected. Retrying in 1.5s (${retryCount + 1}/${maxRetries})...`;
+        await new Promise(res => setTimeout(res, 1500));
+        return uploadQuestionAnswer(qNum, videoBlob, isSkipped, durationSeconds, retryCount + 1);
     }
 
     // Advance to next question or finish
     if (currentIdx + 1 < totalQuestions) {
         setTimeout(function() {
             loadingOverlay.style.display = "none";
-            btnNext.disabled = false;
-            btnSkip.disabled = false;
             loadQuestion(currentIdx + 1);
-        }, 500);
+        }, 400);
     } else {
-        // Last question finished!
+        // Last question finished and verified saved!
         isSubmitting = true;
         overlayMsg.textContent = "Interview completed! Analyzing responses...";
         window.location.href = finishUrl;

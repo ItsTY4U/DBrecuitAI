@@ -44,8 +44,78 @@ def _clean_json_text(raw_text: str) -> str:
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
         if match:
             return match.group(1).strip()
-        return re.sub(r"^```json\s*|\s*```$", "", text, flags=re.IGNORECASE).strip()
     return text
+
+
+def _call_gemini_with_retry_and_fallback(
+    ai_client: genai.Client,
+    contents: list,
+    system_instruction: str = "",
+    response_mime_type: str = "application/json",
+    temperature: float = 0.2,
+    max_output_tokens: int = 1500,
+) -> str:
+    """
+    Calls Gemini API with exponential backoff retry and automatic model fallback
+    to reliably handle 503 UNAVAILABLE (high demand), 429 RESOURCE_EXHAUSTED,
+    and temporary connection spikes.
+    """
+    primary_model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    fast_model = getattr(settings, "GEMINI_FAST_MODEL", "gemini-2.5-flash-lite")
+
+    models_to_try = [primary_model]
+    if fast_model and fast_model not in models_to_try:
+        models_to_try.append(fast_model)
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+        if fallback not in models_to_try:
+            models_to_try.append(fallback)
+
+    last_error = None
+    config_args = {
+        "response_mime_type": response_mime_type,
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens,
+    }
+    if system_instruction:
+        config_args["system_instruction"] = system_instruction
+
+    for model_name in models_to_try:
+        for attempt in range(3):
+            try:
+                response = ai_client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(**config_args),
+                )
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                last_error = e
+                err_str = str(e).lower()
+                is_transient = (
+                    "503" in err_str
+                    or "unavailable" in err_str
+                    or "high demand" in err_str
+                    or "429" in err_str
+                    or "resource_exhausted" in err_str
+                    or "deadline" in err_str
+                    or "timeout" in err_str
+                )
+                if is_transient and attempt < 2:
+                    wait_time = (2 ** attempt) * 1.5
+                    logger.warning(
+                        "Gemini call to %s failed (%s). Retrying in %.1fs (attempt %d/3)...",
+                        model_name, e, wait_time, attempt + 1
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.warning(
+                        "Gemini model %s call failed: %s. Moving to next candidate model if available.",
+                        model_name, e
+                    )
+                    break
+
+    raise last_error or RuntimeError("Gemini API call failed after retries and fallback models.")
 
 
 def analyze_single_response(response: Any, job_title: str, job_department: str) -> Dict[str, Any]:
@@ -146,19 +216,16 @@ Return strictly a valid JSON object matching:
 }}
 """
 
-        eval_model = getattr(settings, "GEMINI_MODEL", "gemini-3.6-flash")
-        gemini_response = ai_client.models.generate_content(
-            model=eval_model,
-            contents=[uploaded_file, prompt],
-            config=types.GenerateContentConfig(
+        raw_text = _clean_json_text(
+            _call_gemini_with_retry_and_fallback(
+                ai_client=ai_client,
+                contents=[uploaded_file, prompt],
                 system_instruction=system_instruction,
                 response_mime_type="application/json",
                 temperature=0.2,
                 max_output_tokens=1500,
-            ),
+            )
         )
-
-        raw_text = _clean_json_text(gemini_response.text)
         data = json.loads(raw_text)
 
         # Clamp score between 50 and 100
@@ -175,10 +242,15 @@ Return strictly a valid JSON object matching:
 
     except Exception as e:
         logger.error("Error analyzing video response Q%s: %s", response.question_number, e)
+        err_str = str(e)
+        if "503" in err_str or "unavailable" in err_str.lower() or "high demand" in err_str.lower():
+            friendly_feedback = "Automated analysis experienced a temporary delay from the AI provider due to high demand. Video is ready for HR playback."
+        else:
+            friendly_feedback = "Automated analysis was delayed. Video is ready for HR playback."
         return {
             "score": 70,
             "transcript": "Video recording captured successfully.",
-            "feedback": f"Automated analysis experienced a temporary delay ({str(e)}). Video is ready for HR playback.",
+            "feedback": friendly_feedback,
             "strengths": ["Completed recorded response"],
             "improvements": ["Review video manually"],
         }
@@ -258,17 +330,15 @@ Provide an executive synthesis in JSON conforming strictly to:
 }}
 """
 
-            eval_model = getattr(settings, "GEMINI_MODEL", "gemini-3.6-flash")
-            sum_resp = ai_client.models.generate_content(
-                model=eval_model,
-                contents=summary_prompt,
-                config=types.GenerateContentConfig(
+            raw = _clean_json_text(
+                _call_gemini_with_retry_and_fallback(
+                    ai_client=ai_client,
+                    contents=summary_prompt,
                     response_mime_type="application/json",
                     temperature=0.2,
                     max_output_tokens=1000,
-                ),
+                )
             )
-            raw = _clean_json_text(sum_resp.text)
             sum_data = json.loads(raw)
             overall_summary = sum_data.get("overall_summary", "")
             overall_feedback = sum_data.get("overall_feedback", "")

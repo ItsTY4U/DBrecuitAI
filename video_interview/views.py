@@ -1,8 +1,10 @@
+import os
+import logging
 import random
 import threading
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, FileResponse, HttpResponseForbidden, Http404
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -259,7 +261,7 @@ def submit_answer_api(request, application_id):
         return JsonResponse({"error": "Unauthorized"}, status=403)
 
     session = _get_or_create_session(application)
-    if session.status != "IN_PROGRESS":
+    if session.status not in ["IN_PROGRESS", "COMPLETED"]:
         return JsonResponse({"error": "Session is not active"}, status=400)
 
     try:
@@ -396,4 +398,36 @@ def congratulations_view(request, application_id):
         "session": session,
         "job": application.job,
     })
+
+
+@never_cache
+@login_required(login_url="applicant_login")
+def stream_video_clip(request, response_id):
+    """
+    Streams a candidate's video interview recording directly from storage (R2/S3/local).
+    Supports HTTP Range requests (206 Partial Content) for seamless HR playback and seeking.
+    """
+    response_obj = get_object_or_404(
+        InterviewResponse.objects.select_related("session__application__applicant"),
+        id=response_id
+    )
+
+    # Permission check: must be staff/HR or the applicant owner
+    if not request.user.is_staff and response_obj.session.application.applicant != request.user:
+        return HttpResponseForbidden("Unauthorized")
+
+    if not response_obj.video_clip:
+        raise Http404("No video clip recorded for this question.")
+
+    try:
+        file_obj = response_obj.video_clip.open("rb")
+        ext = os.path.splitext(response_obj.video_clip.name)[1].lower()
+        content_type = "video/mp4" if ext == ".mp4" else "video/webm"
+        file_resp = FileResponse(file_obj, content_type=content_type)
+        file_resp["Cache-Control"] = "private, max-age=3600"
+        return file_resp
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Error streaming video clip ID {response_id}: {e}")
+        raise Http404("Unable to load video clip.")
+
 

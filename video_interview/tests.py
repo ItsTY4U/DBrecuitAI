@@ -306,3 +306,24 @@ class VideoInterviewTests(TestCase):
         })
         self.assertEqual(response.status_code, 400)
         self.assertIn("Video file exceeds the 50MB limit.", response.json()["error"])
+
+    def test_stream_video_clip_accessible_by_hr(self):
+        """stream_video_clip view streams video clips to HR."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        session = InterviewSession.objects.create(
+            application=self.application,
+            status="COMPLETED"
+        )
+        clip = SimpleUploadedFile("q1.webm", b"fake webm video content", content_type="video/webm")
+        resp_obj = InterviewResponse.objects.create(
+            session=session,
+            question_number=1,
+            question_type="INTRO",
+            question_text="Tell us about yourself",
+            video_clip=clip
+        )
+        self.client.login(username="hradmin", password="testpassword123")
+        url = reverse("video_interview:stream_clip", kwargs={"response_id": resp_obj.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "video/webm")
