@@ -138,6 +138,68 @@
                 window.hrLastToastId = evt.detail.id;
             }
         });
+
+        // Approach 1: Only fetch data when something actually changed
+        document.body.addEventListener('hrDataChanged', function(evt) {
+            const detail = evt.detail || {};
+            const scopes = detail.scopes || [];
+
+            if (detail.new_log_id) {
+                window.hrLastToastId = detail.new_log_id;
+            }
+
+            // Do not disrupt the user if typing in an input or if a modal is open
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+            const openModal = document.querySelector('.modal.show, .modal-open, [data-modal-open="true"], [id$="-modal"]:not([style*="none"])');
+
+            if (openModal || isTyping) {
+                return;
+            }
+
+            // 1. Refresh Candidates Views
+            if (scopes.includes('candidates') || scopes.includes('general')) {
+                const recentPane = document.getElementById('tab-pane-recent');
+                if (recentPane && recentPane.style.display !== 'none' && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#tab-pane-recent', select: '#tab-pane-recent > *', swap: 'innerHTML' });
+                }
+
+                document.querySelectorAll('.job-table-container').forEach(function(tbl) {
+                    const parentCard = tbl.closest('.job-section-card');
+                    if (parentCard && parentCard.offsetParent !== null && typeof htmx !== 'undefined') {
+                        const jobId = parentCard.getAttribute('data-job-id');
+                        if (jobId) {
+                            htmx.ajax('GET', '/hr/candidates/job/' + jobId + '/table/', {
+                                target: tbl,
+                                select: '.job-candidate-table-inner',
+                                swap: 'innerHTML'
+                            });
+                        }
+                    }
+                });
+
+                const candStats = document.querySelector('.stats-grid-5');
+                if (candStats && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '.stats-grid-5', select: '.stats-grid-5', swap: 'outerHTML' });
+                }
+            }
+
+            // 2. Refresh Interviews Views
+            if (scopes.includes('interviews') || scopes.includes('general')) {
+                const activeInterviewPane = document.querySelector('.interview-tab-pane[style*="block"], .interview-tab-pane:not([style*="none"])');
+                if (activeInterviewPane && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#' + activeInterviewPane.id, select: '#' + activeInterviewPane.id + ' > *', swap: 'innerHTML' });
+                }
+            }
+
+            // 3. Refresh Jobs Management Page
+            if (scopes.includes('jobs') || scopes.includes('general')) {
+                const jobsContainer = document.querySelector('.job-management-content, .job-grid-section');
+                if (jobsContainer && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: jobsContainer, select: jobsContainer.id ? '#' + jobsContainer.id : '.job-management-content', swap: 'innerHTML' });
+                }
+            }
+        });
     </script>
 </body>
 </html>
