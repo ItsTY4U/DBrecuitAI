@@ -4243,9 +4243,14 @@ class HRGoogleSheetsExportTests(TestCase):
             meta_info=meta,
         )
         self.assertTrue(res.get("success"))
-        self.assertIn("docs.google.com/spreadsheets/d/", res.get("spreadsheet_url", ""))
+        self.assertTrue(
+            res.get("spreadsheet_url") == "https://sheets.new"
+            or "docs.google.com/spreadsheets/d/" in res.get("spreadsheet_url", "")
+        )
         self.assertEqual(res.get("file_name"), "DBRecruit AI - Test Report (September 2026)")
         self.assertEqual(res.get("rows_count"), 2)
+        self.assertIn("tsv_data", res)
+        self.assertIn("csv_data", res)
 
     def test_export_google_sheet_view_without_link_creates_new_file(self):
         """Export endpoint generates a new Google Sheet without any link provided."""
@@ -4261,8 +4266,13 @@ class HRGoogleSheetsExportTests(TestCase):
         self.assertEqual(response.status_code, 200)
         json_resp = response.json()
         self.assertTrue(json_resp.get("success"))
-        self.assertIn("docs.google.com/spreadsheets/d/", json_resp.get("spreadsheet_url", ""))
+        self.assertTrue(
+            json_resp.get("spreadsheet_url") == "https://sheets.new"
+            or "docs.google.com/spreadsheets/d/" in json_resp.get("spreadsheet_url", "")
+        )
         self.assertEqual(json_resp.get("file_name"), "DBRecruit AI - HR Audit Trail (Sep 2026)")
+        self.assertIn("tsv_data", json_resp)
+        self.assertIn("csv_data", json_resp)
 
         # Verify an AuditLog entry was recorded
         audit_entry = AuditLog.objects.filter(

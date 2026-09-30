@@ -630,6 +630,67 @@ function triggerHrToast(theme, category, title, description, link) {
     }, 6000);
 }
 
+// Global storage for last exported data to support re-copying or re-downloading
+window._lastExportedTsv = '';
+window._lastExportedCsv = '';
+window._lastExportedFileName = '';
+
+async function copyReportTsvToClipboard(tsv) {
+    if (!tsv) return false;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(tsv);
+            return true;
+        }
+    } catch (e) {
+        console.warn('Clipboard writeText failed, trying execCommand fallback:', e);
+    }
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = tsv;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        var successful = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return successful;
+    } catch (err) {
+        console.error('Fallback execCommand copy failed:', err);
+        return false;
+    }
+}
+
+function downloadReportCsvFile(csvContent, fileName) {
+    if (!csvContent) return;
+    try {
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        var dlUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = dlUrl;
+        var cleanName = (fileName || 'Report').replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'Report';
+        a.download = cleanName + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(dlUrl); }, 1500);
+    } catch (e) {
+        console.warn('CSV auto-download error:', e);
+    }
+}
+
+async function reCopyTsvToClipboard(btn) {
+    if (!window._lastExportedTsv) return;
+    var ok = await copyReportTsvToClipboard(window._lastExportedTsv);
+    if (btn) {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check" style="color: #10b981;"></i> Copied!';
+        setTimeout(function() { btn.innerHTML = orig; }, 2000);
+    }
+}
+
 async function exportToGoogleSheet(event) {
     if (event && event.preventDefault) event.preventDefault();
 
@@ -667,30 +728,100 @@ async function exportToGoogleSheet(event) {
         var data = await resp.json();
 
         if (resp.ok && data.success) {
-            if (notice) {
-                notice.style.display = 'block';
-                notice.style.background = '#ecfdf5';
-                notice.style.border = '1px solid #6ee7b7';
-                notice.style.color = '#065f46';
-                notice.innerHTML = '<i class="fas fa-check-circle" style="color: #059669;"></i> ' + 
-                    '<strong>Success!</strong> Generated Google Sheet <strong>"' + (data.file_name || 'Report') + '"</strong> with ' + (data.rows_count || 0) + ' records. Opening sheet...';
+            window._lastExportedTsv = data.tsv_data || '';
+            window._lastExportedCsv = data.csv_data || '';
+            window._lastExportedFileName = data.file_name || 'Report';
+
+            // 1. Copy formatted TSV data to clipboard
+            var clipboardCopied = false;
+            if (data.tsv_data) {
+                clipboardCopied = await copyReportTsvToClipboard(data.tsv_data);
             }
 
-            if (data.spreadsheet_url) {
-                window.open(data.spreadsheet_url, '_blank');
+            // 2. Automatically download CSV file
+            if (data.csv_data) {
+                downloadReportCsvFile(data.csv_data, data.file_name);
+            }
+
+            // 3. Open Google Sheet in new tab
+            var sheetUrl = data.spreadsheet_url || 'https://sheets.new';
+            if (sheetUrl) {
+                window.open(sheetUrl, '_blank');
+            }
+
+            var rowsCount = data.rows_count || 0;
+            var fileName = data.file_name || 'Report';
+
+            // 4. Update status notice in modal with rich action card & instructions
+            if (notice) {
+                notice.style.display = 'block';
+                notice.style.background = '#f0fdf4';
+                notice.style.border = '1.5px solid #86efac';
+                notice.style.color = '#14532d';
+                notice.style.padding = '14px 16px';
+                notice.style.borderRadius = '10px';
+
+                if (data.is_mock || data.mode === 'sheets_new_clipboard') {
+                    notice.innerHTML = 
+                        '<div style="display: flex; align-items: flex-start; gap: 12px;">' +
+                            '<div style="width: 32px; height: 32px; border-radius: 50%; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 2px;">' +
+                                '<i class="fas fa-check"></i>' +
+                            '</div>' +
+                            '<div style="flex: 1;">' +
+                                '<div style="font-size: 14px; font-weight: 800; color: #14532d; margin-bottom: 4px;">' +
+                                    'Google Sheet Ready &amp; Opened!' +
+                                '</div>' +
+                                '<div style="font-size: 12.5px; color: #166534; line-height: 1.5; margin-bottom: 10px;">' +
+                                    'Generated <strong>' + rowsCount + ' records</strong> for <strong>"' + fileName + '"</strong>. ' +
+                                    (clipboardCopied ? 'All formatted records have been copied to your clipboard.' : 'Your CSV file has been downloaded.') +
+                                '</div>' +
+                                '<div style="background: #ffffff; border: 1.5px dashed #059669; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: #064e3b;">' +
+                                    '<div style="font-weight: 700; color: #047857; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">' +
+                                        '<i class="fas fa-paste"></i> Next Step: Paste Into Your New Sheet' +
+                                    '</div>' +
+                                    'Go to your opened Google Sheet tab, click cell <strong>A1</strong>, and press <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #cbd5e1; font-family: monospace;">Ctrl + V</kbd> (or <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #cbd5e1; font-family: monospace;">Cmd + V</kbd>) to instantly populate all columns and rows!' +
+                                '</div>' +
+                                '<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">' +
+                                    '<a href="' + sheetUrl + '" target="_blank" class="hr-btn hr-btn-sm" style="background: #0f9d58; color: #ffffff; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(15,157,88,0.3);">' +
+                                        '<i class="fas fa-external-link-alt"></i> Open Sheet Again' +
+                                    '</a>' +
+                                    '<button type="button" id="btnCopyDataAgain" onclick="reCopyTsvToClipboard(this)" style="background: #ffffff; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">' +
+                                        '<i class="fas fa-copy"></i> Re-copy Data' +
+                                    '</button>' +
+                                    '<button type="button" onclick="downloadReportCsvFile(window._lastExportedCsv, window._lastExportedFileName)" style="background: #ffffff; border: 1px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">' +
+                                        '<i class="fas fa-download"></i> Download CSV' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                } else {
+                    notice.innerHTML = 
+                        '<div style="display: flex; align-items: center; gap: 12px;">' +
+                            '<div style="width: 32px; height: 32px; border-radius: 50%; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;">' +
+                                '<i class="fas fa-check"></i>' +
+                            '</div>' +
+                            '<div style="flex: 1;">' +
+                                '<div style="font-size: 14px; font-weight: 800; color: #14532d; margin-bottom: 2px;">' +
+                                    'Google Sheet Created Successfully!' +
+                                '</div>' +
+                                '<div style="font-size: 12.5px; color: #166534; margin-bottom: 8px;">' +
+                                    'Created spreadsheet <strong>"' + fileName + '"</strong> with ' + rowsCount + ' records on Google Drive.' +
+                                '</div>' +
+                                '<a href="' + sheetUrl + '" target="_blank" style="background: #0f9d58; color: #ffffff; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">' +
+                                    '<i class="fas fa-external-link-alt"></i> Open Google Sheet' +
+                                '</a>' +
+                            '</div>' +
+                        '</div>';
+                }
             }
 
             triggerHrToast(
                 'emerald',
                 'Google Sheet Created',
                 data.file_name || 'Report Generated',
-                'Successfully generated Google Sheet with ' + (data.rows_count || 0) + ' records.',
+                (data.is_mock ? 'Opened Google Sheet & copied ' + rowsCount + ' records to clipboard (Ctrl+V to paste).' : 'Successfully created Google Sheet with ' + rowsCount + ' records.'),
                 data.spreadsheet_url
             );
-
-            setTimeout(function() {
-                closeGenerateReportModal();
-            }, 1200);
         } else {
             var errMsg = (data && data.error) ? data.error : 'Failed to generate Google Sheet report.';
             if (notice) {
