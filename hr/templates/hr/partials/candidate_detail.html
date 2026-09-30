@@ -807,7 +807,11 @@
                 <div style="font-size: 13px; color: #555;">
                     <strong>Interview Status:</strong>
                     {% if not interview_session or interview_session.status == "PENDING" %}
-                        <span style="color: #777;">Applicant has not taken the optional video interview yet.</span>
+                        {% if interview_session and interview_session.can_retake %}
+                            <span style="color: #d35400; font-weight: 600;"><i class="fas fa-rotate-right"></i> Retake granted — waiting for applicant to retake interview.</span>
+                        {% else %}
+                            <span style="color: #777;">Applicant has not taken the optional video interview yet.</span>
+                        {% endif %}
                     {% elif interview_session.status == "COMPLETED" %}
                         <span style="color: #27ae60; font-weight: 600;"><i class="fas fa-circle-check"></i> Completed on {{ interview_session.completed_at|date:"M d, Y h:i A" }}</span>
                     {% elif interview_session.status == "ABANDONED" %}
@@ -827,7 +831,7 @@
                         </button>
                     </form>
                     {% endif %}
-                    <form method="POST" action="{% url 'reset_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Allow candidate to retake the video interview? This resets the lock for technical issues.');">
+                    <form method="POST" action="{% url 'reset_candidate_interview' application.pk %}" style="margin: 0;" onsubmit="return confirm('Allow candidate to retake the video interview? This resets the lock for technical issues and clears previous recordings.');">
                         {% csrf_token %}
                         <button type="submit" class="btn-reset-interview">
                             <i class="fas fa-rotate-right"></i> Reset / Allow Retake
@@ -929,6 +933,16 @@
                     </h5>
                     <p style="font-size: 13px; color: #555; margin: 0;">
                         The applicant exited or refreshed the browser while taking the interview. If the applicant reported a technical issue, use the <strong>Reset / Allow Retake</strong> button above to unlock a fresh attempt.
+                    </p>
+                </div>
+            {% elif interview_session and interview_session.status == "PENDING" and interview_session.can_retake %}
+                <div style="padding: 26px; text-align: center; background: rgba(230, 126, 34, 0.06); border-radius: 12px; border: 1.5px dashed rgba(230, 126, 34, 0.35); margin-top: 10px;">
+                    <i class="fas fa-rotate-right" style="font-size: 32px; color: #d35400; margin-bottom: 10px; display: block;"></i>
+                    <h5 style="font-size: 15px; font-weight: 700; color: #d35400; margin: 0 0 6px;">
+                        Retake Granted
+                    </h5>
+                    <p style="font-size: 13.5px; color: #555; margin: 0; max-width: 520px; margin: 0 auto; line-height: 1.5;">
+                        The previous interview attempt has been reset and old video files have been cleaned up. Once the applicant completes their new video interview, all new recorded videos and AI feedback will appear here.
                     </p>
                 </div>
             {% else %}

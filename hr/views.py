@@ -1604,20 +1604,52 @@ def reset_candidate_interview(request, pk):
     application = get_object_or_404(Application, pk=pk)
     session = InterviewSession.objects.filter(application=application).first()
     if session:
+        from django.core.files.storage import default_storage
+
+        # 1. Clean up old video clips from object storage
+        for resp in session.responses.all():
+            if resp.video_clip:
+                try:
+                    resp.video_clip.delete(save=False)
+                except Exception:
+                    pass
+
+        # 2. Check and purge any standard video filenames for this application from storage
+        app_id = application.application_id
+        for q_num in range(1, 10):
+            for ext in [".webm", ".mp4"]:
+                key = f"videos/{app_id}_q{q_num}{ext}"
+                try:
+                    if default_storage.exists(key):
+                        default_storage.delete(key)
+                except Exception:
+                    pass
+
+        # 3. Delete old response records from database
+        session.responses.all().delete()
+
+        # 4. Reset interview session state cleanly
         session.can_retake = True
         session.status = "PENDING"
+        session.final_score = None
+        session.overall_feedback = ""
+        session.overall_summary = ""
+        session.ai_analyzed = False
+        session.started_at = None
+        session.completed_at = None
         session.save()
+
         log_hr_action(
             request,
             action="EVALUATION_RESET",
             target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
-            details=f"Video interview for {application.first_name} {application.last_name} was reset to allow retake.",
+            details=f"Video interview for {application.first_name} {application.last_name} was reset and old recordings cleared to allow retake.",
             target_model="InterviewSession",
             target_id=session.pk,
         )
         messages.success(
             request,
-            f"Video interview for {application.first_name} {application.last_name} has been reset to allow a retake."
+            f"Video interview for {application.first_name} {application.last_name} has been reset. Previous video files have been cleared and applicant is now permitted to retake."
         )
     return redirect("candidate_detail", pk=pk)
 
