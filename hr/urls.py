@@ -97,4 +97,5 @@ urlpatterns = [
     path("api/lock/acquire/", views.api_acquire_lock, name="hr_lock_acquire"),
     path("api/lock/release/", views.api_release_lock, name="hr_lock_release"),
     path("api/lock/heartbeat/", views.api_heartbeat_lock, name="hr_lock_heartbeat"),
+    path("api/live-toasts/", views.hr_live_toast_feed, name="hr_live_toast_feed"),
 ]

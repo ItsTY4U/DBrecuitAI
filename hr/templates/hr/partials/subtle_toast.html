@@ -1,0 +1,52 @@
+{% for toast in toasts %}
+<div class="hr-subtle-toast toast-{{ toast.theme }}" id="toast-{{ toast.id }}" role="status" aria-live="polite">
+    <div class="toast-body">
+        <div class="toast-indicator">
+            <span class="pulse-ring"></span>
+            <span class="pulse-core"></span>
+        </div>
+        <div class="toast-main">
+            <div class="toast-header-row">
+                <span class="toast-category">{{ toast.category }}</span>
+                <span class="toast-actor"><i class="fas fa-user-circle"></i> {{ toast.actor }}</span>
+            </div>
+            <div class="toast-title">{{ toast.title }}</div>
+            {% if toast.description %}
+            <div class="toast-desc">{{ toast.description }}</div>
+            {% endif %}
+            {% if toast.link %}
+            <a href="{{ toast.link }}" class="toast-link">
+                View record <i class="fas fa-arrow-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        <button type="button" class="toast-close" onclick="dismissToast('toast-{{ toast.id }}')" aria-label="Dismiss">
+            <i class="fas fa-xmark"></i>
+        </button>
+    </div>
+    <div class="toast-progress">
+        <div class="toast-progress-fill"></div>
+    </div>
+</div>
+<script>
+    (function() {
+        const toastId = 'toast-{{ toast.id }}';
+        setTimeout(() => {
+            if (typeof dismissToast === 'function') {
+                dismissToast(toastId);
+            }
+        }, 5500);
+    })();
+</script>
+{% endfor %}
+
+<script>
+    window.hrLastToastId = {{ new_last_log_id }};
+</script>
+
+{% if is_dashboard %}
+<h3 class="stat-value" id="stat-total-val" hx-swap-oob="true">{{ stat_total }}</h3>
+<h3 class="stat-value" id="stat-screening-val" hx-swap-oob="true">{{ stat_screening }}</h3>
+<h3 class="stat-value" id="stat-interview-val" hx-swap-oob="true">{{ stat_interview }}</h3>
+<h3 class="stat-value" id="stat-jobs-val" hx-swap-oob="true">{{ stat_jobs }}</h3>
+{% endif %}

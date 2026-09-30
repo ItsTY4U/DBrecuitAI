@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from jobs.models import Application, Job, Requirement, Department
 from .models import Interview, CandidateEvaluation, AuditLog, HRNotification, HRActionLock
 from .utils import log_hr_action, seed_applicant_management_logs_if_empty, seed_initial_notifications_if_empty
@@ -532,6 +532,114 @@ def api_live_sync(request):
         "active_locks": active_locks,
         "ongoing_evaluations": ongoing_evaluations,
     })
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def hr_live_toast_feed(request):
+    """
+    HTMX partial swapping endpoint polled every 2.5s.
+    Delivers subtle, non-intrusive notifications when another HR staff member
+    or applicant performs an action.
+    Returns HTTP 204 (No Content) when no updates exist so HTMX performs zero DOM modifications.
+    """
+    try:
+        last_log_id = int(request.GET.get("last_log_id", 0) or 0)
+    except (ValueError, TypeError):
+        last_log_id = 0
+
+    hr_user = request.user
+    latest_log_id = AuditLog.objects.order_by("-id").values_list("id", flat=True).first() or 0
+
+    if last_log_id == 0:
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({"setToastCursor": {"id": latest_log_id}})
+        return response
+
+    if latest_log_id <= last_log_id:
+        return HttpResponse(status=204)
+
+    # Fetch new audit logs performed by others or applicants
+    new_logs = list(
+        AuditLog.objects.filter(id__gt=last_log_id)
+        .exclude(user=hr_user)
+        .order_by("id")[:4]
+    )
+
+    if not new_logs:
+        # Logs were created by this user themselves; advance cursor silently
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({"setToastCursor": {"id": latest_log_id}})
+        return response
+
+    toasts = []
+    for log in new_logs:
+        act = (log.action or "").upper()
+        if any(k in act for k in ("HIRE", "SHORTLIST")):
+            theme = "emerald"
+            category = "Applicant Advanced"
+        elif any(k in act for k in ("INTERVIEW_SCHEDULED", "INTERVIEW_RESCHEDULED")):
+            theme = "blue"
+            category = "Interview Update"
+        elif "EVALUATION" in act:
+            theme = "purple"
+            category = "Evaluation Update"
+        elif any(k in act for k in ("REJECT", "CANCEL", "NOT_HIRED")):
+            theme = "rose"
+            category = "Application Update"
+        elif any(k in act for k in ("JOB", "DEPARTMENT")):
+            theme = "amber"
+            category = "Jobs & Depts"
+        else:
+            theme = "slate"
+            category = "HR Update"
+
+        target_link = reverse("candidates")
+        if log.target_model == "Application" and log.target_id:
+            target_link = reverse("candidate_detail", kwargs={"pk": log.target_id})
+        elif log.target_model == "Interview":
+            target_link = reverse("interviews")
+        elif log.target_model == "Job":
+            target_link = reverse("job_management")
+        elif "FINAL_DECISION" in act:
+            target_link = f"{reverse('reports')}?tab=final_decision"
+
+        actor = log.user_name or "HR Team"
+        title = log.action_display or "Dashboard Update"
+        desc = log.target_repr or log.details or ""
+        if len(desc) > 80:
+            desc = desc[:77] + "..."
+
+        toasts.append({
+            "id": log.id,
+            "theme": theme,
+            "category": category,
+            "actor": actor,
+            "title": title,
+            "description": desc,
+            "link": target_link,
+        })
+
+    is_dashboard = request.GET.get("is_dashboard") == "true"
+    context = {
+        "toasts": toasts,
+        "new_last_log_id": latest_log_id,
+        "is_dashboard": is_dashboard,
+    }
+
+    if is_dashboard:
+        app_counts = Application.objects.aggregate(
+            total=Count("id"),
+            screening=Count("id", filter=Q(status="Screening")),
+            hired=Count("id", filter=Q(status="Hired")),
+            interview=Count("id", filter=Q(status="Interview")),
+        )
+        context["stat_total"] = app_counts["total"] or 0
+        context["stat_screening"] = app_counts["screening"] or 0
+        context["stat_interview"] = app_counts["interview"] or 0
+        context["stat_jobs"] = Job.objects.filter(status="Active").count()
+
+    return render(request, "hr/partials/subtle_toast.html", context)
 
 
 @never_cache

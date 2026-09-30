@@ -37,10 +37,14 @@ def hr_notifications_context(request):
         full_name = f"{user.first_name} {user.last_name}".strip()
         hr_user_name = full_name or user.first_name or user.username
 
+        from .models import AuditLog
+        latest_audit_log_id = AuditLog.objects.order_by("-id").values_list("id", flat=True).first() or 0
+
         return {
             "unread_notifs_count": unread_count,
             "recent_notifications": recent_notifications,
             "hr_user_name": hr_user_name,
+            "latest_audit_log_id": latest_audit_log_id,
         }
     except Exception as e:
         logger.warning(f"Error in hr_notifications_context: {e}")
