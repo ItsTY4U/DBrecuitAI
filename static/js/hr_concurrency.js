@@ -297,6 +297,7 @@
             data.active_locks.forEach(lock => {
                 if (lock.user_id !== currentUserId) {
                     locksMap.set(`${lock.target_id}:${lock.action_type}`, lock);
+                    locksMap.set(`${lock.target_model}:${lock.target_id}:${lock.action_type}`, lock);
                     // General lookup by target_id
                     locksMap.set(String(lock.target_id), lock);
                 }
@@ -533,42 +534,122 @@
         });
 
         // 5. Candidate Detail Page Live Evaluation Form Hiding & Button Locking
-        const candidateDetailContainer = document.getElementById('eval-form-card');
-        const candidateLockedCard = document.getElementById('eval-locked-card');
-        const candidatePendingCard = document.getElementById('eval-pending-card');
-        const heroEvaluateBtn = document.querySelector('.hero-actions-stack .btn-evaluate');
-        const toggleEvalBtn = document.getElementById('btn-toggle-eval-form');
+        let pageAppId = null;
+        const evalSection = document.getElementById('candidate-evaluation-section');
+        if (evalSection && evalSection.getAttribute('data-app-id')) {
+            pageAppId = evalSection.getAttribute('data-app-id');
+        }
+        if (!pageAppId) {
+            const toggleBtn = document.getElementById('btn-toggle-eval-form');
+            if (toggleBtn && toggleBtn.getAttribute('data-app-id')) {
+                pageAppId = toggleBtn.getAttribute('data-app-id');
+            }
+        }
+        if (!pageAppId) {
+            const formCard = document.getElementById('eval-form-card');
+            if (formCard && formCard.getAttribute('data-app-id')) {
+                pageAppId = formCard.getAttribute('data-app-id');
+            }
+        }
+        if (!pageAppId && window._currentCandidateAppId) {
+            pageAppId = String(window._currentCandidateAppId);
+        }
+        if (!pageAppId && window._activeCandidateEvaluationAppId) {
+            pageAppId = String(window._activeCandidateEvaluationAppId);
+        }
+        if (!pageAppId) {
+            const schedAppId = document.getElementById('schedApplicantId')?.value;
+            if (schedAppId) pageAppId = schedAppId;
+        }
+        if (!pageAppId) {
+            const match = window.location.pathname.match(/\/hr\/candidates\/applicant\/(\d+)/);
+            if (match) pageAppId = match[1];
+        }
 
-        if (candidateDetailContainer) {
-            const pageAppId = candidateDetailContainer.getAttribute('data-app-id') || document.getElementById('schedApplicantId')?.value;
-            const currentEval = pageAppId ? ongoingEvalsMap.get(String(pageAppId)) : null;
+        if (pageAppId) {
+            let candidateLockedCard = document.getElementById('eval-locked-card');
+            const candidatePendingCard = document.getElementById('eval-pending-card');
+            const candidateFormCard = document.getElementById('eval-form-card');
+            const candidateViewCard = document.getElementById('eval-view-card');
+            const toggleEvalBtn = document.getElementById('btn-toggle-eval-form');
+            const heroEvaluateBtn = document.querySelector('.hero-actions-stack [data-action-btn="EVALUATE"], .hero-actions-stack .btn-evaluate, .hero-actions-stack button[onclick*="openEvaluationForm"]');
 
-            if (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) {
-                // Candidate is being evaluated / edited by ANOTHER evaluator -> HIDE FORM & LOCK BUTTONS!
-                candidateDetailContainer.style.setProperty('display', 'none', 'important');
-                if (candidatePendingCard) candidatePendingCard.style.display = 'none';
-                if (candidateLockedCard) {
-                    candidateLockedCard.style.display = 'block';
-                    const lockedDesc = candidateLockedCard.querySelector('p strong');
-                    if (lockedDesc) lockedDesc.textContent = currentEval.evaluator_name;
+            const currentEval = ongoingEvalsMap.get(String(pageAppId));
+            const evalLock = locksMap.get(`${pageAppId}:EVALUATE`) || locksMap.get(`Application:${pageAppId}:EVALUATE`);
+
+            const isLockedByOther = Boolean(
+                (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) ||
+                (evalLock && evalLock.user_id && evalLock.user_id !== currentUserId)
+            );
+            const isLockedByMe = Boolean(
+                (currentEval && currentEval.evaluator_id && currentEval.evaluator_id === currentUserId) ||
+                (evalLock && evalLock.user_id && evalLock.user_id === currentUserId)
+            );
+            const otherEvaluatorName = (currentEval && currentEval.evaluator_name) || (evalLock && evalLock.user_name) || 'Another HR';
+
+            if (isLockedByOther) {
+                // Hide interactive form card & pending card
+                if (candidateFormCard) {
+                    candidateFormCard.style.setProperty('display', 'none', 'important');
                 }
+                if (candidatePendingCard) {
+                    candidatePendingCard.style.display = 'none';
+                }
+
+                // Show or dynamically inject candidate locked card
+                if (!candidateLockedCard) {
+                    candidateLockedCard = document.createElement('div');
+                    candidateLockedCard.id = 'eval-locked-card';
+                    candidateLockedCard.className = 'eval-locked-box';
+                    candidateLockedCard.style.cssText = 'background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 12px; padding: 28px 24px; text-align: center; margin-bottom: 20px;';
+                    candidateLockedCard.innerHTML = `
+                        <div style="width: 50px; height: 50px; border-radius: 50%; background: #fef3c7; color: #b45309; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #92400e;">
+                            Candidate Evaluation In Progress (Locked)
+                        </h4>
+                        <p style="margin: 0 auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
+                            This candidate's evaluation is currently being edited/evaluated by <strong id="eval-locked-evaluator-name">${otherEvaluatorName}</strong>. The live scoring and evaluation form is locked to prevent conflicting submissions.
+                        </p>
+                    `;
+                    if (candidateFormCard && candidateFormCard.parentNode) {
+                        candidateFormCard.parentNode.insertBefore(candidateLockedCard, candidateFormCard);
+                    } else if (candidateViewCard && candidateViewCard.parentNode) {
+                        candidateViewCard.parentNode.insertBefore(candidateLockedCard, candidateViewCard);
+                    } else if (evalSection) {
+                        evalSection.appendChild(candidateLockedCard);
+                    }
+                } else {
+                    candidateLockedCard.style.display = 'block';
+                    const lockedDesc = candidateLockedCard.querySelector('#eval-locked-evaluator-name') || candidateLockedCard.querySelector('p strong');
+                    if (lockedDesc) lockedDesc.textContent = otherEvaluatorName;
+                }
+
+                // Lock toggle evaluation button
                 if (toggleEvalBtn) {
                     toggleEvalBtn.disabled = true;
                     toggleEvalBtn.classList.add('disabled');
                     toggleEvalBtn.style.cssText = 'padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;';
-                    toggleEvalBtn.innerHTML = `<i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked (${currentEval.evaluator_name})</span>`;
-                    toggleEvalBtn.title = `Evaluation is currently being edited by ${currentEval.evaluator_name}`;
-                    toggleEvalBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    toggleEvalBtn.innerHTML = `<i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked (${otherEvaluatorName})</span>`;
+                    toggleEvalBtn.title = `Evaluation is currently being edited by ${otherEvaluatorName}`;
+                    toggleEvalBtn.onclick = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } return false; };
                 }
+
+                // Lock hero evaluate button
                 if (heroEvaluateBtn) {
                     heroEvaluateBtn.disabled = true;
                     heroEvaluateBtn.classList.add('disabled');
                     heroEvaluateBtn.style.cssText = 'background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed;';
-                    heroEvaluateBtn.innerHTML = `<i class="fas fa-lock"></i> <span>In Evaluation (${currentEval.evaluator_name})</span>`;
+                    heroEvaluateBtn.innerHTML = `<i class="fas fa-lock"></i> <span>In Evaluation (${otherEvaluatorName})</span>`;
+                    heroEvaluateBtn.title = `Evaluation is currently being conducted by ${otherEvaluatorName}`;
+                    heroEvaluateBtn.onclick = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } return false; };
                 }
-            } else if (currentEval && currentEval.evaluator_id === currentUserId) {
+            } else if (isLockedByMe) {
                 // Current user is the evaluator
-                if (candidateLockedCard) candidateLockedCard.style.display = 'none';
+                if (candidateLockedCard) {
+                    candidateLockedCard.style.display = 'none';
+                }
                 if (toggleEvalBtn) {
                     toggleEvalBtn.disabled = false;
                     toggleEvalBtn.classList.remove('disabled');
@@ -580,7 +661,9 @@
                 }
             } else {
                 // Not actively evaluated by anyone
-                if (candidateLockedCard) candidateLockedCard.style.display = 'none';
+                if (candidateLockedCard) {
+                    candidateLockedCard.style.display = 'none';
+                }
                 if (toggleEvalBtn && (toggleEvalBtn.disabled || toggleEvalBtn.classList.contains('disabled') || toggleEvalBtn.innerHTML.indexOf('Locked') !== -1)) {
                     toggleEvalBtn.disabled = false;
                     toggleEvalBtn.classList.remove('disabled');
@@ -592,9 +675,23 @@
                         if (typeof window.toggleEvaluationForm === 'function') window.toggleEvaluationForm();
                     };
                 }
-                if (heroEvaluateBtn) {
+                if (heroEvaluateBtn && (heroEvaluateBtn.disabled || heroEvaluateBtn.classList.contains('disabled') || heroEvaluateBtn.innerHTML.indexOf('In Evaluation') !== -1)) {
                     heroEvaluateBtn.disabled = false;
                     heroEvaluateBtn.classList.remove('disabled');
+                    heroEvaluateBtn.style.cssText = '';
+                    const origHtml = heroEvaluateBtn.getAttribute('data-orig-html') || '<i class="fas fa-clipboard-check"></i> <span>Evaluate Candidate</span>';
+                    heroEvaluateBtn.innerHTML = origHtml;
+                    const origClick = heroEvaluateBtn.getAttribute('data-orig-onclick');
+                    if (origClick) {
+                        heroEvaluateBtn.setAttribute('onclick', origClick);
+                    } else {
+                        heroEvaluateBtn.onclick = function() {
+                            if (typeof window.openEvaluationForm === 'function') window.openEvaluationForm();
+                        };
+                    }
+                }
+                if (candidateViewCard && (!candidateFormCard || candidateFormCard.style.display === 'none')) {
+                    candidateViewCard.style.display = 'block';
                 }
             }
         }
@@ -731,4 +828,15 @@
     } else {
         startRealtimeSync();
     }
+
+    // Trigger immediate sync when candidate modal or dynamic content is swapped via HTMX
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail && evt.detail.target && (
+            evt.detail.target.id === 'candidate-profile-modal-container' ||
+            evt.detail.target.id === 'candidate-profile-modal-body' ||
+            evt.detail.target.closest('#candidate-profile-modal-container')
+        )) {
+            setTimeout(executeLiveSync, 60);
+        }
+    });
 })();

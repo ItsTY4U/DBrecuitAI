@@ -940,7 +940,7 @@
         </div>
 
         <!-- Candidate Evaluation Section -->
-        <div class="content-box ai-eval-box candidate-evaluation-box" id="candidate-evaluation-section">
+        <div class="content-box ai-eval-box candidate-evaluation-box" id="candidate-evaluation-section" data-app-id="{{ application.pk }}" data-cand-id="{{ application.pk }}">
             <div class="box-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #edf2f7; flex-wrap: wrap; gap: 12px;">
                 <div class="box-header-title">
                     <i class="fas fa-clipboard-check header-icon text-green"></i>
@@ -969,11 +969,11 @@
                         </span>
                     </div>
                     {% if is_eval_locked_by_other %}
-                    <button type="button" class="btn disabled" id="btn-toggle-eval-form" disabled style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Evaluation is currently being edited by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
+                    <button type="button" class="btn disabled" id="btn-toggle-eval-form" disabled data-app-id="{{ application.pk }}" data-cand-id="{{ application.pk }}" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;" title="Evaluation is currently being edited by {{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}.">
                         <i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked ({{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }})</span>
                     </button>
                     {% else %}
-                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <button type="button" class="btn" id="btn-toggle-eval-form" onclick="toggleEvaluationForm()" data-app-id="{{ application.pk }}" data-cand-id="{{ application.pk }}" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                         <i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>
                     </button>
                     {% endif %}
@@ -1170,7 +1170,7 @@
                     Candidate Evaluation In Progress (Locked)
                 </h4>
                 <p style="margin: 0 auto; max-width: 520px; font-size: 13px; color: #78350f; line-height: 1.5;">
-                    This candidate's evaluation is currently being edited/evaluated by <strong>{{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}</strong>. The live scoring and evaluation form is locked to prevent conflicting submissions.
+                    This candidate's evaluation is currently being edited/evaluated by <strong id="eval-locked-evaluator-name">{{ candidate_evaluation.evaluator_name|default:candidate_evaluation.evaluator.username }}</strong>. The live scoring and evaluation form is locked to prevent conflicting submissions.
                 </p>
             </div>
             {% elif not candidate_evaluation or candidate_evaluation.status != "Completed" %}
@@ -1563,6 +1563,7 @@ var recordInterval = null;
 var recordSeconds = 0;
 var recordedAudioBlob = null;
 
+window._currentCandidateAppId = "{{ application.pk }}";
 {% if show_eval_form %}
 window._isCandidateEvaluationActive = true;
 window._activeCandidateEvaluationAppId = "{{ application.pk }}";
@@ -1662,7 +1663,12 @@ function toggleEvaluationForm() {
     var viewCard = document.getElementById("eval-view-card");
     var formCard = document.getElementById("eval-form-card");
     var toggleText = document.getElementById("toggle-eval-text");
-    if (!formCard) return;
+    if (!formCard) {
+        if (window.location.search.indexOf('evaluate=1') === -1) {
+            window.location.href = window.location.pathname + '?evaluate=1#candidate-evaluation-section';
+        }
+        return;
+    }
     if (formCard.style.display === "none") {
         var csrfToken = getCandidateCSRFToken();
         fetch("{% url 'start_candidate_evaluation' application.pk %}", {
