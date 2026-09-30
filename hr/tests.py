@@ -4074,3 +4074,192 @@ class JobVacanciesAndModalsTests(TestCase):
         self.assertContains(resp_prof, "Live Video")
         self.assertContains(resp_prof, "meet.google.com")
 
+
+class HRGoogleSheetsExportTests(TestCase):
+    def setUp(self):
+        invalidate_hr_cache()
+        self.client = Client()
+        self.staff_user = User.objects.create_user(
+            username="hr_exporter",
+            password="testpassword123",
+            first_name="Export",
+            last_name="Officer",
+            is_staff=True,
+        )
+        self.hr_group, _ = Group.objects.get_or_create(name="HR")
+        self.staff_user.groups.add(self.hr_group)
+        self.client.login(username="hr_exporter", password="testpassword123")
+
+        self.dept = "Engineering"
+        self.job = Job.objects.create(
+            title="Fullstack Developer",
+            department=self.dept,
+            job_type="FULL-TIME",
+            status="Active",
+        )
+
+    def test_extract_spreadsheet_id_variants(self):
+        """Test extraction of spreadsheet IDs from various Google Docs URLs and raw IDs."""
+        from hr.google_sheets import extract_spreadsheet_id
+
+        # Standard edit URL
+        url1 = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0"
+        self.assertEqual(extract_spreadsheet_id(url1), "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+
+        # HTMLview URL
+        url2 = "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/htmlview"
+        self.assertEqual(extract_spreadsheet_id(url2), "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+
+        # Raw valid ID
+        raw_id = "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+        self.assertEqual(extract_spreadsheet_id(raw_id), raw_id)
+
+        # Invalid or empty
+        self.assertEqual(extract_spreadsheet_id(""), "")
+        self.assertEqual(extract_spreadsheet_id("not-a-valid-id-too-short"), "")
+
+    def test_extract_report_tabular_data_all_tabs(self):
+        """Test data extraction for all 4 sub-nav report tabs with month filters."""
+        from hr.google_sheets import extract_report_tabular_data
+        from hr.models import AuditLog, CandidateEvaluation
+        from datetime import datetime
+        from django.utils.timezone import make_aware
+
+        # 1. Audit Log record in September 2026
+        dt_sep = make_aware(datetime(2026, 9, 15, 10, 30, 0))
+        AuditLog.objects.create(
+            user=self.staff_user,
+            user_name="Export Officer",
+            action="INTERVIEW_SCHEDULED",
+            action_display="Scheduled Interview",
+            target_model="Application",
+            target_id="101",
+            target_repr="John Doe - Fullstack Developer",
+            details="Scheduled interview for John Doe on Sep 20.",
+            timestamp=dt_sep,
+        )
+
+        audit_data = extract_report_tabular_data("audit", {"month": "9", "year": "2026"})
+        self.assertEqual(audit_data["report_title"], "HR System Audit Trail")
+        self.assertIn("Timestamp", audit_data["headers"])
+        self.assertIn("Action Category", audit_data["headers"])
+        self.assertGreaterEqual(len(audit_data["rows"]), 1)
+        self.assertIn("Scheduled Interview", str(audit_data["rows"][0]))
+
+        # 2. Cancelled Application in September 2026
+        app_cancelled = Application.objects.create(
+            job=self.job,
+            first_name="Bob",
+            last_name="Cancelled",
+            email="bob@cancel.org",
+            phone="09112223333",
+            ai_score=55,
+            status="Rejected",
+        )
+        Application.objects.filter(id=app_cancelled.id).update(created_at=dt_sep)
+        cancelled_data = extract_report_tabular_data("cancelled", {"month": "9", "year": "2026"})
+        self.assertEqual(cancelled_data["report_title"], "Cancelled & Rejected Applications")
+        self.assertIn("Candidate Full Name", cancelled_data["headers"])
+        self.assertIn("Disqualification Stage", cancelled_data["headers"])
+        self.assertGreaterEqual(len(cancelled_data["rows"]), 1)
+
+        # 3. Evaluated Candidate in September 2026
+        app_eval = Application.objects.create(
+            job=self.job,
+            first_name="Alice",
+            last_name="Evaluated",
+            email="alice@eval.org",
+            phone="09223334444",
+            ai_score=88,
+            status="Interview",
+        )
+        Application.objects.filter(id=app_eval.id).update(created_at=dt_sep)
+        interview = Interview.objects.create(
+            interview_type="Panel Interview",
+            interviewer="Tech Lead",
+            date=dt_sep.date(),
+            time="11:00:00",
+            status="Completed",
+        )
+        interview.applicants.add(app_eval)
+        CandidateEvaluation.objects.create(
+            application=app_eval,
+            interview=interview,
+            evaluator=self.staff_user,
+            recommendation="Hire",
+            evaluation_date=dt_sep.date(),
+            communication_skills=4,
+            technical_competence=4,
+            problem_solving=4,
+            cultural_fit=5,
+            overall_rating=4.5,
+            general_notes="Strong candidate with good culture fit.",
+        )
+        eval_data = extract_report_tabular_data("evaluations", {"month": "9", "year": "2026"})
+        self.assertEqual(eval_data["report_title"], "Evaluated Candidates Report")
+        self.assertIn("Recommendation", eval_data["headers"])
+        self.assertGreaterEqual(len(eval_data["rows"]), 1)
+
+        # 4. Final Decision Candidate in September 2026
+        app_final = Application.objects.create(
+            job=self.job,
+            first_name="Carol",
+            last_name="Hired",
+            email="carol@hired.org",
+            phone="09334445555",
+            ai_score=95,
+            status="Hired",
+        )
+        Application.objects.filter(id=app_final.id).update(created_at=dt_sep)
+        CandidateEvaluation.objects.create(
+            application=app_final,
+            interview=interview,
+            evaluator=self.staff_user,
+            recommendation="Strong Hire",
+            final_decision="Hired",
+            final_decision_by=self.staff_user,
+            final_decision_date=dt_sep,
+            final_decision_notes="Selected as primary candidate.",
+        )
+        final_data = extract_report_tabular_data("final_decision", {"month": "9", "year": "2026"})
+        self.assertEqual(final_data["report_title"], "Candidates with Final Decision")
+        self.assertIn("Final Determination", final_data["headers"])
+        self.assertIn("Rationale & Final Notes", final_data["headers"])
+        self.assertGreaterEqual(len(final_data["rows"]), 1)
+
+    def test_export_google_sheet_view_missing_spreadsheet(self):
+        """Export endpoint requires a spreadsheet URL or ID."""
+        url = reverse("reports_export_google_sheet")
+        response = self.client.post(url, data={"tab": "audit"})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data.get("success"))
+        self.assertIn("Please provide a valid Google Spreadsheet URL or ID", data.get("error"))
+
+    def test_export_google_sheet_view_success_and_audit_logging(self):
+        """Export endpoint successfully processes request, formats tab, and records an AuditLog."""
+        from hr.models import AuditLog
+        url = reverse("reports_export_google_sheet")
+        post_data = {
+            "tab": "audit",
+            "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit",
+            "tab_name": "Audit - Sep 2026",
+            "month": "9",
+            "year": "2026",
+        }
+        response = self.client.post(url, data=post_data)
+        self.assertEqual(response.status_code, 200)
+        json_resp = response.json()
+        self.assertTrue(json_resp.get("success"))
+        self.assertEqual(json_resp.get("tab_name"), "Audit - Sep 2026")
+        self.assertIn("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms", json_resp.get("spreadsheet_url"))
+
+        # Verify an AuditLog entry was recorded
+        audit_entry = AuditLog.objects.filter(
+            action_display="Google Sheets Export",
+            user=self.staff_user
+        ).first()
+        self.assertIsNotNone(audit_entry)
+        self.assertIn("Audit - Sep 2026", audit_entry.details)
+
+

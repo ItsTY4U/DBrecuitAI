@@ -407,6 +407,25 @@ function openGenerateReportModal(reportType) {
         if (countEl) countEl.innerText = '{{ total_final_decisions_count }} finalized decisions';
     }
 
+    // Prefill saved spreadsheet URL if empty
+    var sheetUrlInput = document.getElementById('report_modal_spreadsheet_url');
+    if (sheetUrlInput && !sheetUrlInput.value.trim()) {
+        try {
+            var savedUrl = localStorage.getItem('dbrecruit_google_sheet_url');
+            if (savedUrl) sheetUrlInput.value = savedUrl;
+        } catch(e) {}
+    }
+
+    // Refresh suggested tab name
+    updateSuggestedTabName(reportType);
+
+    // Reset status notice
+    var notice = document.getElementById('googleSheetStatusNotice');
+    if (notice) {
+        notice.style.display = 'none';
+        notice.innerHTML = '';
+    }
+
     modalBackdrop.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -467,7 +486,270 @@ function setTimeframeMode(mode) {
         if (df) df.value = '';
         if (dt) dt.value = '';
     }
+
+    updateSuggestedTabName();
 }
+
+function updateSuggestedTabName(optReportType) {
+    var tabInput = document.getElementById('generateReportTabInput');
+    var currentTab = optReportType || (tabInput ? tabInput.value : 'audit') || 'audit';
+    var tabNameInput = document.getElementById('report_modal_tab_name');
+    if (!tabNameInput) return;
+
+    var monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var monthEl = document.getElementById('report_modal_month');
+    var yearEl = document.getElementById('report_modal_year');
+    var dfEl = document.getElementById('report_modal_date_from');
+    var dtEl = document.getElementById('report_modal_date_to');
+    var prEl = document.getElementById('report_modal_date_range');
+    var tfTypeEl = document.getElementById('generateReportTimeframeType');
+
+    var mode = tfTypeEl ? tfTypeEl.value : 'month';
+    var timeStr = "";
+
+    if (mode === 'month') {
+        var monthVal = monthEl ? monthEl.value : '';
+        var yearVal = yearEl ? yearEl.value : '';
+        if (monthVal && monthNames[parseInt(monthVal)]) {
+            timeStr = monthNames[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
+        } else if (yearVal) {
+            timeStr = yearVal;
+        } else {
+            timeStr = "All Time";
+        }
+    } else if (mode === 'range') {
+        var df = dfEl ? dfEl.value : '';
+        var dt = dtEl ? dtEl.value : '';
+        if (df && dt) timeStr = df + " to " + dt;
+        else if (df) timeStr = "From " + df;
+        else if (dt) timeStr = "Until " + dt;
+        else timeStr = "Custom Range";
+    } else if (mode === 'preset') {
+        var pr = prEl ? prEl.value : '';
+        if (pr === 'today') timeStr = 'Today';
+        else if (pr === '7days') timeStr = 'Past 7 Days';
+        else if (pr === '30days') timeStr = 'Past 30 Days';
+        else if (pr === 'quarter') timeStr = 'Quarter';
+        else timeStr = 'All Time';
+    }
+
+    var baseName = "Report";
+    if (currentTab === 'audit') baseName = "Audit Trail";
+    else if (currentTab === 'cancelled') baseName = "Cancelled";
+    else if (currentTab === 'evaluations') baseName = "Evaluations";
+    else if (currentTab === 'final_decision') baseName = "Final Decisions";
+
+    var suggested = baseName + " - " + timeStr;
+    tabNameInput.placeholder = suggested;
+    if (!tabNameInput.value || tabNameInput.dataset.autoFilled !== "false") {
+        tabNameInput.value = suggested;
+        tabNameInput.dataset.autoFilled = "true";
+    }
+}
+
+function getCSRFToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    var name = 'csrftoken=';
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i].trim();
+        if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
+    }
+    return '';
+}
+
+function triggerHrToast(theme, category, title, description, link) {
+    var stream = document.getElementById('hr-toast-stream');
+    if (!stream) return;
+    var toastId = 'toast-client-' + Date.now();
+    var div = document.createElement('div');
+    div.className = 'hr-subtle-toast toast-' + (theme || 'emerald');
+    div.id = toastId;
+    div.setAttribute('role', 'status');
+    div.setAttribute('aria-live', 'polite');
+    div.innerHTML = 
+        '<div class="toast-body">' +
+            '<div class="toast-indicator">' +
+                '<span class="pulse-ring"></span>' +
+                '<span class="pulse-core"></span>' +
+            '</div>' +
+            '<div class="toast-main">' +
+                '<div class="toast-header-row">' +
+                    '<span class="toast-category">' + category + '</span>' +
+                    '<span class="toast-actor"><i class="fab fa-google-drive"></i> Sheets Export</span>' +
+                '</div>' +
+                '<div class="toast-title">' + title + '</div>' +
+                (description ? '<div class="toast-desc">' + description + '</div>' : '') +
+                (link ? '<a href="' + link + '" target="_blank" class="toast-link">Open Google Sheet <i class="fas fa-external-link-alt"></i></a>' : '') +
+            '</div>' +
+            '<button type="button" class="toast-close" onclick="dismissToast(\'' + toastId + '\')" aria-label="Dismiss">' +
+                '<i class="fas fa-xmark"></i>' +
+            '</button>' +
+        '</div>' +
+        '<div class="toast-progress">' +
+            '<div class="toast-progress-fill"></div>' +
+        '</div>';
+    stream.appendChild(div);
+    setTimeout(function() {
+        if (typeof dismissToast === 'function') {
+            dismissToast(toastId);
+        } else if (div.parentElement) {
+            div.remove();
+        }
+    }, 6000);
+}
+
+async function exportToGoogleSheet(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    var urlInput = document.getElementById('report_modal_spreadsheet_url');
+    var tabNameInput = document.getElementById('report_modal_tab_name');
+    var btn = document.getElementById('btnExportGoogleSheets');
+    var notice = document.getElementById('googleSheetStatusNotice');
+
+    var spreadsheetUrl = urlInput ? urlInput.value.trim() : '';
+
+    if (!spreadsheetUrl) {
+        if (urlInput) {
+            urlInput.focus();
+            urlInput.style.borderColor = '#ef4444';
+            urlInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
+            setTimeout(function() {
+                urlInput.style.borderColor = '#86efac';
+                urlInput.style.boxShadow = 'none';
+            }, 3000);
+        }
+        if (notice) {
+            notice.style.display = 'block';
+            notice.style.background = '#fef2f2';
+            notice.style.border = '1px solid #fca5a5';
+            notice.style.color = '#991b1b';
+            notice.innerHTML = '<i class="fas fa-circle-exclamation"></i> <strong>Spreadsheet Required:</strong> Please paste a Google Spreadsheet URL or Spreadsheet ID.';
+        }
+        return;
+    }
+
+    try {
+        localStorage.setItem('dbrecruit_google_sheet_url', spreadsheetUrl);
+    } catch (e) {}
+
+    var originalBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.75';
+        btn.style.cursor = 'wait';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Creating Sheet Tab...</span>';
+    }
+    if (notice) {
+        notice.style.display = 'block';
+        notice.style.background = '#f0fdf4';
+        notice.style.border = '1px solid #86efac';
+        notice.style.color = '#166534';
+        notice.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing report records and contacting Google Sheets API...';
+    }
+
+    var form = document.getElementById('generateReportForm');
+    var formData = form ? new FormData(form) : new FormData();
+    formData.set('spreadsheet_url', spreadsheetUrl);
+    if (tabNameInput && tabNameInput.value.trim()) {
+        formData.set('tab_name', tabNameInput.value.trim());
+    }
+
+    try {
+        var resp = await fetch("{% url 'reports_export_google_sheet' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        var data = await resp.json();
+
+        if (resp.ok && data.success) {
+            if (notice) {
+                notice.style.display = 'block';
+                notice.style.background = '#ecfdf5';
+                notice.style.border = '1px solid #6ee7b7';
+                notice.style.color = '#065f46';
+                notice.innerHTML = '<i class="fas fa-check-circle" style="color: #059669;"></i> ' + 
+                    '<strong>Success!</strong> Created tab <strong>"' + (data.tab_name || 'Report') + '"</strong> with ' + (data.rows_count || 0) + ' records. Opening sheet...';
+            }
+
+            if (data.spreadsheet_url) {
+                window.open(data.spreadsheet_url, '_blank');
+            }
+
+            triggerHrToast(
+                'emerald',
+                'Google Sheets Export',
+                'Tab "' + (data.tab_name || 'Report') + '" Created',
+                'Successfully exported ' + (data.rows_count || 0) + ' records to Google Sheets.',
+                data.spreadsheet_url
+            );
+
+            setTimeout(function() {
+                closeGenerateReportModal();
+            }, 1200);
+        } else {
+            var errMsg = (data && data.error) ? data.error : 'Failed to export report to Google Sheets.';
+            if (notice) {
+                notice.style.display = 'block';
+                notice.style.background = '#fef2f2';
+                notice.style.border = '1px solid #fca5a5';
+                notice.style.color = '#991b1b';
+                notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Export Error:</strong> ' + errMsg;
+            }
+        }
+    } catch (err) {
+        if (notice) {
+            notice.style.display = 'block';
+            notice.style.background = '#fef2f2';
+            notice.style.border = '1px solid #fca5a5';
+            notice.style.color = '#991b1b';
+            notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Network Error:</strong> Could not connect to the export service. Please try again.';
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.innerHTML = originalBtnHtml;
+        }
+    }
+}
+
+// Attach event listeners for dynamic suggested tab name & URL persistence
+window.addEventListener('DOMContentLoaded', function() {
+    var tabNameInput = document.getElementById('report_modal_tab_name');
+    if (tabNameInput) {
+        tabNameInput.addEventListener('input', function() {
+            this.dataset.autoFilled = "false";
+        });
+    }
+
+    var sheetUrlInput = document.getElementById('report_modal_spreadsheet_url');
+    if (sheetUrlInput) {
+        sheetUrlInput.addEventListener('change', function() {
+            if (this.value.trim()) {
+                try {
+                    localStorage.setItem('dbrecruit_google_sheet_url', this.value.trim());
+                } catch(e) {}
+            }
+        });
+    }
+
+    var watchedFields = ['report_modal_month', 'report_modal_year', 'report_modal_date_from', 'report_modal_date_to', 'report_modal_date_range'];
+    watchedFields.forEach(function(fid) {
+        var el = document.getElementById(fid);
+        if (el) el.addEventListener('change', function() { updateSuggestedTabName(); });
+    });
+});
 
 // Auto-print handler when requested via print=1 in URL
 {% if auto_print %}

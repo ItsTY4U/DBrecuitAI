@@ -10093,6 +10093,33 @@ textarea:disabled,
     color: #0f172a;
 }
 
+/* Google Sheets Export Button & Modal Highlights */
+.btn-export-google-sheets {
+    background: #0f9d58;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(15, 157, 88, 0.28);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-export-google-sheets:hover {
+    background: #0b8043;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(15, 157, 88, 0.38);
+}
+
+.btn-export-google-sheets:active {
+    transform: translateY(0);
+}
+
+.btn-export-google-sheets:disabled {
+    opacity: 0.7;
+    cursor: wait !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+
 
 
 

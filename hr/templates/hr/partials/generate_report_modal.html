@@ -296,6 +296,46 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- SECTION 4: GOOGLE SHEETS DESTINATION -->
+                <div class="report-form-group-card" style="border: 1.5px solid #86efac; border-radius: 12px; padding: 18px; background: #f0fdf4;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                        <label class="modal-form-label" style="margin: 0; font-size: 13.5px; font-weight: 700; color: #14532d; display: flex; align-items: center; gap: 8px;">
+                            <i class="fab fa-google-drive" style="color: #0f9d58; font-size: 16px;"></i> 4. Export to Google Sheet Tab
+                        </label>
+                        <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">
+                            Live Google Sheets Sync
+                        </span>
+                    </div>
+                    <p style="margin: 0 0 12px 0; font-size: 12px; color: #166534;">
+                        Creates a brand new tab in your target Google Spreadsheet containing these customized report records:
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1.7fr 1.3fr; gap: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
+                                Google Spreadsheet URL or ID <span style="color: #dc2626;">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="spreadsheet_url" 
+                                   id="report_modal_spreadsheet_url" 
+                                   placeholder="https://docs.google.com/spreadsheets/d/.../edit" 
+                                   class="form-control" 
+                                   style="width: 100%; height: 40px; border-radius: 8px; border: 1.5px solid #86efac; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 12px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
+                                New Tab Name (Worksheet)
+                            </label>
+                            <input type="text" 
+                                   name="tab_name" 
+                                   id="report_modal_tab_name" 
+                                   placeholder="e.g. Audit - Sep 2026" 
+                                   class="form-control" 
+                                   style="width: 100%; height: 40px; border-radius: 8px; border: 1.5px solid #86efac; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff;">
+                        </div>
+                    </div>
+                    <div id="googleSheetStatusNotice" style="display: none; margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px;"></div>
+                </div>
             </div>
 
             <!-- Modal Footer Buttons -->
@@ -305,17 +345,25 @@
                         <i class="fas fa-rotate-left"></i> Reset Defaults
                     </a>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <button type="button" class="btn btn-ghost" onclick="closeGenerateReportModal()" style="padding: 9px 16px; font-size: 13px; font-weight: 600; color: #64748b; background: transparent; border: none; cursor: pointer; border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-ghost" onclick="closeGenerateReportModal()" style="padding: 9px 14px; font-size: 13px; font-weight: 600; color: #64748b; background: transparent; border: none; cursor: pointer; border-radius: 8px;">
                         Cancel
                     </button>
-                    <button type="submit" name="view_table" value="1" class="btn btn-secondary" style="padding: 9px 18px; font-size: 13px; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease;">
+                    <button type="submit" name="view_table" value="1" class="btn btn-secondary" style="padding: 9px 16px; font-size: 13px; font-weight: 600; border-radius: 8px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s ease;">
                         <i class="fas fa-table"></i>
                         <span>Apply to Table</span>
                     </button>
-                    <button type="submit" name="print" value="1" class="btn btn-primary" style="padding: 9px 20px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; background: #2d5a27; color: #ffffff; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(45,90,39,0.25); transition: all 0.2s ease;">
+                    <button type="submit" name="print" value="1" class="btn btn-primary" style="padding: 9px 18px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; background: #2d5a27; color: #ffffff; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; box-shadow: 0 4px 12px rgba(45,90,39,0.25); transition: all 0.2s ease;">
                         <i class="fas fa-print"></i>
                         <span>Generate &amp; Print</span>
+                    </button>
+                    <button type="button" 
+                            id="btnExportGoogleSheets"
+                            onclick="exportToGoogleSheet(event)" 
+                            class="btn btn-export-google-sheets" 
+                            style="padding: 9px 18px; font-size: 13px; font-weight: 700; border-radius: 8px; border: none; background: #0f9d58; color: #ffffff; display: inline-flex; align-items: center; gap: 7px; cursor: pointer; box-shadow: 0 4px 12px rgba(15,157,88,0.28); transition: all 0.2s ease;">
+                        <i class="fab fa-google-drive"></i>
+                        <span id="btnExportGoogleSheetsText">Create Google Sheet Tab</span>
                     </button>
                 </div>
             </div>

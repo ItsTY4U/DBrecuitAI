@@ -83,6 +83,7 @@ urlpatterns = [
         name="finalize_candidate_decision",),
 
     path("reports/", views.reports_dashboard, name="reports"),
+    path("reports/export/google-sheets/", views.export_reports_google_sheet, name="reports_export_google_sheet"),
     
     path("interviews/", views.interviews, name="interviews",),
     path("interviews/schedule/<int:job_id>/", views.schedule_interview, name="schedule_interview"),

@@ -30,6 +30,8 @@ from urllib.parse import quote
 from django.urls import reverse
 import asyncio
 from asgiref.sync import sync_to_async
+from django.conf import settings
+import os
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
@@ -3623,5 +3625,74 @@ def reports_dashboard(request):
     }
 
     return render(request, "hr/reports.html", context)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def export_reports_google_sheet(request):
+    """
+    Creates a new worksheet tab in the specified Google Spreadsheet
+    containing formatted records and metadata from the generated report.
+    """
+    from .google_sheets import extract_report_tabular_data, create_google_sheet_tab, extract_spreadsheet_id
+
+    # Gather parameters from POST or GET
+    params = request.POST if request.method == "POST" else request.GET
+    tab_type = params.get("tab", "audit").strip().lower()
+
+    # Get target spreadsheet URL or ID
+    spreadsheet_input = (
+        params.get("spreadsheet_url")
+        or params.get("spreadsheet_id")
+        or getattr(settings, "GOOGLE_REPORTS_SPREADSHEET_ID", os.environ.get("GOOGLE_REPORTS_SPREADSHEET_ID", ""))
+    ).strip()
+
+    if not spreadsheet_input:
+        return JsonResponse({
+            "success": False,
+            "error": "Please provide a valid Google Spreadsheet URL or ID."
+        }, status=400)
+
+    # Extract tabular data based on active tab and timeframe filters
+    data = extract_report_tabular_data(tab_type, params)
+
+    # Custom tab name or suggested name
+    custom_tab = params.get("tab_name", "").strip()
+    tab_name = custom_tab or data.get("suggested_tab_name") or f"Report - {timezone.now().strftime('%b %Y')}"
+
+    meta_info = {
+        "title": data.get("report_title", "HR Report"),
+        "period": data.get("period_str", "All Time"),
+        "generated_by": request.user.get_full_name() or request.user.username,
+        "generated_at": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    result = create_google_sheet_tab(
+        spreadsheet_id=spreadsheet_input,
+        tab_title=tab_name,
+        headers=data["headers"],
+        rows=data["rows"],
+        meta_info=meta_info
+    )
+
+    if result.get("success"):
+        # Log to HR Audit Trail
+        ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "127.0.0.1")
+        AuditLog.objects.create(
+            user=request.user,
+            user_name=request.user.get_full_name() or request.user.username,
+            action="OTHER",
+            action_display="Google Sheets Export",
+            target_model="GoogleSheet",
+            target_id=str(result.get("spreadsheet_id", ""))[:50],
+            target_repr=f"Tab: {result.get('tab_name', tab_name)}",
+            details=f"Exported {len(data['rows'])} {data.get('report_title')} records to Google Sheet tab '{result.get('tab_name', tab_name)}'.",
+            ip_address=ip_addr,
+            timestamp=timezone.now(),
+        )
+        return JsonResponse(result)
+    else:
+        return JsonResponse(result, status=400)
+
 
 
