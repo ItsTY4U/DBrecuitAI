@@ -640,7 +640,29 @@ def hr_live_toast_feed(request):
         context["stat_interview"] = app_counts["interview"] or 0
         context["stat_jobs"] = Job.objects.filter(status="Active").count()
 
-    return render(request, "hr/partials/subtle_toast.html", context)
+    # Determine affected scopes from the new logs so clients only refresh relevant views
+    affected_scopes = set()
+    for log in new_logs:
+        act = (log.action or "").upper()
+        tm = (log.target_model or "").lower()
+        if tm == "application" or "APPLICATION" in act or "CANDIDATE" in act:
+            affected_scopes.add("candidates")
+        elif tm == "interview" or "INTERVIEW" in act or "EVALUATION" in act:
+            affected_scopes.add("interviews")
+        elif tm in ("job", "department") or "JOB" in act or "DEPT" in act:
+            affected_scopes.add("jobs")
+
+    if not affected_scopes:
+        affected_scopes.add("general")
+
+    response = render(request, "hr/partials/subtle_toast.html", context)
+    response["HX-Trigger"] = json.dumps({
+        "hrDataChanged": {
+            "scopes": list(affected_scopes),
+            "new_log_id": latest_log_id,
+        }
+    })
+    return response
 
 
 @never_cache

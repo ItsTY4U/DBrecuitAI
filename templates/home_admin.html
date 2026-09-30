@@ -115,15 +115,8 @@
     <script src="{% static "js/hr_notifications.js" %}"></script>
     <script src="{% static "js/hr_concurrency.js" %}"></script>
 
-    <!-- Real-Time Subtle Toast Stream & HTMX 2.5s Poller -->
+    <!-- Real-Time Subtle Toast Stream (Completely Silent Background Polling) -->
     <div id="hr-toast-stream" class="hr-toast-stream" aria-live="polite"></div>
-    <div id="hr-live-toast-poller"
-         hx-get="{% url 'hr_live_toast_feed' %}"
-         hx-trigger="every 2.5s"
-         hx-vals="js:{last_log_id: window.hrLastToastId || 0, is_dashboard: document.getElementById('stat-total-val') ? 'true' : 'false'}"
-         hx-target="#hr-toast-stream"
-         hx-swap="beforeend">
-    </div>
     <script>
         window.hrLastToastId = {{ latest_audit_log_id|default:0 }};
         function dismissToast(id) {
@@ -136,6 +129,146 @@
         document.body.addEventListener('setToastCursor', function(evt) {
             if (evt.detail && evt.detail.id) {
                 window.hrLastToastId = evt.detail.id;
+            }
+        });
+
+        // Completely silent 2.5s change detector (never triggers global logo loader)
+        (function() {
+            let isPolling = false;
+            async function checkUpdates() {
+                if (isPolling || document.hidden) return;
+                isPolling = true;
+                try {
+                    const lastId = window.hrLastToastId || 0;
+                    const isDash = document.getElementById('stat-total-val') ? 'true' : 'false';
+                    const resp = await fetch(`/hr/api/live-toasts/?last_log_id=${lastId}&is_dashboard=${isDash}`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+
+                    // HTTP 204: Nothing changed -> zero DOM work
+                    if (resp.status === 204) {
+                        const triggerHeader = resp.headers.get('HX-Trigger');
+                        if (triggerHeader) {
+                            try {
+                                const parsed = JSON.parse(triggerHeader);
+                                if (parsed.setToastCursor && parsed.setToastCursor.id) {
+                                    window.hrLastToastId = parsed.setToastCursor.id;
+                                }
+                            } catch(e) {}
+                        }
+                    } else if (resp.status === 200) {
+                        // HTTP 200: Something changed!
+                        const html = await resp.text();
+                        if (html.trim()) {
+                            const temp = document.createElement('div');
+                            temp.innerHTML = html;
+
+                            // Handle out-of-band stat updates
+                            temp.querySelectorAll('[hx-swap-oob="true"]').forEach(el => {
+                                const target = document.getElementById(el.id);
+                                if (target) {
+                                    target.outerHTML = el.outerHTML;
+                                }
+                                el.remove();
+                            });
+
+                            // Run inline scripts
+                            Array.from(temp.querySelectorAll('script')).forEach(s => {
+                                const newScript = document.createElement('script');
+                                newScript.textContent = s.textContent;
+                                document.body.appendChild(newScript);
+                                newScript.remove();
+                            });
+
+                            // Append toast notifications
+                            const stream = document.getElementById('hr-toast-stream');
+                            if (stream) {
+                                while (temp.firstChild) {
+                                    stream.appendChild(temp.firstChild);
+                                }
+                            }
+                        }
+
+                        // Dispatch hrDataChanged event
+                        const triggerHeader = resp.headers.get('HX-Trigger');
+                        if (triggerHeader) {
+                            try {
+                                const parsed = JSON.parse(triggerHeader);
+                                if (parsed.hrDataChanged) {
+                                    document.body.dispatchEvent(new CustomEvent('hrDataChanged', { detail: parsed.hrDataChanged }));
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                } catch(e) {
+                    // Silently ignore network interruptions
+                } finally {
+                    isPolling = false;
+                }
+            }
+
+            setInterval(checkUpdates, 2500);
+        })();
+
+        // Approach 1: Only fetch data when something actually changed
+        document.body.addEventListener('hrDataChanged', function(evt) {
+            const detail = evt.detail || {};
+            const scopes = detail.scopes || [];
+
+            if (detail.new_log_id) {
+                window.hrLastToastId = detail.new_log_id;
+            }
+
+            // Do not disrupt the user if typing in an input or if a modal is open
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+            const openModal = document.querySelector('.modal.show, .modal-open, [data-modal-open="true"], [id$="-modal"]:not([style*="none"])');
+
+            if (openModal || isTyping) {
+                return;
+            }
+
+            // 1. Refresh Candidates Views
+            if (scopes.includes('candidates') || scopes.includes('general')) {
+                const recentPane = document.getElementById('tab-pane-recent');
+                if (recentPane && recentPane.style.display !== 'none' && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#tab-pane-recent', select: '#tab-pane-recent > *', swap: 'innerHTML' });
+                }
+
+                document.querySelectorAll('.job-table-container').forEach(function(tbl) {
+                    const parentCard = tbl.closest('.job-section-card');
+                    if (parentCard && parentCard.offsetParent !== null && typeof htmx !== 'undefined') {
+                        const jobId = parentCard.getAttribute('data-job-id');
+                        if (jobId) {
+                            htmx.ajax('GET', '/hr/candidates/job/' + jobId + '/table/', {
+                                target: tbl,
+                                select: '.job-candidate-table-inner',
+                                swap: 'innerHTML'
+                            });
+                        }
+                    }
+                });
+
+                const candStats = document.querySelector('.stats-grid-5');
+                if (candStats && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '.stats-grid-5', select: '.stats-grid-5', swap: 'outerHTML' });
+                }
+            }
+
+            // 2. Refresh Interviews Views
+            if (scopes.includes('interviews') || scopes.includes('general')) {
+                const activeInterviewPane = document.querySelector('.interview-tab-pane[style*="block"], .interview-tab-pane:not([style*="none"])');
+                if (activeInterviewPane && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#' + activeInterviewPane.id, select: '#' + activeInterviewPane.id + ' > *', swap: 'innerHTML' });
+                }
+            }
+
+            // 3. Refresh Jobs Management Page
+            if (scopes.includes('jobs') || scopes.includes('general')) {
+                const jobsContainer = document.querySelector('.job-management-content, .job-grid-section');
+                if (jobsContainer && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: jobsContainer, select: jobsContainer.id ? '#' + jobsContainer.id : '.job-management-content', swap: 'innerHTML' });
+                }
             }
         });
     </script>
