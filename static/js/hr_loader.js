@@ -86,19 +86,21 @@
 
     // --- 2. HTMX Lifecycle Integration ---
     function isSilentRequest(e) {
-        if (!e || !e.detail) return false;
-        const elt = e.detail.elt;
+        if (!e) return false;
+        const detail = e.detail || {};
+        const elt = detail.elt || e.target;
         if (elt) {
             if (elt.id === 'hr-live-toast-poller' ||
-                elt.classList.contains('silent-poller') ||
-                elt.hasAttribute('data-silent') ||
-                elt.closest('#hr-live-toast-poller, .silent-poller, [data-silent="true"]')) {
+                (elt.classList && elt.classList.contains('silent-poller')) ||
+                (elt.hasAttribute && elt.hasAttribute('data-silent')) ||
+                (elt.closest && elt.closest('#hr-live-toast-poller, .silent-poller, [data-silent="true"]'))) {
                 return true;
             }
         }
-        const path = (e.detail.pathInfo && e.detail.pathInfo.requestPath) || 
-                     (e.detail.requestConfig && e.detail.requestConfig.path) || '';
-        if (path.includes('/api/live-toasts/') || path.includes('/api/check-version/') || path.includes('/api/notifications/')) {
+        const path = (detail.pathInfo && detail.pathInfo.requestPath) || 
+                     (detail.requestConfig && (detail.requestConfig.path || detail.requestConfig.url)) ||
+                     (detail.url) || '';
+        if (path.includes('/api/live-toasts/') || path.includes('/api/check-version/') || path.includes('/api/notifications/') || path.includes('/api/live-sync/')) {
             return true;
         }
         return false;
