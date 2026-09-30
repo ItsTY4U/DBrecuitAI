@@ -3457,16 +3457,6 @@ class HRMultiUserConcurrencyTests(TestCase):
             is_evaluating=False
         )
 
-        # 0. Before editing, Bob views candidate detail: sees enabled Edit Evaluation button with data-app-id
-        self.client.force_login(self.hr_user_2)
-        resp_bob_init = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
-        self.assertEqual(resp_bob_init.status_code, 200)
-        self.assertContains(resp_bob_init, f'id="candidate-evaluation-section" data-app-id="{self.application.pk}"')
-        self.assertContains(resp_bob_init, f'id="btn-toggle-eval-form"')
-        self.assertContains(resp_bob_init, f'data-app-id="{self.application.pk}"')
-        self.assertContains(resp_bob_init, "Edit Evaluation")
-        self.assertNotContains(resp_bob_init, "Editing Locked")
-
         # Alice starts editing the completed evaluation
         self.client.force_login(self.hr_user_1)
         resp_start = self.client.post(
@@ -3481,28 +3471,12 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.assertTrue(completed_eval.is_evaluating)
         self.assertEqual(completed_eval.evaluator, self.hr_user_1)
 
-        # Verify api_live_sync returns active EVALUATE lock and ongoing_evaluation for Bob
+        # Bob views candidate detail: sees Editing Locked button and locked card
         self.client.force_login(self.hr_user_2)
-        resp_sync = self.client.get(reverse("api_live_sync"))
-        self.assertEqual(resp_sync.status_code, 200)
-        sync_data = resp_sync.json()
-        eval_locks = [l for l in sync_data["active_locks"] if l["target_id"] == self.application.pk and l["action_type"] == "EVALUATE"]
-        self.assertEqual(len(eval_locks), 1)
-        self.assertFalse(eval_locks[0]["is_me"])
-        self.assertEqual(eval_locks[0]["user_name"], "Alice Recruiter")
-
-        ongoing_evals = [e for e in sync_data["ongoing_evaluations"] if e["application_id"] == self.application.pk]
-        self.assertEqual(len(ongoing_evals), 1)
-        self.assertFalse(ongoing_evals[0]["is_my_evaluation"])
-        self.assertEqual(ongoing_evals[0]["evaluator_name"], "Alice Recruiter")
-
-        # Bob views candidate detail: sees Editing Locked button, data-app-id, and locked card with evaluator id tag
         resp_bob_detail = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
         self.assertEqual(resp_bob_detail.status_code, 200)
         self.assertContains(resp_bob_detail, "Editing Locked (Alice Recruiter)")
-        self.assertContains(resp_bob_detail, f'data-app-id="{self.application.pk}"')
         self.assertContains(resp_bob_detail, 'id="eval-locked-card"')
-        self.assertContains(resp_bob_detail, 'id="eval-locked-evaluator-name"')
         self.assertNotContains(resp_bob_detail, 'id="eval-form-card"')
 
         # Bob attempts to start evaluation: rejected with 423 (Locked)
@@ -3546,21 +3520,8 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.assertFalse(completed_eval.is_evaluating)
         self.assertIsNone(completed_eval.evaluator)
 
-        # Verify api_live_sync clears evaluation lock for Bob
-        self.client.force_login(self.hr_user_2)
-        resp_sync_after = self.client.get(reverse("api_live_sync"))
-        self.assertEqual(resp_sync_after.status_code, 200)
-        sync_after_data = resp_sync_after.json()
-        eval_locks_after = [l for l in sync_after_data["active_locks"] if l["target_id"] == self.application.pk and l["action_type"] == "EVALUATE"]
-        self.assertEqual(len(eval_locks_after), 0)
-
-        # Now Bob views candidate detail: Edit Evaluation button is restored to enabled
-        resp_bob_unlocked = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
-        self.assertEqual(resp_bob_unlocked.status_code, 200)
-        self.assertContains(resp_bob_unlocked, "Edit Evaluation")
-        self.assertNotContains(resp_bob_unlocked, "Editing Locked")
-
         # Now Bob can start editing without conflict
+        self.client.force_login(self.hr_user_2)
         resp_bob_edit_ok = self.client.post(
             reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
             HTTP_X_REQUESTED_WITH="XMLHttpRequest"

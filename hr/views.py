@@ -1555,16 +1555,7 @@ def candidate_detail(request, pk):
             or (is_draft and candidate_evaluation.evaluator_id is not None)
         )
     )
-    active_eval_lock = HRActionLock.objects.filter(
-        target_model="Application",
-        target_id=application.id,
-        action_type="EVALUATE",
-        expires_at__gt=timezone.now()
-    ).exclude(user=request.user).first()
-    is_eval_locked_by_other = bool(
-        (is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
-        or active_eval_lock
-    )
+    is_eval_locked_by_other = bool(is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
     show_eval_form = (evaluate_param or is_eval_active) and not is_eval_locked_by_other
     
     scroll_to = request.GET.get("scroll_to", "").strip()
