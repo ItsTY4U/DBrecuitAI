@@ -407,17 +407,8 @@ function openGenerateReportModal(reportType) {
         if (countEl) countEl.innerText = '{{ total_final_decisions_count }} finalized decisions';
     }
 
-    // Prefill saved spreadsheet URL if empty
-    var sheetUrlInput = document.getElementById('report_modal_spreadsheet_url');
-    if (sheetUrlInput && !sheetUrlInput.value.trim()) {
-        try {
-            var savedUrl = localStorage.getItem('dbrecruit_google_sheet_url');
-            if (savedUrl) sheetUrlInput.value = savedUrl;
-        } catch(e) {}
-    }
-
-    // Refresh suggested tab name
-    updateSuggestedTabName(reportType);
+    // Refresh suggested file and tab name
+    updateSuggestedFileAndTabName(reportType);
 
     // Reset status notice
     var notice = document.getElementById('googleSheetStatusNotice');
@@ -487,16 +478,17 @@ function setTimeframeMode(mode) {
         if (dt) dt.value = '';
     }
 
-    updateSuggestedTabName();
+    updateSuggestedFileAndTabName();
 }
 
-function updateSuggestedTabName(optReportType) {
+function updateSuggestedFileAndTabName(optReportType) {
     var tabInput = document.getElementById('generateReportTabInput');
     var currentTab = optReportType || (tabInput ? tabInput.value : 'audit') || 'audit';
+    var fileNameInput = document.getElementById('report_modal_file_name');
     var tabNameInput = document.getElementById('report_modal_tab_name');
-    if (!tabNameInput) return;
 
-    var monthNames = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var monthShort = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     var monthEl = document.getElementById('report_modal_month');
     var yearEl = document.getElementById('report_modal_year');
     var dfEl = document.getElementById('report_modal_date_from');
@@ -505,45 +497,80 @@ function updateSuggestedTabName(optReportType) {
     var tfTypeEl = document.getElementById('generateReportTimeframeType');
 
     var mode = tfTypeEl ? tfTypeEl.value : 'month';
-    var timeStr = "";
+    var fullTimeStr = "";
+    var shortTimeStr = "";
 
     if (mode === 'month') {
         var monthVal = monthEl ? monthEl.value : '';
         var yearVal = yearEl ? yearEl.value : '';
         if (monthVal && monthNames[parseInt(monthVal)]) {
-            timeStr = monthNames[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
+            fullTimeStr = monthNames[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
+            shortTimeStr = monthShort[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
         } else if (yearVal) {
-            timeStr = yearVal;
+            fullTimeStr = yearVal;
+            shortTimeStr = yearVal;
         } else {
-            timeStr = "All Time";
+            fullTimeStr = "All Time";
+            shortTimeStr = "All Time";
         }
     } else if (mode === 'range') {
         var df = dfEl ? dfEl.value : '';
         var dt = dtEl ? dtEl.value : '';
-        if (df && dt) timeStr = df + " to " + dt;
-        else if (df) timeStr = "From " + df;
-        else if (dt) timeStr = "Until " + dt;
-        else timeStr = "Custom Range";
+        if (df && dt) {
+            fullTimeStr = df + " to " + dt;
+            shortTimeStr = df.slice(-5) + " - " + dt.slice(-5);
+        } else if (df) {
+            fullTimeStr = "From " + df;
+            shortTimeStr = "From " + df;
+        } else if (dt) {
+            fullTimeStr = "Until " + dt;
+            shortTimeStr = "Until " + dt;
+        } else {
+            fullTimeStr = "Custom Range";
+            shortTimeStr = "Custom Range";
+        }
     } else if (mode === 'preset') {
         var pr = prEl ? prEl.value : '';
-        if (pr === 'today') timeStr = 'Today';
-        else if (pr === '7days') timeStr = 'Past 7 Days';
-        else if (pr === '30days') timeStr = 'Past 30 Days';
-        else if (pr === 'quarter') timeStr = 'Quarter';
-        else timeStr = 'All Time';
+        if (pr === 'today') { fullTimeStr = 'Today'; shortTimeStr = 'Today'; }
+        else if (pr === '7days') { fullTimeStr = 'Past 7 Days'; shortTimeStr = '7 Days'; }
+        else if (pr === '30days') { fullTimeStr = 'Past 30 Days'; shortTimeStr = '30 Days'; }
+        else if (pr === 'quarter') { fullTimeStr = 'Past 90 Days'; shortTimeStr = 'Quarter'; }
+        else { fullTimeStr = 'All Time'; shortTimeStr = 'All Time'; }
     }
 
-    var baseName = "Report";
-    if (currentTab === 'audit') baseName = "Audit Trail";
-    else if (currentTab === 'cancelled') baseName = "Cancelled";
-    else if (currentTab === 'evaluations') baseName = "Evaluations";
-    else if (currentTab === 'final_decision') baseName = "Final Decisions";
+    var reportTitle = "HR Report";
+    var tabBase = "Report";
+    if (currentTab === 'audit') {
+        reportTitle = "HR System Audit Trail";
+        tabBase = "Audit Trail";
+    } else if (currentTab === 'cancelled') {
+        reportTitle = "Cancelled & Disqualified Candidates";
+        tabBase = "Cancelled";
+    } else if (currentTab === 'evaluations') {
+        reportTitle = "Evaluated Candidates";
+        tabBase = "Evaluations";
+    } else if (currentTab === 'final_decision') {
+        reportTitle = "Candidates with Final Decision";
+        tabBase = "Final Decisions";
+    }
 
-    var suggested = baseName + " - " + timeStr;
-    tabNameInput.placeholder = suggested;
-    if (!tabNameInput.value || tabNameInput.dataset.autoFilled !== "false") {
-        tabNameInput.value = suggested;
-        tabNameInput.dataset.autoFilled = "true";
+    var suggestedFile = "DBRecruit AI - " + reportTitle + " (" + fullTimeStr + ")";
+    var suggestedTab = tabBase + " - " + shortTimeStr;
+
+    if (fileNameInput) {
+        fileNameInput.placeholder = suggestedFile;
+        if (!fileNameInput.value || fileNameInput.dataset.autoFilled !== "false") {
+            fileNameInput.value = suggestedFile;
+            fileNameInput.dataset.autoFilled = "true";
+        }
+    }
+
+    if (tabNameInput) {
+        tabNameInput.placeholder = suggestedTab;
+        if (!tabNameInput.value || tabNameInput.dataset.autoFilled !== "false") {
+            tabNameInput.value = suggestedTab;
+            tabNameInput.dataset.autoFilled = "true";
+        }
     }
 }
 
@@ -606,58 +633,26 @@ function triggerHrToast(theme, category, title, description, link) {
 async function exportToGoogleSheet(event) {
     if (event && event.preventDefault) event.preventDefault();
 
-    var urlInput = document.getElementById('report_modal_spreadsheet_url');
-    var tabNameInput = document.getElementById('report_modal_tab_name');
     var btn = document.getElementById('btnExportGoogleSheets');
     var notice = document.getElementById('googleSheetStatusNotice');
-
-    var spreadsheetUrl = urlInput ? urlInput.value.trim() : '';
-
-    if (!spreadsheetUrl) {
-        if (urlInput) {
-            urlInput.focus();
-            urlInput.style.borderColor = '#ef4444';
-            urlInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
-            setTimeout(function() {
-                urlInput.style.borderColor = '#86efac';
-                urlInput.style.boxShadow = 'none';
-            }, 3000);
-        }
-        if (notice) {
-            notice.style.display = 'block';
-            notice.style.background = '#fef2f2';
-            notice.style.border = '1px solid #fca5a5';
-            notice.style.color = '#991b1b';
-            notice.innerHTML = '<i class="fas fa-circle-exclamation"></i> <strong>Spreadsheet Required:</strong> Please paste a Google Spreadsheet URL or Spreadsheet ID.';
-        }
-        return;
-    }
-
-    try {
-        localStorage.setItem('dbrecruit_google_sheet_url', spreadsheetUrl);
-    } catch (e) {}
 
     var originalBtnHtml = btn ? btn.innerHTML : '';
     if (btn) {
         btn.disabled = true;
         btn.style.opacity = '0.75';
         btn.style.cursor = 'wait';
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Creating Sheet Tab...</span>';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Generating Google Sheet...</span>';
     }
     if (notice) {
         notice.style.display = 'block';
         notice.style.background = '#f0fdf4';
         notice.style.border = '1px solid #86efac';
         notice.style.color = '#166534';
-        notice.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing report records and contacting Google Sheets API...';
+        notice.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing report records and generating new Google Sheet file...';
     }
 
     var form = document.getElementById('generateReportForm');
     var formData = form ? new FormData(form) : new FormData();
-    formData.set('spreadsheet_url', spreadsheetUrl);
-    if (tabNameInput && tabNameInput.value.trim()) {
-        formData.set('tab_name', tabNameInput.value.trim());
-    }
 
     try {
         var resp = await fetch("{% url 'reports_export_google_sheet' %}", {
@@ -678,7 +673,7 @@ async function exportToGoogleSheet(event) {
                 notice.style.border = '1px solid #6ee7b7';
                 notice.style.color = '#065f46';
                 notice.innerHTML = '<i class="fas fa-check-circle" style="color: #059669;"></i> ' + 
-                    '<strong>Success!</strong> Created tab <strong>"' + (data.tab_name || 'Report') + '"</strong> with ' + (data.rows_count || 0) + ' records. Opening sheet...';
+                    '<strong>Success!</strong> Generated Google Sheet <strong>"' + (data.file_name || 'Report') + '"</strong> with ' + (data.rows_count || 0) + ' records. Opening sheet...';
             }
 
             if (data.spreadsheet_url) {
@@ -687,9 +682,9 @@ async function exportToGoogleSheet(event) {
 
             triggerHrToast(
                 'emerald',
-                'Google Sheets Export',
-                'Tab "' + (data.tab_name || 'Report') + '" Created',
-                'Successfully exported ' + (data.rows_count || 0) + ' records to Google Sheets.',
+                'Google Sheet Created',
+                data.file_name || 'Report Generated',
+                'Successfully generated Google Sheet with ' + (data.rows_count || 0) + ' records.',
                 data.spreadsheet_url
             );
 
@@ -697,13 +692,13 @@ async function exportToGoogleSheet(event) {
                 closeGenerateReportModal();
             }, 1200);
         } else {
-            var errMsg = (data && data.error) ? data.error : 'Failed to export report to Google Sheets.';
+            var errMsg = (data && data.error) ? data.error : 'Failed to generate Google Sheet report.';
             if (notice) {
                 notice.style.display = 'block';
                 notice.style.background = '#fef2f2';
                 notice.style.border = '1px solid #fca5a5';
                 notice.style.color = '#991b1b';
-                notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Export Error:</strong> ' + errMsg;
+                notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Generation Error:</strong> ' + errMsg;
             }
         }
     } catch (err) {
@@ -724,8 +719,15 @@ async function exportToGoogleSheet(event) {
     }
 }
 
-// Attach event listeners for dynamic suggested tab name & URL persistence
+// Attach event listeners for dynamic file and tab names
 window.addEventListener('DOMContentLoaded', function() {
+    var fileNameInput = document.getElementById('report_modal_file_name');
+    if (fileNameInput) {
+        fileNameInput.addEventListener('input', function() {
+            this.dataset.autoFilled = "false";
+        });
+    }
+
     var tabNameInput = document.getElementById('report_modal_tab_name');
     if (tabNameInput) {
         tabNameInput.addEventListener('input', function() {
@@ -733,21 +735,10 @@ window.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    var sheetUrlInput = document.getElementById('report_modal_spreadsheet_url');
-    if (sheetUrlInput) {
-        sheetUrlInput.addEventListener('change', function() {
-            if (this.value.trim()) {
-                try {
-                    localStorage.setItem('dbrecruit_google_sheet_url', this.value.trim());
-                } catch(e) {}
-            }
-        });
-    }
-
     var watchedFields = ['report_modal_month', 'report_modal_year', 'report_modal_date_from', 'report_modal_date_to', 'report_modal_date_range'];
     watchedFields.forEach(function(fid) {
         var el = document.getElementById(fid);
-        if (el) el.addEventListener('change', function() { updateSuggestedTabName(); });
+        if (el) el.addEventListener('change', function() { updateSuggestedFileAndTabName(); });
     });
 });
 

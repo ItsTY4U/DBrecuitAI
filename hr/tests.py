@@ -4227,18 +4227,53 @@ class HRGoogleSheetsExportTests(TestCase):
         self.assertIn("Rationale & Final Notes", final_data["headers"])
         self.assertGreaterEqual(len(final_data["rows"]), 1)
 
-    def test_export_google_sheet_view_missing_spreadsheet(self):
-        """Export endpoint requires a spreadsheet URL or ID."""
-        url = reverse("reports_export_google_sheet")
-        response = self.client.post(url, data={"tab": "audit"})
-        self.assertEqual(response.status_code, 400)
-        data = response.json()
-        self.assertFalse(data.get("success"))
-        self.assertIn("Please provide a valid Google Spreadsheet URL or ID", data.get("error"))
+    def test_create_new_google_spreadsheet(self):
+        """create_new_google_spreadsheet creates a new spreadsheet file without requiring a link."""
+        from hr.google_sheets import create_new_google_spreadsheet
 
-    def test_export_google_sheet_view_success_and_audit_logging(self):
-        """Export endpoint successfully processes request, formats tab, and records an AuditLog."""
+        headers = ["Col A", "Col B", "Col C"]
+        rows = [["1", "2", "3"], ["4", "5", "6"]]
+        meta = {"title": "Test Report", "period": "September 2026"}
+
+        res = create_new_google_spreadsheet(
+            file_title="DBRecruit AI - Test Report (September 2026)",
+            tab_title="Test Tab",
+            headers=headers,
+            rows=rows,
+            meta_info=meta,
+        )
+        self.assertTrue(res.get("success"))
+        self.assertIn("docs.google.com/spreadsheets/d/", res.get("spreadsheet_url", ""))
+        self.assertEqual(res.get("file_name"), "DBRecruit AI - Test Report (September 2026)")
+        self.assertEqual(res.get("rows_count"), 2)
+
+    def test_export_google_sheet_view_without_link_creates_new_file(self):
+        """Export endpoint generates a new Google Sheet without any link provided."""
         from hr.models import AuditLog
+        url = reverse("reports_export_google_sheet")
+        post_data = {
+            "tab": "audit",
+            "month": "9",
+            "year": "2026",
+            "file_name": "DBRecruit AI - HR Audit Trail (Sep 2026)",
+        }
+        response = self.client.post(url, data=post_data)
+        self.assertEqual(response.status_code, 200)
+        json_resp = response.json()
+        self.assertTrue(json_resp.get("success"))
+        self.assertIn("docs.google.com/spreadsheets/d/", json_resp.get("spreadsheet_url", ""))
+        self.assertEqual(json_resp.get("file_name"), "DBRecruit AI - HR Audit Trail (Sep 2026)")
+
+        # Verify an AuditLog entry was recorded
+        audit_entry = AuditLog.objects.filter(
+            action_display="Google Sheets Export",
+            user=self.staff_user
+        ).first()
+        self.assertIsNotNone(audit_entry)
+        self.assertIn("DBRecruit AI - HR Audit Trail", audit_entry.details)
+
+    def test_export_google_sheet_view_with_existing_url_optional_fallback(self):
+        """Export endpoint supports optional spreadsheet URL if provided."""
         url = reverse("reports_export_google_sheet")
         post_data = {
             "tab": "audit",
@@ -4253,13 +4288,5 @@ class HRGoogleSheetsExportTests(TestCase):
         self.assertTrue(json_resp.get("success"))
         self.assertEqual(json_resp.get("tab_name"), "Audit - Sep 2026")
         self.assertIn("1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms", json_resp.get("spreadsheet_url"))
-
-        # Verify an AuditLog entry was recorded
-        audit_entry = AuditLog.objects.filter(
-            action_display="Google Sheets Export",
-            user=self.staff_user
-        ).first()
-        self.assertIsNotNone(audit_entry)
-        self.assertIn("Audit - Sep 2026", audit_entry.details)
 
 
