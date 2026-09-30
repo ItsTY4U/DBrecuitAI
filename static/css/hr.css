@@ -1191,18 +1191,28 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 @media print {
-    .dashboard-hero-section {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin-bottom: 16px !important;
-    }
+    .sidebar,
+    .dashboard-hero-section,
     .notif-wrapper,
     .btn-print-subnav,
     .reports-subnav-container,
-    .reports-filter-card {
+    .reports-filter-card,
+    .generate-report-modal-backdrop,
+    .no-print,
+    .hide-on-print-forced {
         display: none !important;
+    }
+    .content-box {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    .generated-report-header-banner {
+        display: flex !important;
+        background: #f8fafc !important;
+        border: 1.5px solid #0f172a !important;
+        border-radius: 6px !important;
+        padding: 12px 18px !important;
+        margin-bottom: 16px !important;
     }
 }
 
@@ -4608,9 +4618,18 @@ table .btn-review-applicant {
     box-shadow: 0 6px 16px rgba(45, 90, 39, 0.3);
 }
 
-/* --- Today's Schedule Card --- */
-.today-schedule-box {
-    margin-bottom: 24px;
+/* --- Today's Schedule Card & Upcoming Schedule Card --- */
+.content-box.today-schedule-box,
+.content-box.upcoming-schedule-box,
+.today-schedule-box,
+.upcoming-schedule-box {
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.today-schedule-box .box-header,
+.upcoming-schedule-box .box-header {
+    margin-bottom: 0;
 }
 
 .today-interview-list {
@@ -10024,6 +10043,56 @@ textarea:disabled,
         transform: scaleX(0);
     }
 }
+
+/* ============================================================== */
+/* GENERATE REPORT MODAL STYLES                                  */
+/* ============================================================== */
+.generate-report-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.generate-report-modal-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.generate-report-modal-card {
+    background: #ffffff;
+    width: 100%;
+    max-width: 660px;
+    max-height: 88vh;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: generateModalScaleIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes generateModalScaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.timeframe-segmented-tabs .tf-tab-btn {
+    transition: all 0.18s ease;
+}
+
+.timeframe-segmented-tabs .tf-tab-btn:hover {
+    color: #0f172a;
+}
+
 
 
 

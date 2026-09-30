@@ -20,7 +20,7 @@
         </header>
 
         <!-- Global Top Stat Cards Grid (Inside Hero Section) -->
-        <div class="stats-grid reports-stat-cards-top" id="reports-stat-cards-top">
+        <div class="stats-grid reports-stat-cards-top {% if not include_kpi %}hide-on-print-forced{% endif %}" id="reports-stat-cards-top">
             <!-- Card 1: Evaluated Candidates Pending Decision -->
             <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('evaluations')">
                 <div class="stat-header">
@@ -160,6 +160,9 @@
 
     <!-- Dynamic Container for Final Review Profile Modal -->
     <div id="final-review-modal-container"></div>
+
+    <!-- Generate Report Customization Modal -->
+    {% include "hr/partials/generate_report_modal.html" %}
 </main>
 
 <script>
@@ -337,5 +340,142 @@ function validateFinalDecisionForm(event) {
     }
     return true;
 }
+
+// ==========================================
+// GENERATE REPORT MODAL JAVASCRIPT
+// ==========================================
+function openGenerateReportModal(reportType) {
+    var modalBackdrop = document.getElementById('generateReportModalBackdrop');
+    if (!modalBackdrop) return;
+
+    var tabInput = document.getElementById('generateReportTabInput');
+    if (tabInput) tabInput.value = reportType;
+
+    var titleEl = document.getElementById('generateModalTitle');
+    var subtitleEl = document.getElementById('generateModalSubtitle');
+    var badgeEl = document.getElementById('generateReportScopeBadge');
+    var countEl = document.getElementById('generateReportScopeCount');
+    var resetLink = document.getElementById('btnModalResetFilters');
+
+    if (resetLink) {
+        resetLink.href = "{% url 'reports' %}?tab=" + reportType;
+    }
+
+    // Hide all scope field panes
+    var scopePanes = document.querySelectorAll('.scope-fields-pane');
+    scopePanes.forEach(function(p) { p.style.display = 'none'; });
+
+    // Target specific pane & configure meta
+    var targetPane = document.getElementById('scope-fields-' + reportType);
+    if (targetPane) targetPane.style.display = 'block';
+
+    if (reportType === 'audit') {
+        if (titleEl) titleEl.innerText = 'Generate HR Audit Trail Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, HR operators, and audit categories to generate or print.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-clock-rotate-left"></i> HR System Audit Trail';
+            badgeEl.style.background = '#e0e7ff';
+            badgeEl.style.color = '#3730a3';
+        }
+        if (countEl) countEl.innerText = '{{ total_audit_logs }} records available';
+    } else if (reportType === 'cancelled') {
+        if (titleEl) titleEl.innerText = 'Generate Cancelled Applications Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and disqualification phases to generate or print.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-ban"></i> Cancelled & Rejected Applications';
+            badgeEl.style.background = '#fee2e2';
+            badgeEl.style.color = '#b91c1c';
+        }
+        if (countEl) countEl.innerText = '{{ total_cancelled }} disqualified records';
+    } else if (reportType === 'evaluations') {
+        if (titleEl) titleEl.innerText = 'Generate Evaluated Candidates Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and rubric recommendations to generate or print.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-clipboard-check"></i> Evaluated Candidates';
+            badgeEl.style.background = '#dcfce7';
+            badgeEl.style.color = '#15803d';
+        }
+        if (countEl) countEl.innerText = '{{ total_evaluations }} evaluations recorded';
+    } else if (reportType === 'final_decision') {
+        if (titleEl) titleEl.innerText = 'Generate Final Hiring Decisions Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and final hiring determinations to generate or print.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-gavel"></i> Candidates with Final Decision';
+            badgeEl.style.background = '#fef3c7';
+            badgeEl.style.color = '#b45309';
+        }
+        if (countEl) countEl.innerText = '{{ total_final_decisions_count }} finalized decisions';
+    }
+
+    modalBackdrop.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGenerateReportModal() {
+    var modalBackdrop = document.getElementById('generateReportModalBackdrop');
+    if (modalBackdrop) {
+        modalBackdrop.classList.remove('active');
+    }
+    document.body.style.overflow = '';
+}
+
+function setTimeframeMode(mode) {
+    var modes = ['month', 'range', 'preset'];
+    modes.forEach(function(m) {
+        var pane = document.getElementById('timeframe-mode-' + m);
+        var btn = document.getElementById('tf-btn-' + m);
+        if (pane) {
+            pane.style.display = (m === mode) ? 'block' : 'none';
+        }
+        if (btn) {
+            if (m === mode) {
+                btn.classList.add('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#2d5a27';
+                btn.style.fontWeight = '700';
+                btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.color = '#64748b';
+                btn.style.fontWeight = '600';
+                btn.style.boxShadow = 'none';
+            }
+        }
+    });
+    var tfTypeInput = document.getElementById('generateReportTimeframeType');
+    if (tfTypeInput) tfTypeInput.value = mode;
+
+    // Reset irrelevant inputs based on selected mode
+    if (mode === 'month') {
+        var df = document.getElementById('report_modal_date_from');
+        var dt = document.getElementById('report_modal_date_to');
+        var pr = document.getElementById('report_modal_date_range');
+        if (df) df.value = '';
+        if (dt) dt.value = '';
+        if (pr) pr.value = '';
+    } else if (mode === 'range') {
+        var mSel = document.getElementById('report_modal_month');
+        var pr = document.getElementById('report_modal_date_range');
+        if (mSel) mSel.value = '';
+        if (pr) pr.value = '';
+    } else if (mode === 'preset') {
+        var mSel = document.getElementById('report_modal_month');
+        var df = document.getElementById('report_modal_date_from');
+        var dt = document.getElementById('report_modal_date_to');
+        if (mSel) mSel.value = '';
+        if (df) df.value = '';
+        if (dt) dt.value = '';
+    }
+}
+
+// Auto-print handler when requested via print=1 in URL
+{% if auto_print %}
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        window.print();
+    }, 450);
+});
+{% endif %}
 </script>
 {% endblock admin_body %}

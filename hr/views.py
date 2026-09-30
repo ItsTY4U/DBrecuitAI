@@ -2929,7 +2929,7 @@ def cancel_candidate_evaluation(request, pk):
     return redirect("interviews")
 
 
-def build_final_decision_department_sections(decision_type, filter_dept=None, filter_search=None):
+def build_final_decision_department_sections(decision_type, filter_dept=None, filter_search=None, filter_month=None, filter_year=None, filter_from=None, filter_to=None):
     """
     Builds department-and-job grouped hierarchy for candidates with final decisions (Hired or Not Hired).
     Follows the exact layout specification of Candidate Management (/hr/candidates/).
@@ -2956,6 +2956,38 @@ def build_final_decision_department_sections(decision_type, filter_dept=None, fi
             | Q(email__icontains=filter_search)
             | Q(job__title__icontains=filter_search)
             | Q(evaluation__final_decision_notes__icontains=filter_search)
+        )
+
+    if filter_month:
+        try:
+            m_val = int(filter_month)
+            qs = qs.filter(
+                Q(evaluation__final_decision_date__month=m_val)
+                | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__month=m_val))
+            )
+        except (ValueError, TypeError):
+            pass
+
+    if filter_year:
+        try:
+            y_val = int(filter_year)
+            qs = qs.filter(
+                Q(evaluation__final_decision_date__year=y_val)
+                | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__year=y_val))
+            )
+        except (ValueError, TypeError):
+            pass
+
+    if filter_from:
+        qs = qs.filter(
+            Q(evaluation__final_decision_date__date__gte=filter_from)
+            | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__date__gte=filter_from))
+        )
+
+    if filter_to:
+        qs = qs.filter(
+            Q(evaluation__final_decision_date__date__lte=filter_to)
+            | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__date__lte=filter_to))
         )
 
     apps = list(qs)
@@ -3153,6 +3185,53 @@ def reports_dashboard(request):
     if active_tab not in ["audit", "cancelled", "evaluations", "final_decision"]:
         active_tab = "audit"
 
+    MONTH_NAMES = {
+        1: "January", 2: "February", 3: "March", 4: "April",
+        5: "May", 6: "June", 7: "July", 8: "August",
+        9: "September", 10: "October", 11: "November", 12: "December"
+    }
+
+    # -------------------------------------------------------------
+    # Universal Report Customization & Timeframe Filtering
+    # -------------------------------------------------------------
+    selected_month = (
+        request.GET.get(f"{active_tab}_month")
+        or request.GET.get("month")
+        or request.GET.get("report_month", "")
+    ).strip()
+    selected_year = (
+        request.GET.get(f"{active_tab}_year")
+        or request.GET.get("year")
+        or request.GET.get("report_year", "")
+    ).strip()
+    selected_date_from = (
+        request.GET.get(f"{active_tab}_date_from")
+        or request.GET.get("date_from", "")
+    ).strip()
+    selected_date_to = (
+        request.GET.get(f"{active_tab}_date_to")
+        or request.GET.get("date_to", "")
+    ).strip()
+    selected_date_range = (
+        request.GET.get(f"{active_tab}_date_range")
+        or request.GET.get("audit_date_range")
+        or request.GET.get("date_range", "")
+    ).strip()
+
+    selected_month_int = None
+    selected_month_name = ""
+    if selected_month:
+        try:
+            selected_month_int = int(selected_month)
+            selected_month_name = MONTH_NAMES.get(selected_month_int, "")
+        except (ValueError, TypeError):
+            pass
+
+    auto_print = request.GET.get("print") == "1" or request.GET.get("print_now") == "1"
+    include_kpi = request.GET.get("include_kpi", "1") != "0"
+    include_notes = request.GET.get("include_notes", "1") != "0"
+    include_details = request.GET.get("include_details", "1") != "0"
+
     # ==========================================
     # 1. AUDIT LOGS DATA & METRICS (HR Actions Only)
     # ==========================================
@@ -3160,19 +3239,34 @@ def reports_dashboard(request):
 
     audit_action = request.GET.get("audit_action", "").strip()
     audit_user = request.GET.get("audit_user", "").strip()
-    audit_date_range = request.GET.get("audit_date_range", "").strip()
+    audit_date_range = selected_date_range
     audit_search = request.GET.get("audit_search", "").strip()
 
     if audit_action:
         audit_qs = audit_qs.filter(action=audit_action)
     if audit_user:
         audit_qs = audit_qs.filter(user_id=audit_user)
+
+    if selected_month_int:
+        audit_qs = audit_qs.filter(timestamp__month=selected_month_int)
+    if selected_year:
+        try:
+            audit_qs = audit_qs.filter(timestamp__year=int(selected_year))
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        audit_qs = audit_qs.filter(timestamp__date__gte=selected_date_from)
+    if selected_date_to:
+        audit_qs = audit_qs.filter(timestamp__date__lte=selected_date_to)
+
     if audit_date_range == "today":
         audit_qs = audit_qs.filter(timestamp__date=timezone.now().date())
     elif audit_date_range == "7days":
         audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=7))
     elif audit_date_range == "30days":
         audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=30))
+    elif audit_date_range == "quarter":
+        audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=90))
 
     if audit_search:
         audit_qs = audit_qs.filter(
@@ -3207,11 +3301,34 @@ def reports_dashboard(request):
     cancelled_dept = request.GET.get("cancelled_dept", "").strip()
     cancelled_job = request.GET.get("cancelled_job", "").strip()
     cancelled_search = request.GET.get("cancelled_search", "").strip()
+    cancelled_phase = request.GET.get("cancelled_phase", "").strip()
 
     if cancelled_dept:
         cancelled_qs = cancelled_qs.filter(job__department=cancelled_dept)
     if cancelled_job:
         cancelled_qs = cancelled_qs.filter(job_id=cancelled_job)
+
+    if selected_month_int:
+        cancelled_qs = cancelled_qs.filter(created_at__month=selected_month_int)
+    if selected_year:
+        try:
+            cancelled_qs = cancelled_qs.filter(created_at__year=int(selected_year))
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        cancelled_qs = cancelled_qs.filter(created_at__date__gte=selected_date_from)
+    if selected_date_to:
+        cancelled_qs = cancelled_qs.filter(created_at__date__lte=selected_date_to)
+
+    if selected_date_range == "today":
+        cancelled_qs = cancelled_qs.filter(created_at__date=timezone.now().date())
+    elif selected_date_range == "7days":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=7))
+    elif selected_date_range == "30days":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=30))
+    elif selected_date_range == "quarter":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=90))
+
     if cancelled_search:
         cancelled_qs = cancelled_qs.filter(
             Q(first_name__icontains=cancelled_search)
@@ -3241,6 +3358,9 @@ def reports_dashboard(request):
             app.stage_badge_class = "badge-amber"
             app.disqualified_notes = app.ai_summary or "Application not selected during resume screening."
 
+    if cancelled_phase:
+        cancelled_applications_list = [a for a in cancelled_applications_list if a.disqualified_stage == cancelled_phase]
+
     cancelled_screening_count = sum(1 for a in cancelled_applications_list if a.disqualified_stage == "Screening Stage")
     cancelled_interview_count = sum(1 for a in cancelled_applications_list if a.disqualified_stage in ["Interview Stage", "Post-Evaluation"])
 
@@ -3267,6 +3387,54 @@ def reports_dashboard(request):
         eval_qs = eval_qs.filter(interview_mode=selected_mode)
     if selected_recommendation:
         eval_qs = eval_qs.filter(recommendation=selected_recommendation)
+
+    if selected_month_int:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__month=selected_month_int)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__month=selected_month_int))
+        )
+    if selected_year:
+        try:
+            eval_qs = eval_qs.filter(
+                Q(evaluation_date__year=int(selected_year))
+                | (Q(evaluation_date__isnull=True) & Q(created_at__year=int(selected_year)))
+            )
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=selected_date_from)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date__gte=selected_date_from))
+        )
+    if selected_date_to:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__lte=selected_date_to)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date__lte=selected_date_to))
+        )
+    if selected_date_range == "today":
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date=timezone.now().date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date=timezone.now().date()))
+        )
+    elif selected_date_range == "7days":
+        cut_dt = timezone.now() - timedelta(days=7)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+    elif selected_date_range == "30days":
+        cut_dt = timezone.now() - timedelta(days=30)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+    elif selected_date_range == "quarter":
+        cut_dt = timezone.now() - timedelta(days=90)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+
     if search_query:
         eval_qs = eval_qs.filter(
             Q(application__first_name__icontains=search_query) |
@@ -3307,14 +3475,82 @@ def reports_dashboard(request):
     # ==========================================
     final_dept_filter = request.GET.get("final_dept", "").strip()
     final_search_filter = request.GET.get("final_search", "").strip()
+    final_outcome = request.GET.get("final_outcome", "").strip()
 
-    hired_department_sections = build_final_decision_department_sections("Hired", final_dept_filter, final_search_filter)
-    not_hired_department_sections = build_final_decision_department_sections("Not Hired", final_dept_filter, final_search_filter)
+    hired_department_sections = []
+    not_hired_department_sections = []
+    if final_outcome == "Not Hired":
+        not_hired_department_sections = build_final_decision_department_sections(
+            "Not Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+    elif final_outcome == "Hired":
+        hired_department_sections = build_final_decision_department_sections(
+            "Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+    else:
+        hired_department_sections = build_final_decision_department_sections(
+            "Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+        not_hired_department_sections = build_final_decision_department_sections(
+            "Not Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
 
     total_hired_final = sum(d["total_candidates"] for d in hired_department_sections)
     total_not_hired_final = sum(d["total_candidates"] for d in not_hired_department_sections)
     total_final_decisions_count = total_hired_final + total_not_hired_final
     pending_final_decisions_count = len(evaluations_list)
+
+    # -------------------------------------------------------------
+    # Report Metadata & Label Formatting
+    # -------------------------------------------------------------
+    if selected_month_name and selected_year:
+        report_period_display = f"{selected_month_name} {selected_year}"
+    elif selected_month_name:
+        report_period_display = f"{selected_month_name} {timezone.now().year}"
+    elif selected_date_from and selected_date_to:
+        report_period_display = f"{selected_date_from} to {selected_date_to}"
+    elif selected_date_from:
+        report_period_display = f"From {selected_date_from}"
+    elif selected_date_to:
+        report_period_display = f"Up to {selected_date_to}"
+    elif selected_date_range and selected_date_range != "all":
+        range_labels = {
+            "today": "Today",
+            "7days": "Past 7 Days",
+            "30days": "Past 30 Days",
+            "quarter": "This Quarter",
+        }
+        report_period_display = range_labels.get(selected_date_range, selected_date_range.title())
+    else:
+        report_period_display = "All Records / Unrestricted Period"
+
+    tab_display_names = {
+        "audit": "HR System Audit Trail",
+        "cancelled": "Cancelled & Rejected Applications",
+        "evaluations": "Evaluated Candidates",
+        "final_decision": "Candidates with Final Decision",
+    }
+    report_title = tab_display_names.get(active_tab, "HR Operations Report")
+
+    is_custom_report = bool(
+        selected_month or selected_date_from or selected_date_to or (selected_date_range and selected_date_range != "all")
+        or audit_action or audit_user or cancelled_dept or cancelled_job or cancelled_phase
+        or selected_department or selected_mode or selected_recommendation
+        or final_dept_filter or final_outcome
+        or auto_print
+    )
+
+    all_months_list = [
+        ("1", "January"), ("2", "February"), ("3", "March"), ("4", "April"),
+        ("5", "May"), ("6", "June"), ("7", "July"), ("8", "August"),
+        ("9", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+    ]
+    cur_year = timezone.now().year
+    all_years_list = [str(cur_year), str(cur_year - 1), str(cur_year - 2)]
 
     context = {
         "active_tab": active_tab,
@@ -3344,6 +3580,7 @@ def reports_dashboard(request):
         "cancelled_dept": cancelled_dept,
         "cancelled_job": cancelled_job,
         "cancelled_search": cancelled_search,
+        "cancelled_phase": cancelled_phase,
         "available_jobs": all_jobs,
         # Evaluated Candidates Context
         "evaluations": evaluations_list,
@@ -3365,6 +3602,24 @@ def reports_dashboard(request):
         "not_hired_department_sections": not_hired_department_sections,
         "final_dept_filter": final_dept_filter,
         "final_search_filter": final_search_filter,
+        "final_outcome": final_outcome,
+        # Report Customization Context
+        "selected_month": str(selected_month_int) if selected_month_int else "",
+        "selected_month_name": selected_month_name,
+        "selected_year": selected_year,
+        "selected_date_from": selected_date_from,
+        "selected_date_to": selected_date_to,
+        "selected_date_range": selected_date_range,
+        "report_period_display": report_period_display,
+        "report_title": report_title,
+        "auto_print": auto_print,
+        "include_kpi": include_kpi,
+        "include_notes": include_notes,
+        "include_details": include_details,
+        "is_custom_report": is_custom_report,
+        "all_months": all_months_list,
+        "all_years": all_years_list,
+        "current_timestamp": timezone.now(),
     }
 
     return render(request, "hr/reports.html", context)

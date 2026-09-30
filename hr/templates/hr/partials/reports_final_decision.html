@@ -101,12 +101,34 @@
                 Showing <strong>{{ total_final_decisions_count }}</strong> finalized candidate decision{{ total_final_decisions_count|pluralize }}
             </div>
 
-            <button type="button" class="btn btn-secondary btn-print-subnav" onclick="window.print()" title="Print Final Decisions Report">
-                <i class="fas fa-print text-green"></i>
-                <span>Print Report</span>
+            <button type="button" class="btn btn-secondary btn-print-subnav" onclick="openGenerateReportModal('final_decision')" title="Generate Final Decisions Report">
+                <i class="fas fa-file-invoice text-green"></i>
+                <span>Generate Report</span>
             </button>
         </div>
     </div>
+
+    {% if is_custom_report or auto_print %}
+    <div class="generated-report-header-banner" style="background: #f0fdf4; border-bottom: 1.5px solid #bbf7d0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="background: #2d5a27; color: #ffffff; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; letter-spacing: 0.5px;">CUSTOM REPORT</span>
+            <span style="font-size: 13.5px; font-weight: 700; color: #14532d;">
+                Period: <strong>{{ report_period_display }}</strong>
+            </span>
+            <span style="font-size: 12.5px; color: #166534;">&bull; Total Final Decisions: <strong>{{ total_final_decisions_count }}</strong> ({{ total_hired_final }} Hired &bull; {{ total_not_hired_final }} Not Hired)</span>
+            {% if final_outcome %}<span style="font-size: 12px; color: #166534;">&bull; Outcome: <strong>{{ final_outcome }}</strong></span>{% endif %}
+            {% if final_dept_filter %}<span style="font-size: 12px; color: #166534;">&bull; Dept: <strong>{{ final_dept_filter }}</strong></span>{% endif %}
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn btn-sm btn-primary no-print" onclick="window.print()" style="padding: 5px 12px; font-size: 12px; font-weight: 700; border-radius: 6px; background: #2d5a27; color: #ffffff; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fas fa-print"></i> Print
+            </button>
+            <a href="{% url 'reports' %}?tab=final_decision" class="btn btn-sm btn-ghost no-print" style="padding: 5px 10px; font-size: 12px; color: #64748b; text-decoration: none;">
+                <i class="fas fa-times"></i> Clear Filter
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Section Body Container for Decisions -->
     <div class="final-decisions-body" style="padding: 24px;">

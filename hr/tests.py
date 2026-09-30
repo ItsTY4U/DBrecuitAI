@@ -2750,20 +2750,102 @@ class HRUIEnhancementsTests(TestCase):
         self.assertTrue(btn_new_dept_pos > dept_select_pos, "New Department button must follow department dropdown")
 
     def test_reports_print_buttons_in_every_subnav_section(self):
-        """Reports header print button is removed; each sub-nav tab contains a contextual print button."""
+        """Reports contextual button is renamed to 'Generate Report' and triggers customization modal across all 4 sub-nav tabs."""
         # Top reports page does not have header print button in header-actions
         resp = self.client.get(reverse("reports"))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'class="header-actions"')
+        self.assertContains(resp, "generateReportModalBackdrop")
+        self.assertContains(resp, "report_modal_month")
+        self.assertContains(resp, "September")
 
-        # Verify each of the 4 sub-nav tabs has a contextual print button
+        # Verify each of the 4 sub-nav tabs has a contextual Generate Report button
         subnav_tabs = ["audit", "cancelled", "evaluations", "final_decision"]
         for tab in subnav_tabs:
             with self.subTest(tab=tab):
                 resp_tab = self.client.get(f"{reverse('reports')}?tab={tab}")
                 self.assertEqual(resp_tab.status_code, 200)
                 self.assertContains(resp_tab, "btn-print-subnav")
-                self.assertContains(resp_tab, 'onclick="window.print()"')
+                self.assertContains(resp_tab, "Generate Report")
+                self.assertContains(resp_tab, f"openGenerateReportModal('{tab}')")
+
+    def test_reports_custom_generation_by_month_and_auto_print(self):
+        """Reports support month customization (e.g., September) and auto-print when requested."""
+        from hr.models import AuditLog
+
+        # Create an audit log in September 2026 and another in August 2026
+        from django.utils import timezone
+        import datetime
+
+        sep_time = timezone.make_aware(datetime.datetime(2026, 9, 15, 10, 0, 0))
+        aug_time = timezone.make_aware(datetime.datetime(2026, 8, 10, 10, 0, 0))
+
+        log_sep = AuditLog.objects.create(
+            user=self.hr_user,
+            user_name="Eleanor Vance",
+            action="INTERVIEW_SCHEDULED",
+            action_display="Interview Scheduled",
+            target_model="Application",
+            target_id="101",
+            target_repr="Application #101 - Sep Applicant",
+            details="Scheduled September interview session",
+            timestamp=sep_time,
+        )
+        log_aug = AuditLog.objects.create(
+            user=self.hr_user,
+            user_name="Eleanor Vance",
+            action="JOB_CREATED",
+            action_display="Job Created",
+            target_model="Job",
+            target_id="102",
+            target_repr="Job #102 - Aug Job",
+            details="Created August job opening",
+            timestamp=aug_time,
+        )
+
+        # 1. Filter for September (month=9) with print=1
+        url = f"{reverse('reports')}?tab=audit&month=9&year=2026&print=1"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "September 2026")
+        self.assertContains(resp, "CUSTOM REPORT")
+        self.assertContains(resp, "Application #101 - Sep Applicant")
+        self.assertContains(resp, "window.print()")
+        self.assertEqual(len(resp.context["audit_logs"]), 1)
+        self.assertEqual(resp.context["audit_logs"][0].target_repr, "Application #101 - Sep Applicant")
+
+        # 2. Filter for August (month=8)
+        url_aug = f"{reverse('reports')}?tab=audit&month=8&year=2026"
+        resp_aug = self.client.get(url_aug)
+        self.assertEqual(resp_aug.status_code, 200)
+        self.assertContains(resp_aug, "August 2026")
+        self.assertEqual(len(resp_aug.context["audit_logs"]), 1)
+        self.assertEqual(resp_aug.context["audit_logs"][0].target_repr, "Job #102 - Aug Job")
+
+    def test_reports_generate_modal_other_tabs_customization(self):
+        """All sub-nav tabs support month customization and Generate Report modal."""
+        # 1. Cancelled tab
+        resp_can = self.client.get(f"{reverse('reports')}?tab=cancelled&month=9&year=2026")
+        self.assertEqual(resp_can.status_code, 200)
+        self.assertContains(resp_can, "Generate Report")
+        self.assertContains(resp_can, "openGenerateReportModal('cancelled')")
+        self.assertEqual(resp_can.context["selected_month"], "9")
+        self.assertEqual(resp_can.context["selected_month_name"], "September")
+
+        # 2. Evaluations tab
+        resp_eval = self.client.get(f"{reverse('reports')}?tab=evaluations&month=9&year=2026")
+        self.assertEqual(resp_eval.status_code, 200)
+        self.assertContains(resp_eval, "Generate Report")
+        self.assertContains(resp_eval, "openGenerateReportModal('evaluations')")
+        self.assertEqual(resp_eval.context["selected_month"], "9")
+        self.assertEqual(resp_eval.context["selected_month_name"], "September")
+
+        # 3. Final Decision tab
+        resp_final = self.client.get(f"{reverse('reports')}?tab=final_decision&month=9&year=2026&final_outcome=Hired")
+        self.assertEqual(resp_final.status_code, 200)
+        self.assertContains(resp_final, "Generate Report")
+        self.assertContains(resp_final, "openGenerateReportModal('final_decision')")
+        self.assertEqual(resp_final.context["final_outcome"], "Hired")
 
     def test_audit_logs_origin_column_removed(self):
         """Origin (IP address) column is removed from Audit trail table to provide more space for Details."""
