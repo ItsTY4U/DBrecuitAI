@@ -1,0 +1,23 @@
+Dear {{ applicant_name }},
+
+Congratulations! Your application has advanced to the interview phase. We are pleased to invite you to attend your {{ interview.interview_type }} for the {{ job.title }} role.
+
+INTERVIEW DETAILS:
+----------------------------------------
+Interview Type: {{ interview.interview_type }}
+Scheduled Date: {{ interview.date|date:"l, F d, Y" }}
+Scheduled Time: {{ interview.time|time:"g:i A" }}
+Interviewer / Panel: {{ interview.interviewer|default:"Talent Acquisition Team" }}
+Location / Link: {{ interview.location|default:"HR Office / To be announced" }}
+Application Ref: #{{ application.application_id }}
+
+{% if interview.notes %}
+SPECIAL INSTRUCTIONS:
+{{ interview.notes }}
+{% endif %}
+
+You can also view this invitation and monitor your hiring status anytime directly from your applicant profile:
+{{ profile_url }}
+
+Best regards,
+The DBRecruitAI Talent Team

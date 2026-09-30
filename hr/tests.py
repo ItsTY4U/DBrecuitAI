@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User, Group
 from jobs.models import Job, Application, Requirement, Department
-from hr.models import Interview
+from hr.models import Interview, CandidateEvaluation
 from hr.views import invalidate_hr_cache
 
 class CandidateManagementTests(TestCase):
@@ -3324,6 +3324,118 @@ class HRMultiUserConcurrencyTests(TestCase):
         self.assertEqual(bob_success.status_code, 200)
         self.assertTrue(bob_success.json()["success"])
 
+    def test_evaluation_lifecycle_modal_close_and_manage_button_lock(self):
+        """
+        Verify that:
+        1. When HR1 evaluates a candidate:
+           - api_acquire_lock for RESCHEDULE by HR2 is locked.
+           - api_live_sync shows HR1 as active evaluator and locks others.
+           - interviews view shows status Ongoing and Manage button is locked.
+        2. When HR1 closes the modal / calls cancel_candidate_evaluation:
+           - evaluation is released (evaluator=None, is_evaluating=False).
+           - api_live_sync returns empty ongoing_evaluations for both HR1 and HR2.
+           - Neither HR1 nor HR2 is locked out.
+           - HR1 can immediately return and re-evaluate.
+           - HR2 can acquire RESCHEDULE lock without being blocked.
+        """
+        from hr.models import CandidateEvaluation, Interview, HRActionLock
+
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Alice Recruiter",
+            date=timezone.localdate(),
+            time="10:00",
+            status="Scheduled"
+        )
+        intv.applicants.add(self.application)
+
+        # 1. HR1 starts candidate evaluation
+        self.client.force_login(self.hr_user_1)
+        resp_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_start.status_code, 200)
+        data_start = resp_start.json()
+        self.assertTrue(data_start["success"])
+
+        # Check DB state
+        eval_obj = CandidateEvaluation.objects.get(application=self.application)
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertTrue(eval_obj.is_evaluating)
+        self.assertEqual(eval_obj.evaluator, self.hr_user_1)
+
+        # Check HR2 acquire RESCHEDULE lock is BLOCKED
+        self.client.force_login(self.hr_user_2)
+        resp_lock = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_lock.status_code, 200)
+        data_lock = resp_lock.json()
+        self.assertTrue(data_lock.get("locked"))
+
+        # Check live sync for HR2
+        resp_sync2 = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(resp_sync2.status_code, 200)
+        data_sync2 = resp_sync2.json()
+        self.assertEqual(len(data_sync2["ongoing_evaluations"]), 1)
+        self.assertFalse(data_sync2["ongoing_evaluations"][0]["is_my_evaluation"])
+
+        # Check interviews view for HR2 renders Locked Manage button
+        resp_intv2 = self.client.get(reverse("interviews") + "?tab=evaluations")
+        self.assertEqual(resp_intv2.status_code, 200)
+        self.assertContains(resp_intv2, 'data-action-btn="RESCHEDULE"')
+
+        # 2. HR1 closes the modal (cancel_candidate_evaluation)
+        self.client.force_login(self.hr_user_1)
+        resp_cancel = self.client.post(
+            reverse("cancel_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_cancel.status_code, 200)
+
+        # Check DB state after cancel
+        eval_obj.refresh_from_db()
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertFalse(eval_obj.is_evaluating)
+        self.assertIsNone(eval_obj.evaluator)
+
+        # Check live sync for both users is EMPTY (neither locked out)
+        resp_sync1_after = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(len(resp_sync1_after.json()["ongoing_evaluations"]), 0)
+
+        self.client.force_login(self.hr_user_2)
+        resp_sync2_after = self.client.get(reverse("api_live_sync"), HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(len(resp_sync2_after.json()["ongoing_evaluations"]), 0)
+
+        # HR2 can now acquire RESCHEDULE lock
+        resp_lock2 = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_lock2.status_code, 200)
+        self.assertTrue(resp_lock2.json().get("success"))
+
+        # Release lock so HR1 can evaluate again
+        self.client.post(
+            reverse("hr_lock_release"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+
+        # HR1 can continue/start evaluation again without being locked out
+        self.client.force_login(self.hr_user_1)
+        resp_restart = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_restart.status_code, 200)
+        self.assertTrue(resp_restart.json()["success"])
+
+
 
 class JobVacanciesAndModalsTests(TestCase):
     """
@@ -3518,16 +3630,136 @@ class JobVacanciesAndModalsTests(TestCase):
         self.assertContains(resp_start_eval, "candidate-profile-modal")
         self.assertTrue(resp_start_eval.context.get("show_eval_form"))
 
+    def test_candidate_evaluation_draft_preserve_on_cancel(self):
+        """When HR cancels evaluation, draft values are preserved, is_evaluating is False, and session status is reverted."""
+        cand = Application.objects.create(
+            job=self.active_job, first_name="Draft", last_name="Tester",
+            email="draft@test.com", status="Interview"
+        )
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Interviewer A",
+            date=(timezone.now() + timedelta(days=1)).date(),
+            time=timezone.now().time(),
+            status="Scheduled",
+        )
+        interview.applicants.add(cand)
 
+        # 1. Start evaluation
+        resp_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": cand.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_start.status_code, 200)
+        cand.refresh_from_db()
+        eval_obj = cand.evaluation
+        self.assertTrue(eval_obj.is_evaluating)
+        self.assertEqual(eval_obj.status, "Draft")
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Ongoing")
 
+        # 2. Cancel evaluation with draft data
+        resp_cancel = self.client.post(
+            reverse("cancel_candidate_evaluation", kwargs={"pk": cand.pk}),
+            data={
+                "technical_competence": "4",
+                "communication_skills": "5",
+                "strengths_notes": "Great technical skills and communication",
+                "expected_salary": "65000",
+                "recommendation": "Hire"
+            },
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_cancel.status_code, 200)
 
+        # 3. Verify draft is preserved without deletion
+        eval_obj.refresh_from_db()
+        self.assertFalse(eval_obj.is_evaluating)
+        self.assertIsNone(eval_obj.evaluator)
+        self.assertEqual(eval_obj.status, "Draft")
+        self.assertEqual(eval_obj.technical_competence, 4)
+        self.assertEqual(eval_obj.communication_skills, 5)
+        self.assertEqual(eval_obj.strengths_notes, "Great technical skills and communication")
+        self.assertEqual(eval_obj.expected_salary, "65000")
+        self.assertEqual(eval_obj.recommendation, "Hire")
 
+        # 4. Verify session status reverted back to Scheduled
+        interview.refresh_from_db()
+        self.assertEqual(interview.status, "Scheduled")
 
+    def test_evaluations_tab_manage_locked_when_ongoing_evaluation(self):
+        """Manage button is disabled/locked when is_evaluating=True, and reschedule/cancel actions are rejected."""
+        cand = Application.objects.create(
+            job=self.active_job, first_name="Lock", last_name="Tester",
+            email="lock@test.com", status="Interview"
+        )
+        interview = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Interviewer B",
+            date=(timezone.now() + timedelta(days=1)).date(),
+            time=timezone.now().time(),
+            status="Ongoing",
+        )
+        interview.applicants.add(cand)
 
+        CandidateEvaluation.objects.create(
+            application=cand,
+            interview=interview,
+            evaluator=self.hr_user,
+            status="Draft",
+            is_evaluating=True
+        )
 
+        # Tab evaluations should show Manage Locked for this applicant
+        resp = self.client.get(reverse("interviews") + "?tab=evaluations")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Locked")
 
+        # Reschedule should be rejected
+        resp_resched = self.client.post(
+            reverse("reschedule_candidate_interview", kwargs={"pk": cand.pk}),
+            data={"date": "2026-10-10", "time": "10:00:00"}
+        )
+        self.assertEqual(resp_resched.status_code, 302)
+        cand.refresh_from_db()
+        interview.refresh_from_db()
+        self.assertNotEqual(str(interview.date), "2026-10-10")
 
+    def test_scheduling_with_email_invitation_and_profile_display(self):
+        """Scheduling an interview with send_email_invitation dispatches email and shows on profile."""
+        cand_user = User.objects.create_user(
+            username="candidate1",
+            email="candidate1@test.com",
+            password="candpassword123"
+        )
+        cand = Application.objects.create(
+            job=self.active_job, first_name="Jane", last_name="Applicant",
+            applicant=cand_user,
+            email="candidate1@test.com", status="Shortlisted"
+        )
 
+        with patch("main.emailer.send_interview_invitation_email") as mock_email:
+            resp_sched = self.client.post(
+                reverse("schedule_candidate_interview"),
+                data={
+                    "applicant_id": cand.pk,
+                    "interview_type": "Live Video",
+                    "date": "2026-10-15",
+                    "time": "14:00:00",
+                    "location": "https://meet.google.com/abc-defg-hij",
+                    "interviewer": "HR Manager",
+                    "send_email_invitation": "1"
+                }
+            )
+            self.assertEqual(resp_sched.status_code, 302)
+            mock_email.assert_called_once()
 
-
+        # Check candidate profile view
+        cand_client = Client()
+        cand_client.login(username="candidate1", password="candpassword123")
+        resp_prof = cand_client.get(reverse("profile"))
+        self.assertEqual(resp_prof.status_code, 200)
+        self.assertContains(resp_prof, "Interview Invitations")
+        self.assertContains(resp_prof, "Live Video")
+        self.assertContains(resp_prof, "meet.google.com")
 

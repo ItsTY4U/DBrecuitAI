@@ -235,3 +235,83 @@ def send_application_submitted_email(application, async_send: bool = False) -> b
                 result.get("error"),
             )
         return result.get("success", False)
+
+
+def send_interview_invitation_email(application, interview, async_send: bool = True) -> bool:
+    """
+    Sends an interview invitation email with full session details (date, time,
+    interview type, location/link, and notes) to the candidate.
+    """
+    recipient_email = application.email
+    if not recipient_email and application.applicant:
+        recipient_email = application.applicant.email
+
+    if not recipient_email:
+        logger.warning(
+            "Cannot send interview invitation: no email found for application %s",
+            application.application_id,
+        )
+        return False
+
+    applicant_name = (
+        f"{application.first_name} {application.last_name}".strip()
+        or (application.applicant.get_full_name() if application.applicant else "")
+        or "Applicant"
+    )
+
+    site_domain = getattr(settings, "SITE_DOMAIN", "http://127.0.0.1:8000").rstrip("/")
+    profile_url = f"{site_domain}/accounts/profile/"
+
+    context = {
+        "application": application,
+        "job": application.job,
+        "interview": interview,
+        "applicant_name": applicant_name,
+        "profile_url": profile_url,
+    }
+
+    subject = f"Interview Invitation: {interview.interview_type} - {application.job.title} (#{application.application_id})"
+
+    try:
+        html_content = render_to_string("emails/interview_invitation.html", context)
+        text_content = render_to_string("emails/interview_invitation.txt", context)
+    except Exception as e:
+        logger.error("Failed to render interview invitation email templates: %s", e)
+        return False
+
+    def _worker():
+        try:
+            result = send_gmail_message(
+                to_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                text_content=text_content,
+            )
+            if result.get("success"):
+                logger.info(
+                    "Interview invitation email dispatched to %s for interview #%s",
+                    recipient_email,
+                    interview.id,
+                )
+            else:
+                logger.error(
+                    "Failed to dispatch interview invitation email to %s: %s",
+                    recipient_email,
+                    result.get("error"),
+                )
+        except Exception as exc:
+            logger.error("Error in interview invitation background email worker: %s", exc)
+
+    is_serverless = getattr(settings, "IS_VERCEL", False) or bool(os.getenv("VERCEL"))
+    if async_send and not is_serverless:
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
+        return True
+    else:
+        result = send_gmail_message(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+        return result.get("success", False)

@@ -154,6 +154,7 @@ class CandidateEvaluation(models.Model):
         choices=STATUS_CHOICES,
         default="Completed"
     )
+    is_evaluating = models.BooleanField(default=False, db_index=True)
 
     FINAL_DECISION_CHOICES = [
         ("Hired", "Hired"),
