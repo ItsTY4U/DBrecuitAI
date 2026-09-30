@@ -124,10 +124,33 @@
 
     <!-- Tab Pane 2: All Applicants (Department & Job Sections) -->
     <div id="tab-pane-all" class="candidates-tab-pane" style="display: {% if active_tab == 'all' %}block{% else %}none{% endif %};">
-        <!-- Global Top Toolbar: Department Filter -->
+        <!-- Global Top Toolbar: Search & Department Filter -->
         <div class="candidates-top-toolbar">
             <form method="GET" action="{% url 'candidates' %}" class="toolbar-filter-form" id="deptFilterForm">
                 <input type="hidden" name="tab" value="all">
+
+                <!-- Global Search Field for Candidates -->
+                <div class="toolbar-filter-group toolbar-search-group">
+                    <label for="globalCandidateSearch" class="toolbar-filter-label" title="Search candidates">
+                        <i class="fas fa-search"></i>
+                    </label>
+                    <input type="text"
+                           name="search"
+                           id="globalCandidateSearch"
+                           class="toolbar-search-input"
+                           placeholder="Search candidates by name, email, ID..."
+                           value="{{ search_query|default:'' }}"
+                           autocomplete="off">
+                    {% if search_query %}
+                    <a href="{% url 'candidates' %}?tab=all{% if selected_department %}&department={{ selected_department }}{% endif %}" class="toolbar-search-clear" title="Clear search">
+                        <i class="fas fa-times-circle"></i>
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="toolbar-search-btn" title="Search candidates">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+
                 <div class="toolbar-filter-group">
                     <label for="deptSelect" class="toolbar-filter-label">
                         <i class="fas fa-building"></i> Filter by Department:
@@ -141,7 +164,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                {% if selected_department or selected_job %}
+                {% if selected_department or selected_job or search_query %}
                 <a href="{% url 'candidates' %}?tab=all" class="btn-reset-filters" title="Reset all filters">
                     <i class="fas fa-rotate-left"></i> Reset Filter
                 </a>
@@ -343,8 +366,15 @@
             <div class="empty-state-icon">
                 <i class="fas fa-users-slash"></i>
             </div>
-            <h4>No job postings with applicants found</h4>
-            <p>Adjust your department filter or wait for candidates to apply to active openings.</p>
+            <h4>{% if search_query %}No candidates found matching "{{ search_query }}"{% else %}No job postings with applicants found{% endif %}</h4>
+            <p>{% if search_query %}Try checking for spelling errors or searching by candidate name, email, or application ID.{% else %}Adjust your department filter or wait for candidates to apply to active openings.{% endif %}</p>
+            {% if search_query %}
+            <div style="margin-top: 14px;">
+                <a href="{% url 'candidates' %}?tab=all{% if selected_department %}&department={{ selected_department }}{% endif %}" class="btn-reset-filters">
+                    <i class="fas fa-rotate-left"></i> Clear Search
+                </a>
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
         </div>

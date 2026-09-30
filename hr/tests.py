@@ -3183,7 +3183,8 @@ class HRMultiUserConcurrencyTests(TestCase):
             application=self.application,
             evaluator=self.hr_user_1,
             evaluator_name="Alice Recruiter",
-            status="Draft"
+            status="Draft",
+            is_evaluating=True
         )
 
         # Log an action by Alice
@@ -3434,6 +3435,207 @@ class HRMultiUserConcurrencyTests(TestCase):
         )
         self.assertEqual(resp_restart.status_code, 200)
         self.assertTrue(resp_restart.json()["success"])
+
+    def test_completed_evaluation_editing_locks_other_hr(self):
+        """
+        When HR1 is editing a completed evaluation on candidate_detail:
+        1. Other HRs (HR2) see 'Editing Locked (Alice Recruiter)' and eval-locked-card.
+        2. HR2 cannot start_candidate_evaluation (returns 409 conflict).
+        3. HR2 cannot submit evaluate_candidate (returns 409 conflict).
+        4. When HR1 cancels or leaves, HR2 can edit without conflict.
+        """
+        from hr.models import CandidateEvaluation, HRActionLock
+
+        completed_eval = CandidateEvaluation.objects.create(
+            application=self.application,
+            evaluator=self.hr_user_1,
+            evaluator_name="Alice Recruiter",
+            status="Completed",
+            overall_rating=4.5,
+            general_notes="Initial notes",
+            recommendation="Strong Hire",
+            is_evaluating=False
+        )
+
+        # Alice starts editing the completed evaluation
+        self.client.force_login(self.hr_user_1)
+        resp_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_start.status_code, 200)
+        self.assertTrue(resp_start.json()["success"])
+
+        completed_eval.refresh_from_db()
+        self.assertEqual(completed_eval.status, "Completed")
+        self.assertTrue(completed_eval.is_evaluating)
+        self.assertEqual(completed_eval.evaluator, self.hr_user_1)
+
+        # Bob views candidate detail: sees Editing Locked button and locked card
+        self.client.force_login(self.hr_user_2)
+        resp_bob_detail = self.client.get(reverse("candidate_detail", kwargs={"pk": self.application.pk}))
+        self.assertEqual(resp_bob_detail.status_code, 200)
+        self.assertContains(resp_bob_detail, "Editing Locked (Alice Recruiter)")
+        self.assertContains(resp_bob_detail, 'id="eval-locked-card"')
+        self.assertNotContains(resp_bob_detail, 'id="eval-form-card"')
+
+        # Bob attempts to start evaluation: rejected with 423 (Locked)
+        resp_bob_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_bob_start.status_code, 423)
+        self.assertTrue(resp_bob_start.json()["locked"])
+
+        # Bob attempts POST evaluate_candidate: rejected with redirect & error message
+        resp_bob_post = self.client.post(
+            reverse("evaluate_candidate", kwargs={"pk": self.application.pk}),
+            {
+                "technical_competence": "3",
+                "communication_skills": "3",
+                "problem_solving": "3",
+                "cultural_fit": "3",
+                "leadership_potential": "3",
+                "recommendation": "Hold",
+                "general_notes": "Concurrent attempt by Bob"
+            },
+            follow=True
+        )
+        self.assertEqual(resp_bob_post.status_code, 200)
+        self.assertContains(resp_bob_post, "currently locked and being conducted by Alice Recruiter")
+        completed_eval.refresh_from_db()
+        self.assertEqual(completed_eval.evaluator, self.hr_user_1)
+        self.assertEqual(completed_eval.general_notes, "Initial notes")
+
+        # Alice cancels editing (e.g. closes modal or leaves page)
+        self.client.force_login(self.hr_user_1)
+        resp_cancel = self.client.post(
+            reverse("cancel_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_cancel.status_code, 200)
+
+        completed_eval.refresh_from_db()
+        self.assertEqual(completed_eval.status, "Completed")
+        self.assertFalse(completed_eval.is_evaluating)
+        self.assertIsNone(completed_eval.evaluator)
+
+        # Now Bob can start editing without conflict
+        self.client.force_login(self.hr_user_2)
+        resp_bob_edit_ok = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_bob_edit_ok.status_code, 200)
+        self.assertTrue(resp_bob_edit_ok.json()["success"])
+
+    def test_manage_interview_locks_evaluate_button_for_other_hr(self):
+        """
+        While HR1 manages a candidate interview (holding RESCHEDULE or SCHEDULE lock):
+        1. HR2 is locked out from starting candidate evaluation (HTTP 423).
+        2. HR2 sees locked Evaluate button on interview_evaluations page.
+        3. When HR1 releases the lock, HR2 can start evaluation.
+        """
+        from hr.models import Interview, HRActionLock
+
+        intv = Interview.objects.create(
+            interview_type="HR Interview",
+            interviewer="Alice Recruiter",
+            date=timezone.localdate(),
+            time="11:00",
+            status="Scheduled"
+        )
+        intv.applicants.add(self.application)
+
+        # Alice acquires RESCHEDULE lock (e.g. opening Manage Interview modal)
+        self.client.force_login(self.hr_user_1)
+        resp_lock = self.client.post(
+            reverse("hr_lock_acquire"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_lock.status_code, 200)
+        self.assertTrue(resp_lock.json()["success"])
+
+        # Bob attempts to start evaluation: rejected with 423
+        self.client.force_login(self.hr_user_2)
+        resp_eval = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_eval.status_code, 423)
+        self.assertTrue(resp_eval.json()["locked"])
+        self.assertIn("Alice Recruiter", resp_eval.json()["message"])
+
+        # Bob views interviews evaluations tab: Evaluate button rendered with lock
+        resp_page = self.client.get(reverse("interviews") + "?tab=evaluations")
+        self.assertEqual(resp_page.status_code, 200)
+        self.assertContains(resp_page, "Locked (Alice Recruiter)")
+
+        # Alice closes Manage modal (releases lock)
+        self.client.force_login(self.hr_user_1)
+        resp_rel = self.client.post(
+            reverse("hr_lock_release"),
+            json.dumps({"target_id": self.application.pk, "action_type": "RESCHEDULE"}),
+            content_type="application/json"
+        )
+        self.assertEqual(resp_rel.status_code, 200)
+
+        # Bob can now start candidate evaluation
+        self.client.force_login(self.hr_user_2)
+        resp_bob_start = self.client.post(
+            reverse("start_candidate_evaluation", kwargs={"pk": self.application.pk}),
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+        )
+        self.assertEqual(resp_bob_start.status_code, 200)
+        self.assertTrue(resp_bob_start.json()["success"])
+
+    def test_candidates_tab_all_global_search(self):
+        """
+        Global search field on /hr/candidates/?tab=all:
+        1. Filters departments and jobs containing matching candidates by name, email, or application ID.
+        2. Non-matching jobs and departments are excluded.
+        3. Displays search-aware empty state and clear search link when no candidates match.
+        """
+        from jobs.models import Department, Job, Application
+
+        mkt_dept = Department.objects.create(name="Marketing")
+        mkt_job = Job.objects.create(
+            title="Digital Marketing Lead",
+            department="Marketing",
+            status="Active"
+        )
+        cand_diana = User.objects.create_user(
+            username="cand_diana",
+            email="diana@marketing.com",
+            password="Password123!"
+        )
+        app_diana = Application.objects.create(
+            job=mkt_job,
+            applicant=cand_diana,
+            first_name="Diana",
+            last_name="Prince",
+            email="diana@marketing.com",
+            status="Screening",
+            ai_score=92
+        )
+
+        self.client.force_login(self.hr_user_1)
+
+        # 1. Search for 'Diana': tab-pane-all contains Marketing job, excludes Engineering job
+        resp_search = self.client.get(reverse("candidates") + "?tab=all&search=Diana")
+        self.assertEqual(resp_search.status_code, 200)
+        content = resp_search.content.decode("utf-8")
+        all_pane = content.split('id="tab-pane-all"')[1]
+        self.assertIn("Digital Marketing Lead", all_pane)
+        self.assertIn("Diana", all_pane)
+        self.assertNotIn("Senior Backend Engineer", all_pane)
+
+        # 2. Search for non-existent candidate: shows search-aware empty state
+        resp_empty = self.client.get(reverse("candidates") + "?tab=all&search=NonExistentCandidateName")
+        self.assertEqual(resp_empty.status_code, 200)
+        self.assertContains(resp_empty, 'No candidates found matching "NonExistentCandidateName"')
+        self.assertContains(resp_empty, "Clear Search")
 
 
 

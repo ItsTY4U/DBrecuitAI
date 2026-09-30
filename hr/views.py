@@ -508,9 +508,9 @@ def api_live_sync(request):
         for lock in locks_qs
     ]
 
-    # 3. Ongoing Candidate Evaluations (actively evaluating draft evaluations with evaluator)
+    # 3. Ongoing Candidate Evaluations (actively evaluating/editing evaluations with evaluator)
     ongoing_evals_qs = CandidateEvaluation.objects.filter(
-        status="Draft",
+        is_evaluating=True,
         evaluator__isnull=False,
     ).select_related("evaluator", "application")
 
@@ -1279,9 +1279,10 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
     selected_job = request.GET.get("job", "").strip()
+    search_query = request.GET.get("search", "").strip()
     active_tab = request.GET.get("tab", "").strip().lower()
     if not active_tab:
-        if selected_department or selected_job:
+        if selected_department or selected_job or search_query:
             active_tab = "all"
         else:
             active_tab = "recent"
@@ -1327,6 +1328,30 @@ def candidates(request):
         target_job_id = int(selected_job)
         filtered_jobs = [j for j in filtered_jobs if j.id == target_job_id]
 
+    search_q = Q()
+    if search_query:
+        search_q = (
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(application_id__icontains=search_query)
+        )
+        matching_job_ids = set(
+            Application.objects.filter(job__status="Active")
+            .filter(search_q)
+            .values_list("job_id", flat=True)
+        )
+        filtered_jobs = [j for j in filtered_jobs if j.id in matching_job_ids]
+        job_match_counts = dict(
+            Application.objects.filter(job_id__in=[j.id for j in filtered_jobs])
+            .filter(search_q)
+            .values("job_id")
+            .annotate(cnt=Count("id"))
+            .values_list("job_id", "cnt")
+        )
+        for j in filtered_jobs:
+            j.applicant_count = job_match_counts.get(j.id, 0)
+
     base_candidate_fields = (
         "id", "application_id", "first_name", "middle_initial", "last_name",
         "email", "phone", "ai_score", "status", "created_at", "job_id"
@@ -1340,6 +1365,7 @@ def candidates(request):
         # 1. Fetch top 3 candidates for ALL filtered jobs in 1 single partitioned query
         top_cands_qs = (
             Application.objects.filter(job_id__in=filtered_job_ids)
+            .filter(search_q if search_query else Q())
             .annotate(
                 row_num=Window(
                     expression=RowNumber(),
@@ -1356,6 +1382,7 @@ def candidates(request):
         # 2. Fetch table candidates (ranks 4 to 8) for ALL filtered jobs in 1 single partitioned query
         table_cands_qs = (
             Application.objects.filter(job_id__in=filtered_job_ids)
+            .filter(search_q if search_query else Q())
             .annotate(
                 row_num=Window(
                     expression=RowNumber(),
@@ -1386,8 +1413,8 @@ def candidates(request):
         job.table_data = {
             "job": job,
             "candidates": table_page,
-            "is_search": False,
-            "search_query": "",
+            "is_search": bool(search_query),
+            "search_query": search_query,
             "total_count": total_apps,
             "total_table_candidates": total_table_candidates,
             "start_index": 4 if total_table_candidates > 0 else 0,
@@ -1423,6 +1450,7 @@ def candidates(request):
         "available_departments": available_departments,
         "selected_department": selected_department,
         "selected_job": selected_job,
+        "search_query": search_query,
         "total_candidates": counts["total"],
         "screening_count": counts["screening"],
         "interview_count": counts["interview"],
@@ -1521,7 +1549,12 @@ def candidate_detail(request, pk):
     # Determine whether the evaluation form should be open or show the "not initiated" banner
     evaluate_param = request.GET.get("evaluate") == "1"
     is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
-    is_eval_active = bool(is_draft and (getattr(candidate_evaluation, "is_evaluating", False) or candidate_evaluation.evaluator_id is not None))
+    is_eval_active = bool(
+        candidate_evaluation and (
+            getattr(candidate_evaluation, "is_evaluating", False) 
+            or (is_draft and candidate_evaluation.evaluator_id is not None)
+        )
+    )
     is_eval_locked_by_other = bool(is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
     show_eval_form = (evaluate_param or is_eval_active) and not is_eval_locked_by_other
     
@@ -2467,7 +2500,6 @@ def evaluate_candidate(request, pk):
         existing_eval = CandidateEvaluation.objects.filter(application=application).first()
         if (
             existing_eval 
-            and existing_eval.status == "Draft" 
             and getattr(existing_eval, "is_evaluating", False) 
             and existing_eval.evaluator 
             and existing_eval.evaluator != request.user
@@ -2625,11 +2657,30 @@ def start_candidate_evaluation(request, pk):
 
     user_name = request.user.get_full_name() or request.user.username
 
-    # Check if existing evaluation is actively ongoing by another user
+    # 1. Check if candidate has active SCHEDULE or RESCHEDULE lock held by another HR staff member
+    reschedule_lock = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type__in=["SCHEDULE", "RESCHEDULE"],
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+    if reschedule_lock:
+        locked_name = reschedule_lock.user_name
+        msg = f"Candidate interview is currently being managed by {locked_name}."
+        if is_ajax:
+            return JsonResponse({
+                "success": False,
+                "locked": True,
+                "evaluator_name": locked_name,
+                "message": msg
+            }, status=423)
+        messages.warning(request, msg)
+        return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    # 2. Check if existing evaluation is actively ongoing by another user (Draft or Completed being edited)
     existing_eval = CandidateEvaluation.objects.filter(application=application).first()
     if (
         existing_eval 
-        and existing_eval.status == "Draft" 
         and getattr(existing_eval, "is_evaluating", False) 
         and existing_eval.evaluator 
         and existing_eval.evaluator != request.user
@@ -2637,7 +2688,7 @@ def start_candidate_evaluation(request, pk):
         lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
         if lease_seconds < 7200:  # 2 hours
             locked_name = existing_eval.evaluator_name or existing_eval.evaluator.username
-            msg = f"Candidate is currently being evaluated by {locked_name}."
+            msg = f"Candidate evaluation is currently being edited by {locked_name}."
             if is_ajax:
                 return JsonResponse({
                     "success": False,
@@ -2648,7 +2699,7 @@ def start_candidate_evaluation(request, pk):
             messages.warning(request, msg)
             return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
 
-    # 1. Candidate-specific evaluation state
+    # 3. Candidate-specific evaluation state
     evaluation, created = CandidateEvaluation.objects.get_or_create(
         application=application,
         defaults={
@@ -2659,8 +2710,9 @@ def start_candidate_evaluation(request, pk):
             "evaluator_name": user_name,
         }
     )
-    if not created and evaluation.status != "Completed":
-        evaluation.status = "Draft"
+    if not created:
+        if evaluation.status != "Completed":
+            evaluation.status = "Draft"
         evaluation.is_evaluating = True
         evaluation.evaluator = request.user
         evaluation.evaluator_name = user_name
@@ -2685,7 +2737,7 @@ def start_candidate_evaluation(request, pk):
         }
     )
 
-    # 2. Update session status to Ongoing if it was Scheduled or Rescheduled
+    # 4. Update session status to Ongoing if it was Scheduled or Rescheduled
     if interview and interview.status in ("Scheduled", "Rescheduled"):
         interview.status = "Ongoing"
         interview.save(update_fields=["status"])
@@ -2695,7 +2747,7 @@ def start_candidate_evaluation(request, pk):
     if is_ajax:
         return JsonResponse({
             "success": True,
-            "status": "Ongoing",
+            "status": "Ongoing" if evaluation.status != "Completed" else "Completed",
             "applicant_id": application.id,
             "evaluator_name": user_name,
             "message": "Candidate evaluation set to Ongoing."
@@ -2720,55 +2772,62 @@ def cancel_candidate_evaluation(request, pk):
     Called when HR cancels the candidate evaluation modal without saving or leaves the page.
     Preserves draft evaluation fields (rubric scores, notes, etc.) if provided or existing,
     sets is_evaluating = False, releases evaluator lock, and sets status = 'Draft'.
+    If previously Completed, keeps Completed status while resetting is_evaluating = False.
     If no other candidate in the session has an active evaluation, reverts session to Scheduled or Rescheduled.
     """
     application = get_object_or_404(Application, pk=pk)
     evaluation = CandidateEvaluation.objects.filter(application=application).first()
 
-    if evaluation and evaluation.status != "Completed":
-        # If user submitted draft form data, save it into the evaluation draft
-        if request.method == "POST":
-            # Interview mode
-            interview_mode = request.POST.get("interview_mode")
-            if interview_mode:
-                evaluation.interview_mode = interview_mode
+    if evaluation:
+        if evaluation.status == "Completed":
+            evaluation.is_evaluating = False
+            evaluation.evaluator = None
+            evaluation.evaluator_name = ""
+            evaluation.save(update_fields=["is_evaluating", "evaluator", "evaluator_name"])
+        else:
+            # If user submitted draft form data, save it into the evaluation draft
+            if request.method == "POST":
+                # Interview mode
+                interview_mode = request.POST.get("interview_mode")
+                if interview_mode:
+                    evaluation.interview_mode = interview_mode
 
-            # Evaluator name
-            evaluator_name = request.POST.get("evaluator_name", "").strip()
-            if evaluator_name:
-                evaluation.evaluator_name = evaluator_name
+                # Evaluator name
+                evaluator_name = request.POST.get("evaluator_name", "").strip()
+                if evaluator_name:
+                    evaluation.evaluator_name = evaluator_name
 
-            # Rubric ratings
-            for field in ["technical_competence", "communication_skills", "problem_solving", "cultural_fit", "leadership_potential"]:
-                val = request.POST.get(field)
-                if val:
-                    try:
-                        setattr(evaluation, field, int(val))
-                    except (ValueError, TypeError):
-                        pass
+                # Rubric ratings
+                for field in ["technical_competence", "communication_skills", "problem_solving", "cultural_fit", "leadership_potential"]:
+                    val = request.POST.get(field)
+                    if val:
+                        try:
+                            setattr(evaluation, field, int(val))
+                        except (ValueError, TypeError):
+                            pass
 
-            # Notes
-            for field in ["strengths_notes", "weaknesses_notes", "general_notes"]:
-                val = request.POST.get(field)
-                if val is not None:
-                    setattr(evaluation, field, val.strip())
+                # Notes
+                for field in ["strengths_notes", "weaknesses_notes", "general_notes"]:
+                    val = request.POST.get(field)
+                    if val is not None:
+                        setattr(evaluation, field, val.strip())
 
-            # Practical details
-            for field in ["expected_salary", "notice_period", "availability_date"]:
-                val = request.POST.get(field)
-                if val is not None:
-                    setattr(evaluation, field, val.strip())
+                # Practical details
+                for field in ["expected_salary", "notice_period", "availability_date"]:
+                    val = request.POST.get(field)
+                    if val is not None:
+                        setattr(evaluation, field, val.strip())
 
-            # Recommendation
-            rec = request.POST.get("recommendation")
-            if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
-                evaluation.recommendation = rec
+                # Recommendation
+                rec = request.POST.get("recommendation")
+                if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
+                    evaluation.recommendation = rec
 
-        evaluation.status = "Draft"
-        evaluation.is_evaluating = False
-        evaluation.evaluator = None
-        evaluation.evaluator_name = ""
-        evaluation.save()
+            evaluation.status = "Draft"
+            evaluation.is_evaluating = False
+            evaluation.evaluator = None
+            evaluation.evaluator_name = ""
+            evaluation.save()
 
     # Revert session status if no other candidate has active evaluation
     interview = application.interview.order_by("-date", "-time").first()

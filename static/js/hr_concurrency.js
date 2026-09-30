@@ -396,6 +396,19 @@
 
             // 2. EVALUATE ACTION BUTTON
             if (actionType === 'EVALUATE') {
+                const rescheduleLock = locksMap.get(`Application:${candId}:RESCHEDULE`) || locksMap.get(`Application:${candId}:SCHEDULE`);
+                if (rescheduleLock && !rescheduleLock.is_me) {
+                    // Locked because another HR user is currently managing (rescheduling or cancelling) this candidate's interview
+                    el.disabled = true;
+                    el.classList.add('disabled');
+                    el.style.cssText = 'background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px;';
+                    el.innerHTML = `<i class="fas fa-lock"></i> <span>Locked (${rescheduleLock.user_name})</span>`;
+                    el.title = `Interview is currently being managed by ${rescheduleLock.user_name}.`;
+                    el.removeAttribute('href');
+                    el.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    return;
+                }
+
                 if (ongoingEval) {
                     if (ongoingEval.evaluator_id && ongoingEval.evaluator_id !== currentUserId) {
                         // Locked by other evaluator
@@ -426,11 +439,11 @@
                     }
                 } else {
                     // Normal Evaluate button
-                    if (el.disabled || el.classList.contains('disabled') || el.innerHTML.indexOf('In Evaluation') !== -1 || el.innerHTML.indexOf('Continue Evaluation') !== -1) {
+                    if (el.disabled || el.classList.contains('disabled') || el.innerHTML.indexOf('In Evaluation') !== -1 || el.innerHTML.indexOf('Continue Evaluation') !== -1 || el.innerHTML.indexOf('fa-lock') !== -1 || el.innerHTML.indexOf('Locked') !== -1) {
                         el.disabled = false;
                         el.classList.remove('disabled');
                         let origHtml = el.getAttribute('data-orig-html');
-                        if (!origHtml || origHtml.indexOf('fa-lock') !== -1 || origHtml.indexOf('In Evaluation') !== -1 || origHtml.indexOf('Continue Evaluation') !== -1) {
+                        if (!origHtml || origHtml.indexOf('fa-lock') !== -1 || origHtml.indexOf('In Evaluation') !== -1 || origHtml.indexOf('Continue Evaluation') !== -1 || origHtml.indexOf('Locked') !== -1) {
                             origHtml = '<i class="fas fa-clipboard-check"></i> <span>Evaluate</span>';
                         }
                         el.innerHTML = origHtml;
@@ -519,24 +532,33 @@
             }
         });
 
-        // 5. Candidate Detail Page Live Evaluation Form Hiding (Item 2)
+        // 5. Candidate Detail Page Live Evaluation Form Hiding & Button Locking
         const candidateDetailContainer = document.getElementById('eval-form-card');
         const candidateLockedCard = document.getElementById('eval-locked-card');
         const candidatePendingCard = document.getElementById('eval-pending-card');
         const heroEvaluateBtn = document.querySelector('.hero-actions-stack .btn-evaluate');
+        const toggleEvalBtn = document.getElementById('btn-toggle-eval-form');
 
         if (candidateDetailContainer) {
             const pageAppId = candidateDetailContainer.getAttribute('data-app-id') || document.getElementById('schedApplicantId')?.value;
             const currentEval = pageAppId ? ongoingEvalsMap.get(String(pageAppId)) : null;
 
             if (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) {
-                // Candidate is being evaluated by ANOTHER evaluator -> HIDE FORM!
+                // Candidate is being evaluated / edited by ANOTHER evaluator -> HIDE FORM & LOCK BUTTONS!
                 candidateDetailContainer.style.setProperty('display', 'none', 'important');
                 if (candidatePendingCard) candidatePendingCard.style.display = 'none';
                 if (candidateLockedCard) {
                     candidateLockedCard.style.display = 'block';
                     const lockedDesc = candidateLockedCard.querySelector('p strong');
                     if (lockedDesc) lockedDesc.textContent = currentEval.evaluator_name;
+                }
+                if (toggleEvalBtn) {
+                    toggleEvalBtn.disabled = true;
+                    toggleEvalBtn.classList.add('disabled');
+                    toggleEvalBtn.style.cssText = 'padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;';
+                    toggleEvalBtn.innerHTML = `<i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked (${currentEval.evaluator_name})</span>`;
+                    toggleEvalBtn.title = `Evaluation is currently being edited by ${currentEval.evaluator_name}`;
+                    toggleEvalBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
                 }
                 if (heroEvaluateBtn) {
                     heroEvaluateBtn.disabled = true;
@@ -547,6 +569,10 @@
             } else if (currentEval && currentEval.evaluator_id === currentUserId) {
                 // Current user is the evaluator
                 if (candidateLockedCard) candidateLockedCard.style.display = 'none';
+                if (toggleEvalBtn) {
+                    toggleEvalBtn.disabled = false;
+                    toggleEvalBtn.classList.remove('disabled');
+                }
                 if (heroEvaluateBtn) {
                     heroEvaluateBtn.disabled = false;
                     heroEvaluateBtn.classList.remove('disabled');
@@ -555,6 +581,17 @@
             } else {
                 // Not actively evaluated by anyone
                 if (candidateLockedCard) candidateLockedCard.style.display = 'none';
+                if (toggleEvalBtn && (toggleEvalBtn.disabled || toggleEvalBtn.classList.contains('disabled') || toggleEvalBtn.innerHTML.indexOf('Locked') !== -1)) {
+                    toggleEvalBtn.disabled = false;
+                    toggleEvalBtn.classList.remove('disabled');
+                    toggleEvalBtn.style.cssText = 'padding: 6px 14px; font-size: 12px; font-weight: 600; background: #2d5a27; color: #fff; border: 1.5px solid transparent; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;';
+                    toggleEvalBtn.innerHTML = '<i class="fas fa-pen-to-square"></i> <span id="toggle-eval-text">Edit Evaluation</span>';
+                    toggleEvalBtn.title = 'Edit Evaluation';
+                    toggleEvalBtn.setAttribute('onclick', 'toggleEvaluationForm()');
+                    toggleEvalBtn.onclick = function() {
+                        if (typeof window.toggleEvaluationForm === 'function') window.toggleEvaluationForm();
+                    };
+                }
                 if (heroEvaluateBtn) {
                     heroEvaluateBtn.disabled = false;
                     heroEvaluateBtn.classList.remove('disabled');
