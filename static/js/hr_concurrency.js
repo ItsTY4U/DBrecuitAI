@@ -296,9 +296,14 @@
         if (data.active_locks && Array.isArray(data.active_locks)) {
             data.active_locks.forEach(lock => {
                 if (lock.user_id !== currentUserId) {
-                    locksMap.set(`${lock.target_id}:${lock.action_type}`, lock);
-                    // General lookup by target_id
-                    locksMap.set(String(lock.target_id), lock);
+                    const idStr = String(lock.target_id);
+                    locksMap.set(`${idStr}:${lock.action_type}`, lock);
+                    locksMap.set(`${lock.target_model}:${idStr}:${lock.action_type}`, lock);
+                    // General lookup by target_id (prioritize RESCHEDULE and SCHEDULE locks)
+                    const existing = locksMap.get(idStr);
+                    if (!existing || ['RESCHEDULE', 'SCHEDULE'].includes(lock.action_type)) {
+                        locksMap.set(idStr, lock);
+                    }
                 }
             });
         }
@@ -396,7 +401,12 @@
 
             // 2. EVALUATE ACTION BUTTON
             if (actionType === 'EVALUATE') {
-                const rescheduleLock = locksMap.get(`Application:${candId}:RESCHEDULE`) || locksMap.get(`Application:${candId}:SCHEDULE`);
+                const idStr = String(candId);
+                const rescheduleLock = locksMap.get(`${idStr}:RESCHEDULE`)
+                                    || locksMap.get(`${idStr}:SCHEDULE`)
+                                    || locksMap.get(`Application:${idStr}:RESCHEDULE`)
+                                    || locksMap.get(`Application:${idStr}:SCHEDULE`)
+                                    || (locksMap.get(idStr) && ['RESCHEDULE', 'SCHEDULE'].includes(locksMap.get(idStr).action_type) ? locksMap.get(idStr) : null);
                 if (rescheduleLock && !rescheduleLock.is_me) {
                     // Locked because another HR user is currently managing (rescheduling or cancelling) this candidate's interview
                     el.disabled = true;
@@ -405,7 +415,8 @@
                     el.innerHTML = `<i class="fas fa-lock"></i> <span>Locked (${rescheduleLock.user_name})</span>`;
                     el.title = `Interview is currently being managed by ${rescheduleLock.user_name}.`;
                     el.removeAttribute('href');
-                    el.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    el.removeAttribute('hx-get');
+                    el.onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
                     return;
                 }
 
@@ -539,18 +550,60 @@
         const heroEvaluateBtn = document.querySelector('.hero-actions-stack .btn-evaluate');
         const toggleEvalBtn = document.getElementById('btn-toggle-eval-form');
 
-        if (candidateDetailContainer) {
-            const pageAppId = candidateDetailContainer.getAttribute('data-app-id') || document.getElementById('schedApplicantId')?.value;
-            const currentEval = pageAppId ? ongoingEvalsMap.get(String(pageAppId)) : null;
+        const pageAppId = (candidateDetailContainer ? candidateDetailContainer.getAttribute('data-app-id') : null)
+                       || document.getElementById('schedApplicantId')?.value
+                       || (candidateLockedCard ? candidateLockedCard.getAttribute('data-app-id') : null)
+                       || (candidatePendingCard ? candidatePendingCard.getAttribute('data-app-id') : null)
+                       || (heroEvaluateBtn ? (heroEvaluateBtn.getAttribute('data-cand-id') || heroEvaluateBtn.getAttribute('data-candidate-id')) : null)
+                       || (toggleEvalBtn ? (toggleEvalBtn.getAttribute('data-cand-id') || toggleEvalBtn.getAttribute('data-candidate-id')) : null);
 
-            if (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) {
+        if (pageAppId || candidateDetailContainer || toggleEvalBtn || heroEvaluateBtn) {
+            const idStr = pageAppId ? String(pageAppId) : null;
+            const currentEval = idStr ? ongoingEvalsMap.get(idStr) : null;
+            const manageLock = idStr ? (
+                locksMap.get(`${idStr}:RESCHEDULE`)
+                || locksMap.get(`${idStr}:SCHEDULE`)
+                || locksMap.get(`Application:${idStr}:RESCHEDULE`)
+                || locksMap.get(`Application:${idStr}:SCHEDULE`)
+                || (locksMap.get(idStr) && ['RESCHEDULE', 'SCHEDULE'].includes(locksMap.get(idStr).action_type) ? locksMap.get(idStr) : null)
+            ) : null;
+
+            if (manageLock && !manageLock.is_me) {
+                // Interview is being managed by another HR -> HIDE FORM & LOCK BUTTONS!
+                if (candidateDetailContainer) candidateDetailContainer.style.setProperty('display', 'none', 'important');
+                if (candidatePendingCard) candidatePendingCard.style.display = 'none';
+                if (candidateLockedCard) {
+                    candidateLockedCard.style.display = 'block';
+                    const lockedDesc = candidateLockedCard.querySelector('p strong');
+                    if (lockedDesc) lockedDesc.textContent = manageLock.user_name;
+                    const h4 = candidateLockedCard.querySelector('h4');
+                    if (h4) h4.textContent = `Interview Management In Progress (Locked by ${manageLock.user_name})`;
+                }
+                if (toggleEvalBtn) {
+                    toggleEvalBtn.disabled = true;
+                    toggleEvalBtn.classList.add('disabled');
+                    toggleEvalBtn.style.cssText = 'padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;';
+                    toggleEvalBtn.innerHTML = `<i class="fas fa-lock"></i> <span id="toggle-eval-text">Locked (${manageLock.user_name})</span>`;
+                    toggleEvalBtn.title = `Interview is currently being managed by ${manageLock.user_name}`;
+                    toggleEvalBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
+                }
+                if (heroEvaluateBtn) {
+                    heroEvaluateBtn.disabled = true;
+                    heroEvaluateBtn.classList.add('disabled');
+                    heroEvaluateBtn.style.cssText = 'background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed;';
+                    heroEvaluateBtn.innerHTML = `<i class="fas fa-lock"></i> <span>Locked (${manageLock.user_name})</span>`;
+                    heroEvaluateBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
+                }
+            } else if (currentEval && currentEval.evaluator_id && currentEval.evaluator_id !== currentUserId) {
                 // Candidate is being evaluated / edited by ANOTHER evaluator -> HIDE FORM & LOCK BUTTONS!
-                candidateDetailContainer.style.setProperty('display', 'none', 'important');
+                if (candidateDetailContainer) candidateDetailContainer.style.setProperty('display', 'none', 'important');
                 if (candidatePendingCard) candidatePendingCard.style.display = 'none';
                 if (candidateLockedCard) {
                     candidateLockedCard.style.display = 'block';
                     const lockedDesc = candidateLockedCard.querySelector('p strong');
                     if (lockedDesc) lockedDesc.textContent = currentEval.evaluator_name;
+                    const h4 = candidateLockedCard.querySelector('h4');
+                    if (h4) h4.textContent = `Candidate Evaluation In Progress (Locked)`;
                 }
                 if (toggleEvalBtn) {
                     toggleEvalBtn.disabled = true;
@@ -558,13 +611,14 @@
                     toggleEvalBtn.style.cssText = 'padding: 6px 14px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;';
                     toggleEvalBtn.innerHTML = `<i class="fas fa-lock"></i> <span id="toggle-eval-text">Editing Locked (${currentEval.evaluator_name})</span>`;
                     toggleEvalBtn.title = `Evaluation is currently being edited by ${currentEval.evaluator_name}`;
-                    toggleEvalBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); };
+                    toggleEvalBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
                 }
                 if (heroEvaluateBtn) {
                     heroEvaluateBtn.disabled = true;
                     heroEvaluateBtn.classList.add('disabled');
                     heroEvaluateBtn.style.cssText = 'background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed;';
                     heroEvaluateBtn.innerHTML = `<i class="fas fa-lock"></i> <span>In Evaluation (${currentEval.evaluator_name})</span>`;
+                    heroEvaluateBtn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); return false; };
                 }
             } else if (currentEval && currentEval.evaluator_id === currentUserId) {
                 // Current user is the evaluator
@@ -579,7 +633,7 @@
                     heroEvaluateBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> <span>Continue Evaluation</span>';
                 }
             } else {
-                // Not actively evaluated by anyone
+                // Not actively evaluated or managed by anyone
                 if (candidateLockedCard) candidateLockedCard.style.display = 'none';
                 if (toggleEvalBtn && (toggleEvalBtn.disabled || toggleEvalBtn.classList.contains('disabled') || toggleEvalBtn.innerHTML.indexOf('Locked') !== -1)) {
                     toggleEvalBtn.disabled = false;
@@ -592,9 +646,14 @@
                         if (typeof window.toggleEvaluationForm === 'function') window.toggleEvaluationForm();
                     };
                 }
-                if (heroEvaluateBtn) {
+                if (heroEvaluateBtn && (heroEvaluateBtn.disabled || heroEvaluateBtn.classList.contains('disabled') || heroEvaluateBtn.innerHTML.indexOf('Locked') !== -1)) {
                     heroEvaluateBtn.disabled = false;
                     heroEvaluateBtn.classList.remove('disabled');
+                    heroEvaluateBtn.style.cssText = '';
+                    heroEvaluateBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> <span>Evaluate Candidate</span>';
+                    heroEvaluateBtn.onclick = function() {
+                        if (typeof window.openEvaluationForm === 'function') window.openEvaluationForm();
+                    };
                 }
             }
         }
