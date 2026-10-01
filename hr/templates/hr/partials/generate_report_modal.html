@@ -276,11 +276,11 @@
                     </div>
                 </div>
 
-                <!-- SECTION 3: GOOGLE SHEETS DESTINATION -->
+                <!-- SECTION 3: GOOGLE SHEETS TABLE DETAILS -->
                 <div class="report-form-group-card" style="border: 1.5px solid #86efac; border-radius: 12px; padding: 18px; background: #f0fdf4;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                         <label class="modal-form-label" style="margin: 0; font-size: 13.5px; font-weight: 700; color: #14532d; display: flex; align-items: center; gap: 8px;">
-                            <i class="fab fa-google-drive" style="color: #0f9d58; font-size: 16px;"></i> 3. Google Sheet File Details
+                            <i class="fab fa-google-drive" style="color: #0f9d58; font-size: 16px;"></i> 3. Google Sheet Table Details
                         </label>
                         <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">
                             Automatic Sheet Generation
@@ -289,29 +289,17 @@
                     <p style="margin: 0 0 12px 0; font-size: 12px; color: #166534;">
                         A brand new Google Spreadsheet will be automatically generated with your customized report records and opened in a new tab:
                     </p>
-                    <div style="display: grid; grid-template-columns: 1.8fr 1.2fr; gap: 12px;">
-                        <div>
-                            <label style="display: block; font-size: 12px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
-                                Google Sheet File Name
-                            </label>
-                            <input type="text" 
-                                   name="file_name" 
-                                   id="report_modal_file_name" 
-                                   placeholder="e.g. DBRecruit AI - HR Audit Trail (Sep 2026)" 
-                                   class="form-control" 
-                                   style="width: 100%; height: 40px; border-radius: 8px; border: 1.5px solid #86efac; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-size: 12px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
-                                Worksheet Tab Name
-                            </label>
-                            <input type="text" 
-                                   name="tab_name" 
-                                   id="report_modal_tab_name" 
-                                   placeholder="e.g. Audit Trail - Sep 2026" 
-                                   class="form-control" 
-                                   style="width: 100%; height: 40px; border-radius: 8px; border: 1.5px solid #86efac; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff;">
-                        </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #14532d; margin-bottom: 4px;">
+                            Title for the table
+                        </label>
+                        <input type="text" 
+                               name="file_name" 
+                               id="report_modal_file_name" 
+                               placeholder="e.g. DBRecruit AI - Cancelled &amp; Disqualified Candidates (All Time)" 
+                               class="form-control" 
+                               style="width: 100%; height: 42px; border-radius: 8px; border: 1.5px solid #86efac; padding: 0 12px; font-size: 13px; color: #1e293b; background: #ffffff;">
+                        <input type="hidden" name="tab_name" id="report_modal_tab_name" value="">
                     </div>
                     <div id="googleSheetStatusNotice" style="display: none; margin-top: 10px; font-size: 12px; padding: 8px 12px; border-radius: 6px;"></div>
                 </div>

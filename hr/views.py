@@ -3532,7 +3532,7 @@ def reports_dashboard(request):
 
     tab_display_names = {
         "audit": "HR System Audit Trail",
-        "cancelled": "Cancelled & Rejected Applications",
+        "cancelled": "Cancelled & Disqualified Candidates",
         "evaluations": "Evaluated Candidates",
         "final_decision": "Candidates with Final Decision",
     }
@@ -3649,8 +3649,8 @@ def export_reports_google_sheet(request):
     # Extract tabular data based on active tab and timeframe filters
     data = extract_report_tabular_data(tab_type, params)
 
-    # File and tab names
-    custom_file_name = params.get("file_name", "").strip()
+    # File and table title
+    custom_file_name = params.get("file_name", "").strip() or params.get("table_title", "").strip()
     file_title = custom_file_name or f"DBRecruit AI - {data.get('report_title', 'Report')} ({data.get('period_str', 'All Time')})"
 
     custom_tab = params.get("tab_name", "").strip()
@@ -3658,6 +3658,7 @@ def export_reports_google_sheet(request):
 
     meta_info = {
         "title": data.get("report_title", "HR Report"),
+        "table_title": file_title,
         "period": data.get("period_str", "All Time"),
         "generated_by": request.user.get_full_name() or request.user.username,
         "generated_at": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),

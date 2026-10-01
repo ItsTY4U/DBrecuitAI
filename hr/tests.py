@@ -4141,10 +4141,9 @@ class HRGoogleSheetsExportTests(TestCase):
 
         audit_data = extract_report_tabular_data("audit", {"month": "9", "year": "2026"})
         self.assertEqual(audit_data["report_title"], "HR System Audit Trail")
-        self.assertIn("Timestamp", audit_data["headers"])
-        self.assertIn("Action Category", audit_data["headers"])
+        self.assertEqual(audit_data["headers"], ["Timestamp", "HR Operator Name", "Details & Description"])
         self.assertGreaterEqual(len(audit_data["rows"]), 1)
-        self.assertIn("Scheduled Interview", str(audit_data["rows"][0]))
+        self.assertIn("Scheduled interview for John Doe on Sep 20.", str(audit_data["rows"][0]))
 
         # 2. Cancelled Application in September 2026
         app_cancelled = Application.objects.create(
@@ -4158,7 +4157,7 @@ class HRGoogleSheetsExportTests(TestCase):
         )
         Application.objects.filter(id=app_cancelled.id).update(created_at=dt_sep)
         cancelled_data = extract_report_tabular_data("cancelled", {"month": "9", "year": "2026"})
-        self.assertEqual(cancelled_data["report_title"], "Cancelled & Rejected Applications")
+        self.assertEqual(cancelled_data["report_title"], "Cancelled & Disqualified Candidates")
         self.assertIn("Candidate Full Name", cancelled_data["headers"])
         self.assertIn("Disqualification Stage", cancelled_data["headers"])
         self.assertGreaterEqual(len(cancelled_data["rows"]), 1)
@@ -4251,6 +4250,14 @@ class HRGoogleSheetsExportTests(TestCase):
         self.assertEqual(res.get("rows_count"), 2)
         self.assertIn("tsv_data", res)
         self.assertIn("csv_data", res)
+        # Check that title is at the top of TSV and metadata cells are at the bottom
+        tsv_lines = res["tsv_data"].strip().split("\n")
+        self.assertEqual(tsv_lines[0], "DBRecruit AI - Test Report (September 2026)")
+        self.assertEqual(tsv_lines[1], "")
+        self.assertEqual(tsv_lines[2], "Col A\tCol B\tCol C")
+        # Metadata at bottom
+        self.assertIn("Period: September 2026", tsv_lines[-1])
+        self.assertIn("Total Records: 2", tsv_lines[-1])
 
     def test_export_google_sheet_view_without_link_creates_new_file(self):
         """Export endpoint generates a new Google Sheet without any link provided."""

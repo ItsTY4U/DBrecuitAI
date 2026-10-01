@@ -379,17 +379,17 @@ function openGenerateReportModal(reportType) {
         }
         if (countEl) countEl.innerText = '{{ total_audit_logs }} records available';
     } else if (reportType === 'cancelled') {
-        if (titleEl) titleEl.innerText = 'Generate Cancelled Applications Report';
-        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and disqualification phases to generate or print.';
+        if (titleEl) titleEl.innerText = 'Generate Cancelled & Disqualified Candidates Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and disqualification phases to generate.';
         if (badgeEl) {
-            badgeEl.innerHTML = '<i class="fas fa-ban"></i> Cancelled & Rejected Applications';
+            badgeEl.innerHTML = '<i class="fas fa-ban"></i> Cancelled & Disqualified Candidates';
             badgeEl.style.background = '#fee2e2';
             badgeEl.style.color = '#b91c1c';
         }
         if (countEl) countEl.innerText = '{{ total_cancelled }} disqualified records';
     } else if (reportType === 'evaluations') {
         if (titleEl) titleEl.innerText = 'Generate Evaluated Candidates Report';
-        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and rubric recommendations to generate or print.';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and rubric recommendations to generate.';
         if (badgeEl) {
             badgeEl.innerHTML = '<i class="fas fa-clipboard-check"></i> Evaluated Candidates';
             badgeEl.style.background = '#dcfce7';
@@ -398,7 +398,7 @@ function openGenerateReportModal(reportType) {
         if (countEl) countEl.innerText = '{{ total_evaluations }} evaluations recorded';
     } else if (reportType === 'final_decision') {
         if (titleEl) titleEl.innerText = 'Generate Final Hiring Decisions Report';
-        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and final hiring determinations to generate or print.';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and final hiring determinations to generate.';
         if (badgeEl) {
             badgeEl.innerHTML = '<i class="fas fa-gavel"></i> Candidates with Final Decision';
             badgeEl.style.background = '#fef3c7';
