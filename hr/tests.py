@@ -2488,6 +2488,62 @@ class HRReportsAndFinalDecisionTests(TestCase):
         self.assertContains(response, 'id="final-review-modal-container"')
         self.assertContains(response, "openFinalReviewModal")
 
+    def test_candidate_detail_final_decision_stage_removes_evaluate_button(self):
+        """When candidate stage is Final Decision (Hired/Not Hired), Evaluate Candidate button is removed from Next Actions."""
+        from hr.models import CandidateEvaluation, Interview
+        from datetime import date, time
+
+        # Create scheduled interview for the applicant
+        interview = Interview.objects.create(
+            interview_type="Online Interview",
+            interviewer="HR Interviewer",
+            date=date.today(),
+            time=time(10, 0),
+        )
+        interview.applicants.add(self.applicant)
+
+        # 1. Final Decision: Hired
+        self.applicant.status = "Hired"
+        self.applicant.save()
+        eval_hired = CandidateEvaluation.objects.create(
+            application=self.applicant,
+            evaluator=self.staff_user,
+            status="Completed",
+            overall_rating=4.9,
+            recommendation="Strong Hire",
+            final_decision="Hired",
+            final_decision_by=self.staff_user,
+            final_decision_notes="Candidate accepted job offer.",
+        )
+
+        url = reverse("candidate_detail", kwargs={"pk": self.applicant.pk})
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        # Stage indicator should show Final Decision (Hired)
+        self.assertContains(resp, "Stage 5: Final Decision (Hired)")
+        self.assertContains(resp, "FINAL DECISION: HIRED")
+
+        # Next Actions must NOT contain Evaluate Candidate button
+        self.assertNotContains(resp, "btn-evaluate")
+        self.assertNotContains(resp, "Evaluate Candidate</span>")
+        self.assertNotContains(resp, "Update Evaluation</span>")
+        self.assertContains(resp, "Send Candidate Email")
+
+        # 2. Final Decision: Not Hired
+        self.applicant.status = "Rejected"
+        self.applicant.save()
+        eval_hired.final_decision = "Not Hired"
+        eval_hired.final_decision_notes = "Did not meet requirements."
+        eval_hired.save()
+
+        resp_rej = self.client.get(url)
+        self.assertEqual(resp_rej.status_code, 200)
+        self.assertContains(resp_rej, "Stage 5: Final Decision (Not Hired)")
+        self.assertNotContains(resp_rej, "btn-evaluate")
+        self.assertNotContains(resp_rej, "Evaluate Candidate</span>")
+        self.assertContains(resp_rej, "Send Candidate Email")
+
 
 class HRDashboardModernizationTests(TestCase):
     def setUp(self):

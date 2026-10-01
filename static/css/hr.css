@@ -2260,13 +2260,16 @@ body.hr-loading .sidebar-logo .loader,
 }
 
 .status-pill {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 4px 10px;
     border-radius: 8px;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.3px;
+    white-space: nowrap !important;
 }
 
 .status-screening { background: #fef3c7; color: #92400e; }
@@ -6914,6 +6917,11 @@ table .btn-review-applicant {
     text-align: right;
 }
 
+.candidate-data-table thead th.th-score,
+th.th-score {
+    text-align: left !important;
+}
+
 .candidate-row {
     background: #ffffff;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
@@ -9689,7 +9697,155 @@ table .btn-review-applicant {
 }
 
 .final-decisions-body {
-    padding: 24px;
+    padding: 16px 20px;
+}
+
+/* Final Decision Report Sections (Hired & Not Hired) */
+.final-decision-dept-block {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    margin-bottom: 14px;
+}
+
+.final-decision-dept-header {
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.final-decision-dept-header.hired-dept-hdr {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border-bottom: 1px solid #dcfce7;
+}
+
+.final-decision-dept-header.not-hired-dept-hdr {
+    background: linear-gradient(135deg, #fff1f2 0%, #fef2f2 100%);
+    border-bottom: 1px solid #fee2e2;
+}
+
+.final-decision-dept-jobs {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.final-decision-job-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.final-decision-job-hdr {
+    background: #ffffff;
+    padding: 7px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.final-decision-table-wrap {
+    background: #f8fafc;
+    padding: 8px 10px;
+}
+
+.final-decision-table-wrap .candidate-data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    font-size: 13px;
+}
+
+.final-decision-table-wrap .candidate-data-table thead th {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 5px 12px 6px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.final-decision-table-wrap .candidate-data-table thead th.text-right {
+    text-align: right;
+}
+
+.final-decision-table-wrap .candidate-row {
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.final-decision-table-wrap .candidate-row:hover {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    background: #ffffff;
+}
+
+.final-decision-table-wrap .candidate-row td {
+    padding: 8px 12px;
+    vertical-align: middle;
+}
+
+.final-decision-table-wrap .candidate-row td:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.final-decision-table-wrap .candidate-row td:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.final-decision-table-wrap .table-candidate-name a {
+    color: #0f172a;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.final-decision-table-wrap .table-candidate-name a:hover {
+    color: #2d5a27;
+}
+
+.note-bubble-hired {
+    font-size: 11.5px;
+    color: #14532d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 6px;
+    padding: 4px 9px;
+    line-height: 1.35;
+    max-width: 270px;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.note-bubble-not-hired {
+    font-size: 11.5px;
+    color: #7f1d1d;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 4px 9px;
+    line-height: 1.35;
+    max-width: 270px;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
 @media (max-width: 768px) {
@@ -9699,7 +9855,7 @@ table .btn-review-applicant {
         padding: 16px;
     }
     .final-decisions-body {
-        padding: 16px;
+        padding: 12px;
     }
 }
 
@@ -10118,6 +10274,214 @@ textarea:disabled,
     transform: none !important;
     box-shadow: none !important;
 }
+
+/* =========================================================
+   COMPACT INTERVIEW TABLES DESIGN & MINIMIZED SPACING
+   Uniformed with /hr/candidates/?tab=all job-table-container
+   ========================================================= */
+.compact-interview-container {
+    background: #f8fafc;
+    border-radius: 14px;
+    border: 1.5px solid #e2e8f0;
+    padding: 12px 14px;
+    min-height: 80px;
+    margin-top: 6px;
+}
+
+.compact-interview-container .candidate-data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+    table-layout: auto;
+}
+
+.compact-interview-container .candidate-data-table thead th {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 12px 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.compact-interview-container .candidate-data-table thead th.text-right {
+    text-align: right;
+}
+
+.compact-interview-container .candidate-data-table thead th.text-center {
+    text-align: center;
+}
+
+.compact-interview-container .candidate-data-table thead th.th-score {
+    text-align: left !important;
+}
+
+.compact-interview-container .candidate-row {
+    background: #ffffff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+    border-radius: 10px;
+    transition: all 0.15s ease;
+}
+
+.compact-interview-container .candidate-row:hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    background: #ffffff;
+}
+
+.compact-interview-container .candidate-row td {
+    padding: 8px 12px;
+    vertical-align: middle;
+}
+
+.compact-interview-container .candidate-row td:first-child {
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.compact-interview-container .candidate-row td:last-child {
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+.compact-interview-container .table-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #e2e8f0;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.compact-interview-container .table-applicant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.compact-interview-container .applicant-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.compact-interview-container .table-candidate-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+}
+
+.compact-interview-container .table-candidate-name a {
+    color: #0f172a;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.compact-interview-container .table-candidate-name a:hover {
+    color: #2d5a27;
+}
+
+.compact-interview-container .app-id-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    width: fit-content;
+}
+
+/* Compact Date & Schedule Display */
+.compact-cell-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.compact-cell-main {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.compact-cell-sub {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Status Badges strictly 1 line */
+.compact-interview-container .status-pill,
+.compact-interview-container .status-pill.status-screening,
+.compact-interview-container .status-pill.status-scheduled,
+.compact-interview-container .status-pill.status-rescheduled,
+.compact-interview-container .status-pill.status-ongoing,
+.compact-interview-container .status-pill.status-completed {
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.compact-interview-container .btn-table-review {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none !important;
+    transition: all 0.2s ease;
+}
+
+.compact-interview-container .btn-table-review-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    color: #475569;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.compact-interview-container .btn-table-review-icon:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
 
 
 

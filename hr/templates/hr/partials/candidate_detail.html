@@ -482,6 +482,8 @@
                 <i class="fas fa-gavel"></i>
                 <span>Final Review</span>
             </button>
+            {% elif candidate_evaluation and candidate_evaluation.final_decision or application.status == "Hired" or application.status == "Rejected" %}
+                {# Candidate stage is Final Decision (Hired/Not Hired) or concluded - Do not show Evaluate Candidate in Next Actions #}
             {% elif is_manage_locked_by_other %}
             <button type="button" class="hero-action-btn disabled btn-evaluate" disabled data-action-btn="EVALUATE" data-cand-id="{{ application.pk }}" style="background: #f1f5f9; color: #64748b !important; border: 1px solid #cbd5e1; cursor: not-allowed; opacity: 0.85;" title="Interview is currently being managed by {{ active_manage_lock.user_name }}.">
                 <i class="fas fa-lock"></i>

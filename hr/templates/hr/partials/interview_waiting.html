@@ -110,112 +110,115 @@
                                 <span>Batch Schedule All ({{ item.total_count }})</span>
                             </button>
                         </div>
-                        <div class="table-responsive">
-                            <table class="candidate-data-table" id="waiting-table-{{ item.job.id }}">
-                                <thead>
-                                    <tr>
-                                        <th class="th-candidate" style="width: 190px;">Candidate</th>
-                                        <th class="th-date">Applied Date</th>
-                                        <th class="th-score" style="width: 110px;">AI Score</th>
-                                        <th class="th-status" style="width: 160px;">Status</th>
-                                        <th class="th-action text-right" style="width: 170px;">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for cand in item.applicants %}
-                                    <tr class="candidate-row waiting-cand-row" data-search-target="{{ cand.first_name|lower }} {{ cand.last_name|lower }} {{ cand.email|lower }} {{ cand.application_id|lower }}">
-                                        <td class="td-candidate">
-                                            <div class="table-applicant-info">
-                                                <div class="table-avatar" style="background: linear-gradient(135deg, #b45309 0%, #78350f 100%); color: #ffffff;">
-                                                    {{ cand.first_name|first|upper }}{{ cand.last_name|first|upper }}
+                        <div class="job-table-container compact-interview-container">
+                            <div class="table-responsive">
+                                <table class="candidate-data-table" id="waiting-table-{{ item.job.id }}">
+                                    <thead>
+                                        <tr>
+                                            <th class="th-candidate" style="width: 28%; min-width: 200px;">Candidate</th>
+                                            <th class="th-date" style="width: 22%; min-width: 145px;">Applied Date</th>
+                                            <th class="th-score" style="width: 14%; min-width: 95px; text-align: left;">AI Score</th>
+                                            <th class="th-status" style="width: 18%; min-width: 175px;">Status</th>
+                                            <th class="th-action text-right" style="width: 18%; min-width: 155px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for cand in item.applicants %}
+                                        <tr class="candidate-row waiting-cand-row" data-search-target="{{ cand.first_name|lower }} {{ cand.last_name|lower }} {{ cand.email|lower }} {{ cand.application_id|lower }}">
+                                            <td class="td-candidate">
+                                                <div class="table-applicant-info">
+                                                    <div class="table-avatar">
+                                                        {{ cand.first_name|first|upper }}{{ cand.last_name|first|upper }}
+                                                    </div>
+                                                    <div class="applicant-meta">
+                                                        <span class="table-candidate-name">
+                                                            <a href="{% url 'candidate_detail' cand.id %}"
+                                                               hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
+                                                               hx-target="#candidate-profile-modal-container"
+                                                               hx-swap="innerHTML">
+                                                                {{ cand.first_name }}
+                                                                {% if cand.middle_initial %}{{ cand.middle_initial }}.{% endif %}
+                                                                {{ cand.last_name }}
+                                                            </a>
+                                                        </span>
+                                                        <span class="app-id-tag">
+                                                            <i class="fas fa-hashtag"></i> {{ cand.application_id }}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div class="applicant-meta">
-                                                    <span class="table-candidate-name">
-                                                        <a href="{% url 'candidate_detail' cand.id %}"
-                                                           hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
-                                                           hx-target="#candidate-profile-modal-container"
-                                                           hx-swap="innerHTML"
-                                                           style="color: inherit; text-decoration: none;">
-                                                            {{ cand.first_name }}
-                                                            {% if cand.middle_initial %}{{ cand.middle_initial }}.{% endif %}
-                                                            {{ cand.last_name }}
-                                                        </a>
+                                            </td>
+                                            <td class="td-date">
+                                                <div class="compact-cell-wrap">
+                                                    <span class="compact-cell-main">
+                                                        <i class="far fa-calendar-alt text-green"></i>
+                                                        {{ cand.created_at|date:"M d, Y" }}
                                                     </span>
-                                                    <span class="app-id-tag" style="margin-top: 3px; display: inline-block;">
-                                                        <i class="fas fa-hashtag"></i> {{ cand.application_id }}
+                                                    <span class="compact-cell-sub">
+                                                        <i class="far fa-clock"></i>
+                                                        {{ cand.created_at|time:"g:i A" }}
                                                     </span>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td class="td-date">
-                                            <div style="font-size: 12.5px; font-weight: 700; color: #1e293b;">
-                                                <i class="far fa-calendar-alt text-green" style="margin-right: 4px;"></i>
-                                                {{ cand.created_at|date:"M d, Y" }}
-                                            </div>
-                                            <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
-                                                <i class="far fa-clock" style="margin-right: 4px;"></i>
-                                                {{ cand.created_at|time:"g:i A" }}
-                                            </div>
-                                        </td>
-                                        <td class="td-score">
-                                            <span class="ai-score-pill {% if cand.ai_score >= 90 %}score-high{% elif cand.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
-                                                <i class="fas fa-bolt"></i> {{ cand.ai_score }}%
-                                            </span>
-                                        </td>
-                                        <td class="td-status">
-                                            <span class="status-pill status-screening" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 700; background: #fef3c7; color: #b45309;">
-                                                <i class="fas fa-hourglass-half"></i> Ready to Schedule
-                                            </span>
-                                        </td>
-                                        <td class="td-action text-right">
-                                            <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
-                                                {% if cand.active_lock %}
-                                                <button type="button" 
-                                                        class="btn-table-review disabled"
-                                                        data-action-btn="SCHEDULE"
-                                                        data-cand-id="{{ cand.id }}"
-                                                        disabled
-                                                        style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
-                                                        title="Candidate is currently being scheduled by {{ cand.active_lock.user_name }}.">
-                                                    <i class="fas fa-lock"></i>
-                                                    <span>Locked ({{ cand.active_lock.user_name }})</span>
-                                                </button>
-                                                {% else %}
-                                                <button type="button" 
-                                                        class="btn-table-review" 
-                                                        data-action-btn="SCHEDULE"
-                                                        data-cand-id="{{ cand.id }}"
-                                                        onclick="hrOpenScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
-                                                        style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
-                                                        title="Schedule candidate interview">
-                                                    <i class="fas fa-calendar-plus"></i>
-                                                    <span>Schedule</span>
-                                                </button>
-                                                {% endif %}
-                                                <button type="button"
-                                                        class="btn-table-review"
-                                                        hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
-                                                        hx-target="#candidate-profile-modal-container"
-                                                        hx-swap="innerHTML"
-                                                        title="View Full Profile">
-                                                    <i class="fas fa-user"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="5">
-                                            <div class="empty-table-state">
-                                                <i class="fas fa-users-slash empty-table-icon"></i>
-                                                <h5>No Candidates</h5>
-                                                <p>No candidates waiting for interview for this position.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                                            </td>
+                                            <td class="td-score text-center">
+                                                <span class="ai-score-pill {% if cand.ai_score >= 90 %}score-high{% elif cand.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
+                                                    <i class="fas fa-bolt"></i> {{ cand.ai_score }}%
+                                                </span>
+                                            </td>
+                                            <td class="td-status">
+                                                <span class="status-pill status-screening" style="white-space: nowrap !important; display: inline-flex; align-items: center; gap: 5px; font-weight: 700; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">
+                                                    <i class="fas fa-hourglass-half"></i> Ready to Schedule
+                                                </span>
+                                            </td>
+                                            <td class="td-action text-right">
+                                                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
+                                                    {% if cand.active_lock %}
+                                                    <button type="button" 
+                                                            class="btn-table-review disabled"
+                                                            data-action-btn="SCHEDULE"
+                                                            data-cand-id="{{ cand.id }}"
+                                                            disabled
+                                                            style="background: #f1f5f9; color: #64748b !important; border-color: #cbd5e1; cursor: not-allowed; opacity: 0.85;"
+                                                            title="Candidate is currently being scheduled by {{ cand.active_lock.user_name }}.">
+                                                        <i class="fas fa-lock"></i>
+                                                        <span>Locked ({{ cand.active_lock.user_name }})</span>
+                                                    </button>
+                                                    {% else %}
+                                                    <button type="button" 
+                                                            class="btn-table-review" 
+                                                            data-action-btn="SCHEDULE"
+                                                            data-cand-id="{{ cand.id }}"
+                                                            onclick="hrOpenScheduleModal('{{ cand.id }}', '{{ cand.first_name|escapejs }} {{ cand.last_name|escapejs }}', '{{ item.job.title|escapejs }}', '{{ item.job.id }}')"
+                                                            style="background: #2d5a27; color: #ffffff !important; border-color: #2d5a27;"
+                                                            title="Schedule candidate interview">
+                                                        <i class="fas fa-calendar-plus"></i>
+                                                        <span>Schedule</span>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button type="button"
+                                                            class="btn-table-review-icon"
+                                                            hx-get="{% url 'candidate_detail' cand.id %}?modal=1"
+                                                            hx-target="#candidate-profile-modal-container"
+                                                            hx-swap="innerHTML"
+                                                            title="View Full Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5">
+                                                <div class="empty-table-state">
+                                                    <i class="fas fa-users-slash empty-table-icon"></i>
+                                                    <h5>No Candidates</h5>
+                                                    <p>No candidates waiting for interview for this position.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
