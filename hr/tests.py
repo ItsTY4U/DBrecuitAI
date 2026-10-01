@@ -2012,15 +2012,15 @@ class CandidateManagementTests(TestCase):
         self.assertEqual(resp_default.status_code, 200)
         self.assertFalse(resp_default.context["show_eval_form"])
         self.assertContains(resp_default, "Candidate Interview Evaluation Not Yet Initiated")
-        self.assertContains(resp_default, 'id="eval-pending-card" class="eval-pending-box" style="display: block;')
-        self.assertContains(resp_default, 'id="eval-form-card" class="eval-form-container" style="display: none;"')
+        self.assertContains(resp_default, f'id="eval-pending-card" class="eval-pending-box" data-app-id="{app.pk}" style="display: block;')
+        self.assertContains(resp_default, f'id="eval-form-card" class="eval-form-container" style="display: none;" data-app-id="{app.pk}"')
 
         # GET with ?evaluate=1: form is displayed
         resp_eval = self.client.get(f"{url}?evaluate=1")
         self.assertEqual(resp_eval.status_code, 200)
         self.assertTrue(resp_eval.context["show_eval_form"])
-        self.assertContains(resp_eval, 'id="eval-pending-card" class="eval-pending-box" style="display: none;')
-        self.assertContains(resp_eval, 'id="eval-form-card" class="eval-form-container" style="display: block;"')
+        self.assertContains(resp_eval, f'id="eval-pending-card" class="eval-pending-box" data-app-id="{app.pk}" style="display: none;')
+        self.assertContains(resp_eval, f'id="eval-form-card" class="eval-form-container" style="display: block;" data-app-id="{app.pk}"')
 
     def test_candidate_detail_shortlisted_stage_card(self):
         """Shortlisted candidate displays Shortlisted stage card and waiting schedule footer."""
