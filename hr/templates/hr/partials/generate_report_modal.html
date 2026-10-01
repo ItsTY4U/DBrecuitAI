@@ -276,32 +276,11 @@
                     </div>
                 </div>
 
-                <!-- SECTION 3: REPORT PRESENTATION OPTIONS -->
-                <div class="report-form-group-card" style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; background: #ffffff;">
-                    <label class="modal-form-label" style="margin: 0 0 12px 0; font-size: 13.5px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-sliders text-green"></i> 3. Presentation &amp; Export Options
-                    </label>
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" name="include_kpi" value="1" {% if include_kpi %}checked{% endif %} style="width: 16px; height: 16px; accent-color: #2d5a27; cursor: pointer;">
-                            <span>Include Top KPI Summary Statistics &amp; Metrics Header</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" name="include_notes" value="1" {% if include_notes %}checked{% endif %} style="width: 16px; height: 16px; accent-color: #2d5a27; cursor: pointer;">
-                            <span>Include Qualitative Rationale Notes &amp; Detailed Descriptions</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #334155; cursor: pointer;">
-                            <input type="checkbox" name="include_details" value="1" {% if include_details %}checked{% endif %} style="width: 16px; height: 16px; accent-color: #2d5a27; cursor: pointer;">
-                            <span>Include Operator Identity, Timestamp, and Audit Metadata</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- SECTION 4: GOOGLE SHEETS DESTINATION -->
+                <!-- SECTION 3: GOOGLE SHEETS DESTINATION -->
                 <div class="report-form-group-card" style="border: 1.5px solid #86efac; border-radius: 12px; padding: 18px; background: #f0fdf4;">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                         <label class="modal-form-label" style="margin: 0; font-size: 13.5px; font-weight: 700; color: #14532d; display: flex; align-items: center; gap: 8px;">
-                            <i class="fab fa-google-drive" style="color: #0f9d58; font-size: 16px;"></i> 4. Google Sheet File Details
+                            <i class="fab fa-google-drive" style="color: #0f9d58; font-size: 16px;"></i> 3. Google Sheet File Details
                         </label>
                         <span style="font-size: 11px; font-weight: 800; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">
                             Automatic Sheet Generation
