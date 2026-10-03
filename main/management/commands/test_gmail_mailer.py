@@ -65,8 +65,27 @@ class Command(BaseCommand):
                 )
             )
         else:
+            err_text = str(result.get("error", ""))
             self.stdout.write(
                 self.style.ERROR(
-                    f"\n[Error] Failed to send email: {result.get('error')}"
+                    f"\n[Error] Failed to send email: {err_text}"
                 )
             )
+            if "invalid_grant" in err_text:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "\n--- DIAGNOSIS: invalid_grant detected ---"
+                        "\nCause: In Google Cloud Console, publishing the app (or switching between 'Testing'"
+                        "\nand 'In production') automatically invalidates all existing OAuth 2.0 refresh tokens."
+                        "\n"
+                        "\nResolution Steps:"
+                        "\n1. Open Google OAuth 2.0 Playground: https://developers.google.com/oauthplayground"
+                        "\n2. Click the Gear icon (top right) -> Check 'Use your own OAuth credentials'"
+                        "\n3. Enter your GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET"
+                        "\n4. In Step 1, input scope: https://www.googleapis.com/auth/gmail.send and click 'Authorize APIs'"
+                        "\n5. Sign in with your sending Gmail account and grant permissions"
+                        "\n6. In Step 2, click 'Exchange authorization code for tokens'"
+                        "\n7. Copy the new 'Refresh token' and update GMAIL_REFRESH_TOKEN in your .env file"
+                        "\n------------------------------------------"
+                    )
+                )

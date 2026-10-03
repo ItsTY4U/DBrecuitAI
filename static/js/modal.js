@@ -11,6 +11,7 @@ document.addEventListener("click", function (e) {
                 deptInput.value = deptAttr ? deptAttr : '';
             }
             modal.classList.add('active');
+            updateCriteriaModal(modal);
         }
         return;
     }
@@ -30,7 +31,7 @@ document.addEventListener("click", function (e) {
         if (modal) {
             modal.classList.add('active');
             const input = modal.querySelector('#new-dept-name');
-            if (input) setTimeout(() => input.focus(), 100);
+            if (input) input.focus();
         }
         return;
     }
@@ -53,6 +54,22 @@ document.addEventListener("click", function (e) {
         return;
     }
 
+    // Close job candidates modal
+    const closeJobCandsBtn = e.target.closest('#close-job-candidates-modal, .close-job-candidates-modal-btn');
+    if (closeJobCandsBtn) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    // Close candidate profile modal
+    const closeCandProfileBtn = e.target.closest('#close-candidate-profile-modal, .close-candidate-profile-modal-btn');
+    if (closeCandProfileBtn) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
     // Backdrop clicks
     const postModal = document.getElementById('post-job-modal');
     if (postModal && e.target === postModal) {
@@ -70,10 +87,22 @@ document.addEventListener("click", function (e) {
         if (editContainer) editContainer.innerHTML = '';
     }
 
+    const jobCandsModal = document.getElementById('job-candidates-modal');
+    if (jobCandsModal && e.target === jobCandsModal) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+    }
+
+    const candProfileModal = document.getElementById('candidate-profile-modal');
+    if (candProfileModal && e.target === candProfileModal) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
+    }
+
     // ==========================================
     // KEY QUALIFICATIONS ADD (Event Delegation)
     // ==========================================
-    const addQualBtn = e.target.closest('#edit-add-key-qualification, #add-key-qualification, .btn-add-req-chip');
+    const addQualBtn = e.target.closest('#edit-add-key-qualification, #add-key-qualification');
     if (addQualBtn) {
         const form = addQualBtn.closest('form');
         const container = form
@@ -134,6 +163,16 @@ document.addEventListener("keydown", function (e) {
         const editContainer = document.getElementById('edit-job-modal-container');
         if (editContainer && editContainer.innerHTML.trim() !== '') {
             editContainer.innerHTML = '';
+        }
+
+        const candProfileContainer = document.getElementById('candidate-profile-modal-container');
+        if (candProfileContainer && candProfileContainer.innerHTML.trim() !== '') {
+            candProfileContainer.innerHTML = '';
+        }
+
+        const jobCandsContainer = document.getElementById('job-candidates-modal-container');
+        if (jobCandsContainer && jobCandsContainer.innerHTML.trim() !== '') {
+            jobCandsContainer.innerHTML = '';
         }
     }
 });
@@ -293,3 +332,572 @@ function initInterviewStatus() {
 
 document.addEventListener("DOMContentLoaded", initInterviewStatus);
 document.addEventListener("htmx:afterSwap", initInterviewStatus);
+
+function toggleInterviewComment(button) {
+
+    const card = button.closest(".interview-applicant-card");
+
+    if (!card) {
+        return;
+    }
+
+    const commentBox = card.querySelector(".interview-comment-box");
+    const toggleText = button.querySelector(".comment-toggle-text");
+
+    if (!commentBox) {
+        return;
+    }
+
+    const isVisible = commentBox.classList.toggle("is-visible");
+
+    if (toggleText) {
+        toggleText.textContent = isVisible
+            ? "Hide Comment"
+            : "Add Comment";
+    }
+
+    if (isVisible) {
+        const textarea = commentBox.querySelector(
+            ".interview-comment-input"
+        );
+
+        if (textarea) {
+            textarea.focus();
+        }
+    }
+}
+
+
+function cancelInterviewComment(button) {
+
+    const card = button.closest(".interview-applicant-card");
+
+    if (!card) {
+        return;
+    }
+
+    const commentBox = card.querySelector(".interview-comment-box");
+    const toggleButton = card.querySelector(
+        ".interview-comment-toggle"
+    );
+    const toggleText = toggleButton
+        ? toggleButton.querySelector(".comment-toggle-text")
+        : null;
+
+    const textarea = card.querySelector(
+        ".interview-comment-input"
+    );
+
+    if (textarea) {
+        textarea.value = "";
+    }
+
+    if (commentBox) {
+        commentBox.classList.remove("is-visible");
+    }
+
+    if (toggleText) {
+        toggleText.textContent = "Add Comment";
+    }
+}
+
+
+function handleStatusChange(value) {
+    const rescheduleContainer = document.getElementById('reschedule-container');
+    const reasonContainer = document.querySelector('.interview-status-reason-group');
+
+    // Reschedule date and time
+    if (rescheduleContainer) {
+        if (value === 'Rescheduled') {
+            rescheduleContainer.style.display = 'block';
+        } else {
+            rescheduleContainer.style.display = 'none';
+        }
+    }
+
+    // Reschedule / cancellation reason
+    if (reasonContainer) {
+        if (value === 'Rescheduled' || value === 'Cancelled') {
+            reasonContainer.classList.add('is-visible');
+        } else {
+            reasonContainer.classList.remove('is-visible');
+        }
+    }
+}
+
+// Run when the page loads
+document.addEventListener('DOMContentLoaded', function () {
+    const statusSelect = document.getElementById('interview-status-select');
+
+    if (statusSelect) {
+        handleStatusChange(statusSelect.value);
+    }
+});
+
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    const selectAllCheckbox =
+        document.getElementById('select-all');
+
+    const applicantCheckboxes =
+        document.querySelectorAll('.applicant-check');
+
+
+    /*
+     * Select All
+     */
+
+    if (selectAllCheckbox) {
+
+        selectAllCheckbox.addEventListener(
+            'change',
+            function () {
+
+                applicantCheckboxes.forEach(function (checkbox) {
+
+                    checkbox.checked =
+                        selectAllCheckbox.checked;
+
+                    updateApplicantTimeField(checkbox);
+
+                });
+
+            }
+        );
+
+    }
+
+
+    /*
+     * Individual Applicant Selection
+     */
+
+    applicantCheckboxes.forEach(function (checkbox) {
+
+        checkbox.addEventListener(
+            'change',
+            function () {
+
+                updateApplicantTimeField(this);
+                updateSelectAllState();
+
+            }
+        );
+
+    });
+
+
+    /*
+     * Update the time field
+     */
+
+    function updateApplicantTimeField(checkbox) {
+
+        const applicantId =
+            checkbox.value;
+
+        const timeContainer =
+            document.getElementById(
+                'time-container-' + applicantId
+            );
+
+        const timeInput =
+            document.getElementById(
+                'time-' + applicantId
+            );
+
+        const card =
+            checkbox.closest(
+                '.candidate-schedule-card'
+            );
+
+
+        if (
+            !timeContainer ||
+            !timeInput
+        ) {
+            return;
+        }
+
+
+        if (checkbox.checked) {
+
+            timeContainer.classList.add(
+                'is-visible'
+            );
+
+            timeInput.disabled = false;
+
+            timeInput.required = true;
+
+            if (card) {
+                card.classList.add(
+                    'is-selected'
+                );
+            }
+
+        } else {
+
+            timeContainer.classList.remove(
+                'is-visible'
+            );
+
+            timeInput.disabled = true;
+
+            timeInput.required = false;
+
+            timeInput.value = '';
+
+            if (card) {
+                card.classList.remove(
+                    'is-selected'
+                );
+            }
+
+        }
+
+    }
+
+
+    /*
+     * Keep Select All checkbox updated
+     */
+
+    function updateSelectAllState() {
+
+        if (!selectAllCheckbox) {
+            return;
+        }
+
+        const total =
+            applicantCheckboxes.length;
+
+        const checked =
+            document.querySelectorAll(
+                '.applicant-check:checked'
+            ).length;
+
+
+        selectAllCheckbox.checked =
+            total > 0 &&
+            checked === total;
+
+        selectAllCheckbox.indeterminate =
+            checked > 0 &&
+            checked < total;
+
+    }
+
+
+    /*
+     * Initial state
+     */
+
+    applicantCheckboxes.forEach(function (checkbox) {
+
+        updateApplicantTimeField(
+            checkbox
+        );
+
+    });
+
+});
+
+
+// ==========================================
+// CRITERIA WEIGHT CALCULATION
+// ==========================================
+
+function updateCriteriaTotal(
+    container,
+    totalDisplay,
+    validation,
+    submitButton
+) {
+    if (
+        !container ||
+        !totalDisplay ||
+        !validation ||
+        !submitButton
+    ) {
+        return;
+    }
+
+    const inputs = container.querySelectorAll(
+        ".criteria-weight-input"
+    );
+
+    let total = 0;
+
+    inputs.forEach(function (input) {
+
+        let value = parseFloat(input.value);
+
+        if (!isNaN(value)) {
+            total += value;
+        }
+
+    });
+
+    total = Math.round(total * 100) / 100;
+
+    totalDisplay.textContent = `${total}%`;
+
+    if (total === 100) {
+
+        totalDisplay.classList.remove("is-invalid");
+        totalDisplay.classList.add("is-valid");
+
+        validation.classList.remove("is-invalid");
+        validation.classList.add("is-valid");
+
+        validation.innerHTML = `
+            <i class="fas fa-circle-check"></i>
+            <span>
+                Criteria weights are valid.
+            </span>
+        `;
+
+    } else {
+
+        totalDisplay.classList.remove("is-valid");
+        totalDisplay.classList.add("is-invalid");
+
+        validation.classList.remove("is-valid");
+        validation.classList.add("is-invalid");
+
+        validation.innerHTML = `
+            <i class="fas fa-circle-info"></i>
+            <span>
+                Criteria weights must total 100%.
+            </span>
+        `;
+    }
+}
+
+
+// ==========================================
+// CRITERIA WEIGHT CALCULATOR
+// ==========================================
+
+function updateCriteriaModal(modal) {
+
+    if (!modal) {
+        return;
+    }
+
+    const container = modal.querySelector(
+        ".criteria-container"
+    );
+
+    const totalElement = modal.querySelector(
+        ".criteria-total"
+    );
+
+    const validationElement = modal.querySelector(
+        ".criteria-validation"
+    );
+
+    const submitButton = modal.querySelector(
+        ".btn-modal-submit"
+    );
+
+    if (
+        !container ||
+        !totalElement ||
+        !validationElement ||
+        !submitButton
+    ) {
+        return;
+    }
+
+    const inputs = container.querySelectorAll(
+        ".criteria-weight-input"
+    );
+
+    let total = 0;
+
+    inputs.forEach(function (input) {
+
+        const value = parseFloat(input.value);
+
+        if (!isNaN(value)) {
+            total += value;
+        }
+
+    });
+
+    total = Math.round(total * 100) / 100;
+
+    totalElement.textContent = total + "%";
+
+
+    if (total === 100) {
+
+        totalElement.classList.remove("is-invalid");
+        totalElement.classList.add("is-valid");
+
+        validationElement.classList.remove("is-invalid");
+        validationElement.classList.add("is-valid");
+
+        validationElement.innerHTML = `
+            <i class="fas fa-circle-check"></i>
+            <span>
+                Criteria weights are valid.
+            </span>
+        `;
+
+    } else {
+
+        totalElement.classList.remove("is-valid");
+        totalElement.classList.add("is-invalid");
+
+        validationElement.classList.remove("is-valid");
+        validationElement.classList.add("is-invalid");
+
+        validationElement.innerHTML = `
+            <i class="fas fa-circle-info"></i>
+            <span>
+                Criteria weights must total 100%.
+            </span>
+        `;
+    }
+}
+
+
+// ==========================================
+// HANDLE CRITERIA INPUT
+// ==========================================
+
+document.addEventListener("input", function (event) {
+
+    if (
+        !event.target.classList.contains(
+            "criteria-weight-input"
+        )
+    ) {
+        return;
+    }
+
+    const modal = event.target.closest(
+        "#post-job-modal, #edit-job-modal"
+    );
+
+    if (!modal) {
+        return;
+    }
+
+    let value = event.target.value;
+
+    if (value !== "") {
+
+        value = parseFloat(value);
+
+        if (isNaN(value)) {
+
+            event.target.value = "";
+
+        } else if (value < 0) {
+
+            event.target.value = 0;
+
+        } else if (value > 100) {
+
+            event.target.value = 100;
+
+        }
+    }
+
+    updateCriteriaModal(modal);
+
+});
+
+
+// ==========================================
+// HANDLE CHANGE EVENT
+// ==========================================
+
+document.addEventListener("change", function (event) {
+
+    if (
+        !event.target.classList.contains(
+            "criteria-weight-input"
+        )
+    ) {
+        return;
+    }
+
+    const modal = event.target.closest(
+        "#post-job-modal, #edit-job-modal"
+    );
+
+    if (!modal) {
+        return;
+    }
+
+    updateCriteriaModal(modal);
+
+});
+
+
+// ==========================================
+// INITIALIZE EXISTING MODALS
+// ==========================================
+
+function initializeCriteriaModals() {
+
+    const postModal = document.getElementById(
+        "post-job-modal"
+    );
+
+    const editModal = document.getElementById(
+        "edit-job-modal"
+    );
+
+    if (postModal) {
+        updateCriteriaModal(postModal);
+    }
+
+    if (editModal) {
+        updateCriteriaModal(editModal);
+    }
+}
+
+
+// ==========================================
+// INITIAL PAGE LOAD
+// ==========================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        initializeCriteriaModals();
+
+    }
+);
+
+
+// ==========================================
+// HTMX MODAL LOAD
+// ==========================================
+
+document.body.addEventListener(
+    "htmx:afterSwap",
+    function () {
+
+        initializeCriteriaModals();
+
+    }
+);
+
+
+document.body.addEventListener(
+    "htmx:afterSettle",
+    function () {
+
+        initializeCriteriaModals();
+
+    }
+);

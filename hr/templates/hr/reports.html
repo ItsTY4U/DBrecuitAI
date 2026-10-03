@@ -1,0 +1,865 @@
+{% extends "home_admin.html" %}
+{% load static %}
+
+{% block admin_body %}
+<main class="main-dashboard main-content reports-page-main">
+    <!-- Hero Section encapsulating Header and Stat Cards -->
+    <section class="dashboard-hero-section">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1 class="dashboard-title">
+                    <!--<i class="fas fa-chart-line text-green" style="margin-right: 8px;"></i>--> Candidate Reports &amp; HR Compliance Hub
+                </h1>
+                <p class="dashboard-subtitle">
+                    Centralized registry for HR applicant management audit logs, cancelled/rejected records, evaluated candidates, and final hiring decisions.
+                </p>
+            </div>
+            <div class="header-right">
+                {% include "hr/partials/notification_bell.html" %}
+            </div>
+        </header>
+
+        <!-- Global Top Stat Cards Grid (Inside Hero Section) -->
+        <div class="stats-grid reports-stat-cards-top {% if not include_kpi %}hide-on-print-forced{% endif %}" id="reports-stat-cards-top">
+            <!-- Card 1: Evaluated Candidates Pending Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('evaluations')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-purple">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="stat-badge">Pending Final Review</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ pending_final_decisions_count }}</h3>
+                    <span class="stat-label">Evaluated Candidates Awaiting Decision</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Candidates with Final Decision -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('final_decision')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-green">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <span class="stat-badge">Decisions Concluded</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_final_decisions_count }}</h3>
+                    <span class="stat-label">
+                        <strong>{{ total_hired_final }}</strong> Hired &bull; <strong>{{ total_not_hired_final }}</strong> Not Hired
+                    </span>
+                </div>
+            </div>
+
+            <!-- Card 3: Cancelled / Disqualified Applications -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('cancelled')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-orange">
+                        <i class="fas fa-user-xmark"></i>
+                    </div>
+                    <span class="stat-badge">Disqualified</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_cancelled }}</h3>
+                    <span class="stat-label">Cancelled / Rejected ({{ rejection_rate }}%)</span>
+                </div>
+            </div>
+
+            <!-- Card 4: HR Applicant Management Audit Logs -->
+            <div class="stat-card" style="cursor: pointer;" onclick="switchReportsTab('audit')">
+                <div class="stat-header">
+                    <div class="stat-icon-wrapper icon-blue">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </div>
+                    <span class="stat-badge">HR Activity</span>
+                </div>
+                <div class="stat-content">
+                    <h3 class="stat-value">{{ total_audit_logs }}</h3>
+                    <span class="stat-label">HR Management Audit Events ({{ audit_today_count }} Today)</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sub-Navigation Tabs Bar (Placed Directly BELOW Stat Cards) -->
+    <div class="reports-subnav-container reports-subnav-card" id="reports-subnav-card" style="margin: 0 0 24px 0;">
+        <div class="reports-subnav-tabs" style="display: flex; gap: 12px; padding-bottom: 0; flex-wrap: wrap;">
+            <!-- Tab 1: Audit Logs -->
+            <button type="button" 
+                    id="tab-btn-audit" 
+                    class="reports-subnav-tab {% if active_tab == 'audit' %}active{% endif %}" 
+                    onclick="switchReportsTab('audit')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'audit' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'audit' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'audit' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'audit' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Audit Logs</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'audit' %}rgba(255,255,255,0.25){% else %}#e0e7ff{% endif %}; color: {% if active_tab == 'audit' %}#ffffff{% else %}#4338ca{% endif %};">
+                    {{ total_audit_logs }}
+                </span>
+            </button>
+
+            <!-- Tab 2: Cancelled (Rejected Applications) -->
+            <button type="button" 
+                    id="tab-btn-cancelled" 
+                    class="reports-subnav-tab {% if active_tab == 'cancelled' %}active{% endif %}" 
+                    onclick="switchReportsTab('cancelled')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'cancelled' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'cancelled' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'cancelled' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'cancelled' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-user-xmark"></i>
+                <span>Cancelled (Rejected Applications)</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'cancelled' %}rgba(255,255,255,0.25){% else %}#fee2e2{% endif %}; color: {% if active_tab == 'cancelled' %}#ffffff{% else %}#b91c1c{% endif %};">
+                    {{ total_cancelled }}
+                </span>
+            </button>
+
+            <!-- Tab 3: Evaluated Candidates -->
+            <button type="button" 
+                    id="tab-btn-evaluations" 
+                    class="reports-subnav-tab {% if active_tab == 'evaluations' %}active{% endif %}" 
+                    onclick="switchReportsTab('evaluations')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'evaluations' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'evaluations' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'evaluations' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'evaluations' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Evaluated Candidates</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'evaluations' %}rgba(255,255,255,0.25){% else %}#dcfce7{% endif %}; color: {% if active_tab == 'evaluations' %}#ffffff{% else %}#15803d{% endif %};">
+                    {{ pending_final_decisions_count }}
+                </span>
+            </button>
+
+            <!-- Tab 4: Candidates with Final Decision -->
+            <button type="button" 
+                    id="tab-btn-final_decision" 
+                    class="reports-subnav-tab {% if active_tab == 'final_decision' %}active{% endif %}" 
+                    onclick="switchReportsTab('final_decision')"
+                    style="padding: 11px 22px; font-size: 13.5px; font-weight: 700; border-radius: 12px; border: 1.5px solid {% if active_tab == 'final_decision' %}#2d5a27{% else %}#e2e8f0{% endif %}; background: {% if active_tab == 'final_decision' %}#2d5a27{% else %}#ffffff{% endif %}; color: {% if active_tab == 'final_decision' %}#ffffff{% else %}#475569{% endif %}; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease; box-shadow: {% if active_tab == 'final_decision' %}0 4px 12px rgba(45,90,39,0.2){% else %}0 2px 6px rgba(0,0,0,0.02){% endif %};">
+                <i class="fas fa-gavel"></i>
+                <span>Candidates with Final Decision</span>
+                <span class="subnav-badge" style="font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: {% if active_tab == 'final_decision' %}rgba(255,255,255,0.25){% else %}#fef3c7{% endif %}; color: {% if active_tab == 'final_decision' %}#ffffff{% else %}#b45309{% endif %};">
+                    {{ total_final_decisions_count }}
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab 1 Pane: Audit Logs for HR (HR Actions Only) -->
+    <div id="tab-pane-audit" class="reports-tab-pane" style="display: {% if active_tab == 'audit' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_audit_logs.html" %}
+    </div>
+
+    <!-- Tab 2 Pane: Cancelled (Rejected Applications) -->
+    <div id="tab-pane-cancelled" class="reports-tab-pane" style="display: {% if active_tab == 'cancelled' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_cancelled.html" %}
+    </div>
+
+    <!-- Tab 3 Pane: Evaluated Candidates (Pending Final Decision) -->
+    <div id="tab-pane-evaluations" class="reports-tab-pane" style="display: {% if active_tab == 'evaluations' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_evaluations.html" %}
+    </div>
+
+    <!-- Tab 4 Pane: Candidates with Final Decision -->
+    <div id="tab-pane-final_decision" class="reports-tab-pane" style="display: {% if active_tab == 'final_decision' %}block{% else %}none{% endif %};">
+        {% include "hr/partials/reports_final_decision.html" %}
+    </div>
+
+    <!-- Dynamic Container for Final Review Profile Modal -->
+    <div id="final-review-modal-container"></div>
+
+    <!-- Generate Report Customization Modal -->
+    {% include "hr/partials/generate_report_modal.html" %}
+</main>
+
+<script>
+function switchReportsTab(tabKey) {
+    var tabs = ['audit', 'cancelled', 'evaluations', 'final_decision'];
+    tabs.forEach(function(t) {
+        var pane = document.getElementById('tab-pane-' + t);
+        var btn = document.getElementById('tab-btn-' + t);
+        if (pane) {
+            pane.style.display = (t === tabKey) ? 'block' : 'none';
+        }
+        if (btn) {
+            var badge = btn.querySelector('.subnav-badge');
+            if (t === tabKey) {
+                btn.classList.add('active');
+                btn.style.background = '#2d5a27';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#2d5a27';
+                btn.style.boxShadow = '0 4px 12px rgba(45,90,39,0.2)';
+                if (badge) {
+                    badge.style.background = 'rgba(255,255,255,0.25)';
+                    badge.style.color = '#ffffff';
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#e2e8f0';
+                btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.02)';
+                if (badge) {
+                    if (t === 'audit') {
+                        badge.style.background = '#e0e7ff';
+                        badge.style.color = '#4338ca';
+                    } else if (t === 'cancelled') {
+                        badge.style.background = '#fee2e2';
+                        badge.style.color = '#b91c1c';
+                    } else if (t === 'evaluations') {
+                        badge.style.background = '#dcfce7';
+                        badge.style.color = '#15803d';
+                    } else {
+                        badge.style.background = '#fef3c7';
+                        badge.style.color = '#b45309';
+                    }
+                }
+            }
+            btn.style.borderRadius = '12px';
+        }
+    });
+
+    try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tab', tabKey);
+        window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+        console.warn("Could not update history state", e);
+    }
+}
+
+// ==========================================
+// FINAL REVIEW MODAL POPUP SCRIPTS
+// ==========================================
+var _currentFinalReviewAppId = null;
+
+function openFinalReviewModal(appId) {
+    if (window.HRConcurrency) {
+        window.HRConcurrency.acquireLock(appId, 'FINAL_DECISION').then(function(res) {
+            if (!res.success) {
+                window.HRConcurrency.showConcurrencyAlert('Candidate final decision is currently being reviewed by <strong>' + (res.locked_by || 'another HR user') + '</strong>.');
+                return;
+            }
+            _doOpenFinalReviewModal(appId);
+        });
+    } else {
+        _doOpenFinalReviewModal(appId);
+    }
+}
+
+function _doOpenFinalReviewModal(appId) {
+    _currentFinalReviewAppId = appId;
+    var modalContainer = document.getElementById('final-review-modal-container');
+    if (!modalContainer) return;
+
+    modalContainer.innerHTML = '<div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:9999;"><div style="background:#fff;padding:24px 32px;border-radius:12px;font-weight:700;display:flex;align-items:center;gap:12px;"><i class="fas fa-spinner fa-spin text-green" style="font-size:20px;"></i> Loading applicant profile...</div></div>';
+
+    fetch('/hr/candidates/applicant/' + appId + '/final-review-modal/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('Could not load final review details.');
+        return res.text();
+    })
+    .then(function(html) {
+        modalContainer.innerHTML = html;
+        var backdrop = document.getElementById('finalReviewModalBackdrop');
+        if (backdrop) {
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    })
+    .catch(function(err) {
+        modalContainer.innerHTML = '';
+        if (_currentFinalReviewAppId && window.HRConcurrency) {
+            window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+            _currentFinalReviewAppId = null;
+        }
+        alert('Error: ' + err.message);
+    });
+}
+
+function closeFinalReviewModal() {
+    var backdrop = document.getElementById('finalReviewModalBackdrop');
+    if (backdrop) {
+        backdrop.classList.remove('active');
+    }
+    if (_currentFinalReviewAppId && window.HRConcurrency) {
+        window.HRConcurrency.releaseLock(_currentFinalReviewAppId, 'FINAL_DECISION');
+        _currentFinalReviewAppId = null;
+    }
+    setTimeout(function() {
+        var modalContainer = document.getElementById('final-review-modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+        document.body.style.overflow = '';
+    }, 200);
+}
+
+function handleDecisionSelection(decisionVal) {
+    var labelHire = document.getElementById('label-decision-hire');
+    var labelNotHire = document.getElementById('label-decision-not-hire');
+    var notesReq = document.getElementById('notes_required_tag');
+    var notesHint = document.getElementById('final_notes_hint');
+    var notesArea = document.getElementById('final_decision_notes_input');
+    var errBox = document.getElementById('notes_validation_error');
+    if (errBox) errBox.style.display = 'none';
+
+    if (decisionVal === 'Hired') {
+        if (labelHire) labelHire.classList.add('selected');
+        if (labelNotHire) labelNotHire.classList.remove('selected');
+        if (notesReq) notesReq.style.display = 'none';
+        if (notesHint) notesHint.innerHTML = 'Enter optional hiring, compensation, or onboarding notes.';
+        if (notesArea) notesArea.placeholder = 'e.g. Recommended for immediate offer. Prepared starting package.';
+    } else {
+        if (labelHire) labelHire.classList.remove('selected');
+        if (labelNotHire) labelNotHire.classList.add('selected');
+        if (notesReq) notesReq.style.display = 'inline';
+        if (notesHint) notesHint.innerHTML = '<strong>Required:</strong> Please explain why this candidate was not selected for hire.';
+        if (notesArea) notesArea.placeholder = 'e.g. Did not meet minimum technical rubric benchmark / Better fit candidates identified.';
+    }
+}
+
+function validateFinalDecisionForm(event) {
+    var form = document.getElementById('finalDecisionForm');
+    if (!form) return true;
+
+    var selectedDecision = form.querySelector('input[name="decision"]:checked');
+    if (!selectedDecision) {
+        alert('Please select a final determination: Hire Candidate or Not Hired.');
+        event.preventDefault();
+        return false;
+    }
+
+    if (selectedDecision.value === 'Not Hired') {
+        var notesArea = document.getElementById('final_decision_notes_input');
+        var errBox = document.getElementById('notes_validation_error');
+        if (!notesArea || !notesArea.value.trim()) {
+            if (errBox) errBox.style.display = 'block';
+            if (notesArea) {
+                notesArea.focus();
+                notesArea.style.borderColor = '#dc2626';
+            }
+            event.preventDefault();
+            return false;
+        }
+    }
+    return true;
+}
+
+// ==========================================
+// GENERATE REPORT MODAL JAVASCRIPT
+// ==========================================
+function openGenerateReportModal(reportType) {
+    var modalBackdrop = document.getElementById('generateReportModalBackdrop');
+    if (!modalBackdrop) return;
+
+    var tabInput = document.getElementById('generateReportTabInput');
+    if (tabInput) tabInput.value = reportType;
+
+    var titleEl = document.getElementById('generateModalTitle');
+    var subtitleEl = document.getElementById('generateModalSubtitle');
+    var badgeEl = document.getElementById('generateReportScopeBadge');
+    var countEl = document.getElementById('generateReportScopeCount');
+    var resetLink = document.getElementById('btnModalResetFilters');
+
+    if (resetLink) {
+        resetLink.href = "{% url 'reports' %}?tab=" + reportType;
+    }
+
+    // Hide all scope field panes
+    var scopePanes = document.querySelectorAll('.scope-fields-pane');
+    scopePanes.forEach(function(p) { p.style.display = 'none'; });
+
+    // Target specific pane & configure meta
+    var targetPane = document.getElementById('scope-fields-' + reportType);
+    if (targetPane) targetPane.style.display = 'block';
+
+    if (reportType === 'audit') {
+        if (titleEl) titleEl.innerText = 'Generate HR Audit Trail Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, HR operators, and audit categories to generate or print.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-clock-rotate-left"></i> HR System Audit Trail';
+            badgeEl.style.background = '#e0e7ff';
+            badgeEl.style.color = '#3730a3';
+        }
+        if (countEl) countEl.innerText = '{{ total_audit_logs }} records available';
+    } else if (reportType === 'cancelled') {
+        if (titleEl) titleEl.innerText = 'Generate Cancelled & Disqualified Candidates Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and disqualification phases to generate.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-ban"></i> Cancelled & Disqualified Candidates';
+            badgeEl.style.background = '#fee2e2';
+            badgeEl.style.color = '#b91c1c';
+        }
+        if (countEl) countEl.innerText = '{{ total_cancelled }} disqualified records';
+    } else if (reportType === 'evaluations') {
+        if (titleEl) titleEl.innerText = 'Generate Evaluated Candidates Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and rubric recommendations to generate.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-clipboard-check"></i> Evaluated Candidates';
+            badgeEl.style.background = '#dcfce7';
+            badgeEl.style.color = '#15803d';
+        }
+        if (countEl) countEl.innerText = '{{ total_evaluations }} evaluations recorded';
+    } else if (reportType === 'final_decision') {
+        if (titleEl) titleEl.innerText = 'Generate Final Hiring Decisions Report';
+        if (subtitleEl) subtitleEl.innerText = 'Customize timeframe, departments, and final hiring determinations to generate.';
+        if (badgeEl) {
+            badgeEl.innerHTML = '<i class="fas fa-gavel"></i> Candidates with Final Decision';
+            badgeEl.style.background = '#fef3c7';
+            badgeEl.style.color = '#b45309';
+        }
+        if (countEl) countEl.innerText = '{{ total_final_decisions_count }} finalized decisions';
+    }
+
+    // Refresh suggested file and tab name
+    updateSuggestedFileAndTabName(reportType);
+
+    // Reset status notice
+    var notice = document.getElementById('googleSheetStatusNotice');
+    if (notice) {
+        notice.style.display = 'none';
+        notice.innerHTML = '';
+    }
+
+    modalBackdrop.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGenerateReportModal() {
+    var modalBackdrop = document.getElementById('generateReportModalBackdrop');
+    if (modalBackdrop) {
+        modalBackdrop.classList.remove('active');
+    }
+    document.body.style.overflow = '';
+}
+
+function setTimeframeMode(mode) {
+    var modes = ['month', 'range', 'preset'];
+    modes.forEach(function(m) {
+        var pane = document.getElementById('timeframe-mode-' + m);
+        var btn = document.getElementById('tf-btn-' + m);
+        if (pane) {
+            pane.style.display = (m === mode) ? 'block' : 'none';
+        }
+        if (btn) {
+            if (m === mode) {
+                btn.classList.add('active');
+                btn.style.background = '#ffffff';
+                btn.style.color = '#2d5a27';
+                btn.style.fontWeight = '700';
+                btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            } else {
+                btn.classList.remove('active');
+                btn.style.background = 'transparent';
+                btn.style.color = '#64748b';
+                btn.style.fontWeight = '600';
+                btn.style.boxShadow = 'none';
+            }
+        }
+    });
+    var tfTypeInput = document.getElementById('generateReportTimeframeType');
+    if (tfTypeInput) tfTypeInput.value = mode;
+
+    // Reset irrelevant inputs based on selected mode
+    if (mode === 'month') {
+        var df = document.getElementById('report_modal_date_from');
+        var dt = document.getElementById('report_modal_date_to');
+        var pr = document.getElementById('report_modal_date_range');
+        if (df) df.value = '';
+        if (dt) dt.value = '';
+        if (pr) pr.value = '';
+    } else if (mode === 'range') {
+        var mSel = document.getElementById('report_modal_month');
+        var pr = document.getElementById('report_modal_date_range');
+        if (mSel) mSel.value = '';
+        if (pr) pr.value = '';
+    } else if (mode === 'preset') {
+        var mSel = document.getElementById('report_modal_month');
+        var df = document.getElementById('report_modal_date_from');
+        var dt = document.getElementById('report_modal_date_to');
+        if (mSel) mSel.value = '';
+        if (df) df.value = '';
+        if (dt) dt.value = '';
+    }
+
+    updateSuggestedFileAndTabName();
+}
+
+function updateSuggestedFileAndTabName(optReportType) {
+    var tabInput = document.getElementById('generateReportTabInput');
+    var currentTab = optReportType || (tabInput ? tabInput.value : 'audit') || 'audit';
+    var fileNameInput = document.getElementById('report_modal_file_name');
+    var tabNameInput = document.getElementById('report_modal_tab_name');
+
+    var monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var monthShort = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var monthEl = document.getElementById('report_modal_month');
+    var yearEl = document.getElementById('report_modal_year');
+    var dfEl = document.getElementById('report_modal_date_from');
+    var dtEl = document.getElementById('report_modal_date_to');
+    var prEl = document.getElementById('report_modal_date_range');
+    var tfTypeEl = document.getElementById('generateReportTimeframeType');
+
+    var mode = tfTypeEl ? tfTypeEl.value : 'month';
+    var fullTimeStr = "";
+    var shortTimeStr = "";
+
+    if (mode === 'month') {
+        var monthVal = monthEl ? monthEl.value : '';
+        var yearVal = yearEl ? yearEl.value : '';
+        if (monthVal && monthNames[parseInt(monthVal)]) {
+            fullTimeStr = monthNames[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
+            shortTimeStr = monthShort[parseInt(monthVal)] + (yearVal ? " " + yearVal : "");
+        } else if (yearVal) {
+            fullTimeStr = yearVal;
+            shortTimeStr = yearVal;
+        } else {
+            fullTimeStr = "All Time";
+            shortTimeStr = "All Time";
+        }
+    } else if (mode === 'range') {
+        var df = dfEl ? dfEl.value : '';
+        var dt = dtEl ? dtEl.value : '';
+        if (df && dt) {
+            fullTimeStr = df + " to " + dt;
+            shortTimeStr = df.slice(-5) + " - " + dt.slice(-5);
+        } else if (df) {
+            fullTimeStr = "From " + df;
+            shortTimeStr = "From " + df;
+        } else if (dt) {
+            fullTimeStr = "Until " + dt;
+            shortTimeStr = "Until " + dt;
+        } else {
+            fullTimeStr = "Custom Range";
+            shortTimeStr = "Custom Range";
+        }
+    } else if (mode === 'preset') {
+        var pr = prEl ? prEl.value : '';
+        if (pr === 'today') { fullTimeStr = 'Today'; shortTimeStr = 'Today'; }
+        else if (pr === '7days') { fullTimeStr = 'Past 7 Days'; shortTimeStr = '7 Days'; }
+        else if (pr === '30days') { fullTimeStr = 'Past 30 Days'; shortTimeStr = '30 Days'; }
+        else if (pr === 'quarter') { fullTimeStr = 'Past 90 Days'; shortTimeStr = 'Quarter'; }
+        else { fullTimeStr = 'All Time'; shortTimeStr = 'All Time'; }
+    }
+
+    var reportTitle = "HR Report";
+    var tabBase = "Report";
+    if (currentTab === 'audit') {
+        reportTitle = "HR System Audit Trail";
+        tabBase = "Audit Trail";
+    } else if (currentTab === 'cancelled') {
+        reportTitle = "Cancelled & Disqualified Candidates";
+        tabBase = "Cancelled";
+    } else if (currentTab === 'evaluations') {
+        reportTitle = "Evaluated Candidates";
+        tabBase = "Evaluations";
+    } else if (currentTab === 'final_decision') {
+        reportTitle = "Candidates with Final Decision";
+        tabBase = "Final Decisions";
+    }
+
+    var suggestedFile = "DBRecruit AI - " + reportTitle + " (" + fullTimeStr + ")";
+    var suggestedTab = tabBase + " - " + shortTimeStr;
+
+    if (fileNameInput) {
+        fileNameInput.placeholder = suggestedFile;
+        if (!fileNameInput.value || fileNameInput.dataset.autoFilled !== "false") {
+            fileNameInput.value = suggestedFile;
+            fileNameInput.dataset.autoFilled = "true";
+        }
+    }
+
+    if (tabNameInput) {
+        tabNameInput.placeholder = suggestedTab;
+        if (!tabNameInput.value || tabNameInput.dataset.autoFilled !== "false") {
+            tabNameInput.value = suggestedTab;
+            tabNameInput.dataset.autoFilled = "true";
+        }
+    }
+}
+
+function getCSRFToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    var input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    var name = 'csrftoken=';
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i].trim();
+        if (c.indexOf(name) === 0) return c.substring(name.length, c.length);
+    }
+    return '';
+}
+
+function triggerHrToast(theme, category, title, description, link) {
+    var stream = document.getElementById('hr-toast-stream');
+    if (!stream) return;
+    var toastId = 'toast-client-' + Date.now();
+    var div = document.createElement('div');
+    div.className = 'hr-subtle-toast toast-' + (theme || 'emerald');
+    div.id = toastId;
+    div.setAttribute('role', 'status');
+    div.setAttribute('aria-live', 'polite');
+    div.innerHTML = 
+        '<div class="toast-body">' +
+            '<div class="toast-indicator">' +
+                '<span class="pulse-ring"></span>' +
+                '<span class="pulse-core"></span>' +
+            '</div>' +
+            '<div class="toast-main">' +
+                '<div class="toast-header-row">' +
+                    '<span class="toast-category">' + category + '</span>' +
+                    '<span class="toast-actor"><i class="fab fa-google-drive"></i> Sheets Export</span>' +
+                '</div>' +
+                '<div class="toast-title">' + title + '</div>' +
+                (description ? '<div class="toast-desc">' + description + '</div>' : '') +
+                (link ? '<a href="' + link + '" target="_blank" class="toast-link">Open Google Sheet <i class="fas fa-external-link-alt"></i></a>' : '') +
+            '</div>' +
+            '<button type="button" class="toast-close" onclick="dismissToast(\'' + toastId + '\')" aria-label="Dismiss">' +
+                '<i class="fas fa-xmark"></i>' +
+            '</button>' +
+        '</div>' +
+        '<div class="toast-progress">' +
+            '<div class="toast-progress-fill"></div>' +
+        '</div>';
+    stream.appendChild(div);
+    setTimeout(function() {
+        if (typeof dismissToast === 'function') {
+            dismissToast(toastId);
+        } else if (div.parentElement) {
+            div.remove();
+        }
+    }, 6000);
+}
+
+// Global storage for last exported data to support re-copying or re-downloading
+window._lastExportedTsv = '';
+window._lastExportedCsv = '';
+window._lastExportedFileName = '';
+
+async function copyReportTsvToClipboard(tsv) {
+    if (!tsv) return false;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(tsv);
+            return true;
+        }
+    } catch (e) {
+        console.warn('Clipboard writeText failed, trying execCommand fallback:', e);
+    }
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = tsv;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        var successful = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return successful;
+    } catch (err) {
+        console.error('Fallback execCommand copy failed:', err);
+        return false;
+    }
+}
+
+async function reCopyTsvToClipboard(btn) {
+    if (!window._lastExportedTsv) return;
+    var ok = await copyReportTsvToClipboard(window._lastExportedTsv);
+    if (btn) {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check" style="color: #10b981;"></i> Copied!';
+        setTimeout(function() { btn.innerHTML = orig; }, 2000);
+    }
+}
+
+async function exportToGoogleSheet(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    var btn = document.getElementById('btnExportGoogleSheets');
+    var notice = document.getElementById('googleSheetStatusNotice');
+
+    var originalBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.75';
+        btn.style.cursor = 'wait';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Generating Google Sheet...</span>';
+    }
+    if (notice) {
+        notice.style.display = 'block';
+        notice.style.background = '#f0fdf4';
+        notice.style.border = '1px solid #86efac';
+        notice.style.color = '#166534';
+        notice.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing report records and generating new Google Sheet file...';
+    }
+
+    var form = document.getElementById('generateReportForm');
+    var formData = form ? new FormData(form) : new FormData();
+
+    try {
+        var resp = await fetch("{% url 'reports_export_google_sheet' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        var data = await resp.json();
+
+        if (resp.ok && data.success) {
+            window._lastExportedTsv = data.tsv_data || '';
+            window._lastExportedFileName = data.file_name || 'Report';
+
+            // 1. Copy formatted TSV data to user's clipboard
+            var clipboardCopied = false;
+            if (data.tsv_data) {
+                clipboardCopied = await copyReportTsvToClipboard(data.tsv_data);
+            }
+
+            // Note: Per user requirement, automatic CSV file download is disabled.
+            // Note: Per user requirement, we do not switch tabs automatically so HR stays in the Instruction Card.
+
+            var sheetUrl = data.spreadsheet_url || 'https://sheets.new';
+            var rowsCount = data.rows_count || 0;
+            var fileName = data.file_name || 'Report';
+
+            // 2. Display the Instruction & Action Card inside the modal for HR to read
+            if (notice) {
+                notice.style.display = 'block';
+                notice.style.background = '#f0fdf4';
+                notice.style.border = '1.5px solid #86efac';
+                notice.style.color = '#14532d';
+                notice.style.padding = '16px 18px';
+                notice.style.borderRadius = '10px';
+                notice.style.marginTop = '14px';
+
+                if (data.is_mock || data.mode === 'sheets_new_clipboard') {
+                    notice.innerHTML = 
+                        '<div style="display: flex; align-items: flex-start; gap: 14px;">' +
+                            '<div style="width: 36px; height: 36px; border-radius: 50%; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; margin-top: 2px; box-shadow: 0 2px 6px rgba(22,163,74,0.3);">' +
+                                '<i class="fas fa-check"></i>' +
+                            '</div>' +
+                            '<div style="flex: 1;">' +
+                                '<div style="font-size: 15px; font-weight: 800; color: #14532d; margin-bottom: 4px;">' +
+                                    'Google Sheet Ready!' +
+                                '</div>' +
+                                '<div style="font-size: 13px; color: #166534; line-height: 1.5; margin-bottom: 12px;">' +
+                                    'Generated <strong>' + rowsCount + ' records</strong> for <strong>"' + fileName + '"</strong>. ' +
+                                    (clipboardCopied ? 'All formatted records have been copied to your clipboard.' : 'Report data is prepared.') +
+                                '</div>' +
+                                '<div style="background: #ffffff; border: 1.5px dashed #059669; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-size: 12.5px; color: #064e3b; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">' +
+                                    '<div style="font-weight: 700; color: #047857; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">' +
+                                        '<i class="fas fa-list-check"></i> Instructions:' +
+                                    '</div>' +
+                                    '<ol style="margin: 0; padding-left: 18px; line-height: 1.6;">' +
+                                        '<li style="margin-bottom: 4px;">Click the <strong>Open Google Sheet</strong> button below to launch a new spreadsheet.</li>' +
+                                        '<li>In the new sheet, click cell <strong>A1</strong> and press <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #cbd5e1; font-family: monospace;">Ctrl + V</kbd> (or <kbd style="background: #e2e8f0; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: 700; border: 1px solid #cbd5e1; font-family: monospace;">Cmd + V</kbd>) to instantly paste all columns and rows!</li>' +
+                                    '</ol>' +
+                                '</div>' +
+                                '<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">' +
+                                    '<a href="' + sheetUrl + '" target="_blank" class="hr-btn hr-btn-sm" style="background: #0f9d58; color: #ffffff; text-decoration: none; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 8px rgba(15,157,88,0.28); transition: transform 0.15s ease;">' +
+                                        '<i class="fas fa-external-link-alt"></i> Open Google Sheet' +
+                                    '</a>' +
+                                    '<button type="button" id="btnCopyDataAgain" onclick="reCopyTsvToClipboard(this)" style="background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">' +
+                                        '<i class="fas fa-copy"></i> Re-copy Data' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>';
+                } else {
+                    notice.innerHTML = 
+                        '<div style="display: flex; align-items: flex-start; gap: 14px;">' +
+                            '<div style="width: 36px; height: 36px; border-radius: 50%; background: #16a34a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; margin-top: 2px;">' +
+                                '<i class="fas fa-check"></i>' +
+                            '</div>' +
+                            '<div style="flex: 1;">' +
+                                '<div style="font-size: 15px; font-weight: 800; color: #14532d; margin-bottom: 4px;">' +
+                                    'Google Sheet Created Successfully!' +
+                                '</div>' +
+                                '<div style="font-size: 13px; color: #166534; line-height: 1.5; margin-bottom: 12px;">' +
+                                    'Created spreadsheet <strong>"' + fileName + '"</strong> with ' + rowsCount + ' records on Google Drive.' +
+                                '</div>' +
+                                '<a href="' + sheetUrl + '" target="_blank" class="hr-btn hr-btn-sm" style="background: #0f9d58; color: #ffffff; text-decoration: none; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 3px 8px rgba(15,157,88,0.28);">' +
+                                    '<i class="fas fa-external-link-alt"></i> Open Google Sheet' +
+                                '</a>' +
+                            '</div>' +
+                        '</div>';
+                }
+
+                // Smooth scroll within modal to make sure HR sees the card clearly
+                setTimeout(function() {
+                    notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 100);
+            }
+
+            triggerHrToast(
+                'emerald',
+                'Google Sheet Ready',
+                data.file_name || 'Report Generated',
+                (data.is_mock ? 'Data copied to clipboard! Click "Open Google Sheet" in the modal instructions.' : 'Successfully created Google Sheet with ' + rowsCount + ' records.'),
+                sheetUrl
+            );
+        } else {
+            var errMsg = (data && data.error) ? data.error : 'Failed to generate Google Sheet report.';
+            if (notice) {
+                notice.style.display = 'block';
+                notice.style.background = '#fef2f2';
+                notice.style.border = '1px solid #fca5a5';
+                notice.style.color = '#991b1b';
+                notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Generation Error:</strong> ' + errMsg;
+            }
+        }
+    } catch (err) {
+        if (notice) {
+            notice.style.display = 'block';
+            notice.style.background = '#fef2f2';
+            notice.style.border = '1px solid #fca5a5';
+            notice.style.color = '#991b1b';
+            notice.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>Network Error:</strong> Could not connect to the export service. Please try again.';
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.innerHTML = originalBtnHtml;
+        }
+    }
+}
+
+// Attach event listeners for dynamic file and tab names
+window.addEventListener('DOMContentLoaded', function() {
+    var fileNameInput = document.getElementById('report_modal_file_name');
+    if (fileNameInput) {
+        fileNameInput.addEventListener('input', function() {
+            this.dataset.autoFilled = "false";
+        });
+    }
+
+    var tabNameInput = document.getElementById('report_modal_tab_name');
+    if (tabNameInput) {
+        tabNameInput.addEventListener('input', function() {
+            this.dataset.autoFilled = "false";
+        });
+    }
+
+    var watchedFields = ['report_modal_month', 'report_modal_year', 'report_modal_date_from', 'report_modal_date_to', 'report_modal_date_range'];
+    watchedFields.forEach(function(fid) {
+        var el = document.getElementById(fid);
+        if (el) el.addEventListener('change', function() { updateSuggestedFileAndTabName(); });
+    });
+});
+
+// Auto-print handler when requested via print=1 in URL
+{% if auto_print %}
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        window.print();
+    }, 450);
+});
+{% endif %}
+</script>
+{% endblock admin_body %}

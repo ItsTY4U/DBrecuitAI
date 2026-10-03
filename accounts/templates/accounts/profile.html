@@ -139,47 +139,72 @@
         </div>
 
 
-        <!-- DEFAULT RESUME -->
-        <div class="profile-mini-card">
+        <!-- RESUME -->
+        <div class="profile-mini-card resume-mini-card">
 
-            <div class="mini-card-title">
-                Default resume
+            <div class="resume-card-header">
+                <div class="mini-card-title">
+                    Resume
+                </div>
+                {% if profile.default_resume %}
+                    <span class="resume-status-badge">
+                        <i class="fa-solid fa-circle-check"></i> On file
+                    </span>
+                {% else %}
+                    <span class="resume-status-badge badge-missing">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Missing
+                    </span>
+                {% endif %}
             </div>
 
             {% if profile.default_resume %}
 
-                <div class="mini-resume-card">
-
-                    <span class="mini-resume-icon">
-                        📄
-                    </span>
-
-                    <div class="mini-resume-details">
-
-                        <div class="mini-resume-name">
-                            {{ profile.default_resume.name|cut:"resumes/" }}
+                <div class="resume-card-body">
+                    <div class="resume-meta-box">
+                        <div class="resume-doc-icon">
+                            <i class="fa-solid fa-file-pdf"></i>
                         </div>
-
-                        <div class="mini-resume-date">
-                            Your current default resume
+                        <div class="resume-doc-details">
+                            <div class="resume-doc-name" title="{{ profile.default_resume.name|cut:'resumes/' }}">
+                                {{ profile.default_resume.name|cut:"resumes/" }}
+                            </div>
+                            <div class="resume-doc-sub">
+                                Current active resume &bull; PDF
+                            </div>
                         </div>
-
                     </div>
 
+                    <div class="resume-action-buttons">
+                        <a
+                            href="{{ profile.default_resume.url }}"
+                            target="_blank"
+                            class="resume-btn-view"
+                        >
+                            <i class="fa-regular fa-eye"></i> View
+                        </a>
+                        <button
+                            type="button"
+                            class="resume-btn-change"
+                            id="open-change-resume-btn"
+                        >
+                            <i class="fa-solid fa-arrow-up-from-bracket"></i> Change Resume
+                        </button>
+                    </div>
                 </div>
-
-                <a
-                    href="{{ profile.default_resume.url }}"
-                    target="_blank"
-                    class="mini-resume-view"
-                >
-                    View
-                </a>
 
             {% else %}
 
-                <div class="mini-no-resume">
-                    No resume uploaded yet.
+                <div class="resume-empty-card">
+                    <p class="resume-empty-desc">
+                        No resume uploaded yet. Upload your resume to receive personalized job recommendations.
+                    </p>
+                    <button
+                        type="button"
+                        class="resume-btn-upload-new"
+                        id="open-change-resume-btn"
+                    >
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Resume
+                    </button>
                 </div>
 
             {% endif %}
@@ -196,7 +221,7 @@
     <section
         class="profile-section profile-edit-section"
         id="profile-edit"
-        style="display: none;"
+        {% if not user_form.errors and not profile_form.errors %}style="display: none;"{% endif %}
     >
 
         <div class="section-header">
@@ -273,15 +298,22 @@
                     </div>
 
 
-                    <!-- Email -->
+                    <!-- Email (Read-only sign-in email) -->
 
                     <div class="form-group">
 
-                        <label for="{{ user_form.email.id_for_label }}">
-                            Email Address
+                        <label for="{{ user_form.email.id_for_label }}" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>Email Address</span>
+                            <!-- <span class="readonly-pill" style="font-size: 11px; font-weight: 600; color: #71847a; background: #eef2ed; padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                <i class="fa-solid fa-lock"></i> Read-only
+                            </span> -->
                         </label>
 
                         {{ user_form.email }}
+
+                        <small style="display: block; margin-top: 5px; font-size: 11.5px; color: #84968c;">
+                            <i class="fa-solid fa-circle-info"></i> Sign-in email address cannot be changed.
+                        </small>
 
                         {% if user_form.email.errors %}
                         <div class="form-error">
@@ -332,10 +364,10 @@
 
                     <!-- Resume -->
 
-                    <div class="form-group profile-full-width">
+                    <!-- <div class="form-group profile-full-width">
 
                         <label for="{{ profile_form.default_resume.id_for_label }}">
-                            Default Resume
+                            Resume
                         </label>
 
                         {{ profile_form.default_resume }}
@@ -346,7 +378,7 @@
                         </div>
                         {% endif %}
 
-                    </div>
+                    </div> -->
 
                 </div>
 
@@ -374,103 +406,45 @@
          RECOMMENDED JOBS
     ========================================== -->
 
+    <!-- =========================================
+         RECOMMENDED JOBS
+    ========================================== -->
+
     <section class="profile-section">
 
-        <div class="section-header">
+        <div class="recommendations-card">
 
-            <div>
-                <h2>Recommended for you</h2>
+            <div class="recommendations-card-header">
 
-                <p>
-                    Jobs that may match your skills and experience.
-                </p>
-            </div>
-
-            <a href="{% url 'jobs' %}" class="view-all-btn">
-                View All Jobs
-            </a>
-
-        </div>
-
-
-        <div class="job-recommendations">
-
-            {% if recommended_jobs %}
-
-                {% for recommendation in recommended_jobs %}
-
-                    <div class="recommendation-card">
-
-                        <div class="recommendation-card-header">
-
-                            <div>
-
-                                <h3>
-                                    {{ recommendation.job.title }}
-                                </h3>
-
-                                <span class="job-department">
-                                    {{ recommendation.job.department }}
-                                </span>
-
-                            </div>
-
-                            <span class="match-badge">
-                                {{ recommendation.match_level }} match
-                            </span>
-
-                        </div>
-
-
-                        {% if recommendation.matched_skills %}
-
-                            <div class="job-tags">
-
-                                {% for skill in recommendation.matched_skills %}
-
-                                    <span>
-                                        {{ skill|title }}
-                                    </span>
-
-                                {% endfor %}
-
-                            </div>
-
-                        {% endif %}
-
-
-                        <p class="recommendation-blurb">
-                            {{ recommendation.summary }}
-                        </p>
-
-
-                        <a
-                            href="{% url 'job_detail' recommendation.job.id %}"
-                            class="view-job-btn"
-                        >
-                            View Job
-                        </a>
-
-                    </div>
-
-                {% endfor %}
-
-            {% else %}
-
-                <div class="no-recommendations">
-
-                    <h3>
-                        No Recommendations Available Yet
-                    </h3>
+                <div>
+                    <h2>Recommended for you</h2>
 
                     <p>
-                        Upload and process your resume to receive
-                        personalized job recommendations.
+                        {% if strongest_field_display %}
+                            Curated jobs matching your primary field in <strong>{{ strongest_field_display }}</strong>.
+                        {% else %}
+                            Jobs that may match your skills and experience.
+                        {% endif %}
                     </p>
-
                 </div>
 
-            {% endif %}
+                <a href="{% url 'jobs' %}" class="view-all-btn">
+                    View All Jobs
+                </a>
+
+            </div>
+
+            <div id="profile-recommendations"
+                 hx-get="{% url 'profile_recommendations' %}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="no-recommendations" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; gap: 12px; background: rgba(255, 255, 255, 0.6); border-radius: 12px;">
+                    <div class="spinner-border" style="width: 2rem; height: 2rem; border: 3px solid rgba(45, 90, 39, 0.2); border-top-color: #2d5a27; border-radius: 50%; animation: spin 0.8s linear infinite;" role="status"></div>
+                    <p style="color: #666; font-size: 14px; margin: 0; font-weight: 500;">
+                        <i class="fas fa-sparkles" style="color: #2d5a27; margin-right: 6px;"></i> Finding the best job matches for your profile...
+                    </p>
+                </div>
+            </div>
 
         </div>
 
@@ -478,14 +452,106 @@
 
 
     <!-- =========================================
+         INTERVIEW INVITATIONS & UPCOMING SCHEDULES
+    ========================================== -->
+    {% if active_interviews %}
+    <section class="profile-section">
+        <div class="applications-card" style="border: 2px solid #86efac; background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);">
+            <div class="applications-card-header" style="border-bottom: 1.5px solid #dcfce7; padding-bottom: 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h2 style="color: #14532d; display: flex; align-items: center; gap: 8px; font-size: 19px; margin: 0;">
+                            <i class="fas fa-calendar-check" style="color: #15803d;"></i>
+                            Interview Invitations &amp; Upcoming Schedules
+                        </h2>
+                        <p style="color: #166534; font-size: 13px; margin: 4px 0 0 0;">
+                            You have official interview sessions scheduled. Please review your session details below.
+                        </p>
+                    </div>
+                    <span style="background: #dcfce7; color: #15803d; font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 1px solid #86efac;">
+                        {{ active_interviews|length }} Active Invitation{{ active_interviews|length|pluralize }}
+                    </span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 0 6px 0;">
+                {% for item in active_interviews %}
+                <div style="background: #ffffff; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 12px rgba(22, 101, 52, 0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="background: #dcfce7; color: #14532d; font-size: 11.5px; font-weight: 800; padding: 3px 10px; border-radius: 6px; text-transform: uppercase;">
+                                    {{ item.interview.interview_type }}
+                                </span>
+                                <span style="font-size: 11.5px; font-weight: 700; color: #64748b;">
+                                    {{ item.application.job.department }} Department
+                                </span>
+                                <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: {% if item.interview.status == 'Rescheduled' %}#ffedd5; color: #c2410c;{% else %}#dbeafe; color: #1e40af;{% endif %}">
+                                    {{ item.interview.status }}
+                                </span>
+                            </div>
+                            <h3 style="margin: 0; font-size: 16.5px; font-weight: 800; color: #0f172a;">
+                                {{ item.application.job.title }}
+                            </h3>
+                            <span style="font-size: 12px; color: #64748b;">
+                                Application ID: <strong>#{{ item.application.application_id }}</strong>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; font-size: 13px;">
+                        <div>
+                            <span style="display: block; font-size: 11px; font-weight: 600; color: #64748b;">Date &amp; Time</span>
+                            <span style="font-weight: 700; color: #0f172a;">
+                                <i class="far fa-calendar-alt" style="color: #2d5a27; margin-right: 4px;"></i> {{ item.interview.date|date:"l, F d, Y" }}
+                            </span>
+                            <div style="font-weight: 600; color: #334155; font-size: 12px; margin-top: 2px;">
+                                <i class="far fa-clock" style="color: #2d5a27; margin-right: 4px;"></i> {{ item.interview.time|time:"g:i A" }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span style="display: block; font-size: 11px; font-weight: 600; color: #64748b;">Interviewer / Panel Lead</span>
+                            <span style="font-weight: 700; color: #0f172a;">
+                                <i class="fas fa-user-tie" style="color: #2d5a27; margin-right: 4px;"></i> {{ item.interview.interviewer|default:"Talent Acquisition Lead" }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <span style="display: block; font-size: 11px; font-weight: 600; color: #64748b;">Meeting Location / Link</span>
+                            {% if "http" in item.interview.location %}
+                                <a href="{{ item.interview.location }}" target="_blank" style="font-weight: 700; color: #2563eb; text-decoration: underline; word-break: break-all;">
+                                    <i class="fas fa-video" style="margin-right: 4px;"></i> Join Meeting Link
+                                </a>
+                            {% else %}
+                                <span style="font-weight: 700; color: #0f172a;">
+                                    <i class="fas fa-location-dot" style="color: #2d5a27; margin-right: 4px;"></i> {{ item.interview.location|default:"HR Office / To be announced" }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if item.interview.notes %}
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #1e40af; line-height: 1.5;">
+                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i> <strong>Hiring Team Instructions:</strong> {{ item.interview.notes }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- =========================================
          TRACK APPLICATIONS
     ========================================== -->
 
     <section class="profile-section">
 
-        <div class="section-header">
+        <div class="applications-card">
 
-            <div>
+            <div class="applications-card-header">
 
                 <h2>Track Applications</h2>
 
@@ -494,11 +560,6 @@
                 </p>
 
             </div>
-
-        </div>
-
-
-        <div class="applications-card">
 
             <div class="applications-table-wrapper">
 
@@ -523,60 +584,66 @@
 
                             {% for application in applications %}
 
-                                <tr>
+                                <tr class="application-card-row">
 
-                                    <td>
+                                    <td class="app-td-id" data-label="Application ID">
                                         <strong>
                                             {{ application.application_id }}
                                         </strong>
                                     </td>
 
-                            <td>
-                                {{ application.job.title }}
-                            </td>
+                                    <td class="app-td-position" data-label="Position">
+                                        {{ application.job.title }}
+                                    </td>
 
-                            <td>
-                                {{ application.created_at|date:"F d, Y" }}
-                            </td>
+                                    <td class="app-td-date" data-label="Applied Date">
+                                        {{ application.created_at|date:"F d, Y" }}
+                                    </td>
 
-                                    <td>
-
+                                    <td class="app-td-status" data-label="Status">
                                         <span class="status-badge">
                                             {{ application.status }}
                                         </span>
-
+                                        {% if application.ordered_interviews %}
+                                            {% with intv=application.ordered_interviews.0 %}
+                                                {% if intv.status in "Scheduled,Rescheduled,Ongoing" %}
+                                                <div style="margin-top: 4px; font-size: 11px; color: #15803d; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; background: #dcfce7; padding: 2px 6px; border-radius: 6px; border: 1px solid #86efac;">
+                                                    <i class="fas fa-calendar-check"></i> {{ intv.date|date:"M d" }} @ {{ intv.time|time:"g:i A" }}
+                                                </div>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
                                     </td>
 
-                            <td>
-                                {% if application.video_interview.status == "COMPLETED" %}
-                                <button type="button" class="track-btn" disabled
-                                    style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-circle-check"></i> Completed
-                                </button>
-                                {% elif application.video_interview.status == "ABANDONED" and not
-                                application.video_interview.can_retake %}
-                                <button type="button" class="track-btn" disabled
-                                    style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-lock"></i> Attempted
-                                </button>
-                                {% elif application.video_interview.can_retake %}
-                                <a href="{% url 'video_interview:welcome' application.application_id %}"
-                                    class="track-btn"
-                                    style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-rotate-right"></i> Retake Interview
-                                </a>
-                                {% else %}
-                                <a href="{% url 'video_interview:welcome' application.application_id %}"
-                                    class="track-btn"
-                                    style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
-                                    <i class="fas fa-video"></i> Take Video Interview
-                                </a>
-                                {% endif %}
-                            </td>
+                                    <td class="app-td-action" data-label="Video Interview">
+                                        {% if application.video_interview.status == "COMPLETED" %}
+                                        <button type="button" class="track-btn track-btn-completed" disabled
+                                            style="background: #27ae60; color: #fff; cursor: default; opacity: 0.95; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-circle-check"></i> Completed
+                                        </button>
+                                        {% elif application.video_interview.status == "ABANDONED" and not application.video_interview.can_retake %}
+                                        <button type="button" class="track-btn track-btn-attempted" disabled
+                                            style="background: #95a5a6; color: #fff; cursor: not-allowed; opacity: 0.85; border: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-lock"></i> Attempted
+                                        </button>
+                                        {% elif application.video_interview.can_retake %}
+                                        <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                            class="track-btn track-btn-retake"
+                                            style="background: #e67e22; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-rotate-right"></i> Retake Interview
+                                        </a>
+                                        {% else %}
+                                        <a href="{% url 'video_interview:welcome' application.application_id %}"
+                                            class="track-btn track-btn-take"
+                                            style="background: #2d5a27; color: #fff; text-decoration: none; border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(45, 90, 39, 0.2);">
+                                            <i class="fas fa-video"></i> Take Video Interview
+                                        </a>
+                                        {% endif %}
+                                    </td>
 
-                        </tr>
+                                </tr>
 
-                        {% endfor %}
+                            {% endfor %}
 
                         {% else %}
                         <tr>
@@ -597,6 +664,72 @@
 
     </section>
 
+
+    <!-- =========================================
+         CHANGE RESUME MODAL
+    ========================================== -->
+    <div id="change-resume-modal" class="change-resume-backdrop" style="display: none;">
+        <div class="change-resume-modal-dialog">
+            <div class="change-resume-modal-header">
+                <div>
+                    <h3>Update Resume</h3>
+                    <p>Upload a new PDF to update your skills, qualifications, and match scores.</p>
+                </div>
+                <button type="button" class="change-resume-close-btn" id="close-resume-modal-btn" aria-label="Close modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="change-resume-form" action="{% url 'profile' %}">
+                {% csrf_token %}
+                <input type="hidden" name="first_name" value="{{ request.user.first_name }}">
+                <input type="hidden" name="last_name" value="{{ request.user.last_name }}">
+                <input type="hidden" name="email" value="{{ request.user.email }}">
+                <input type="hidden" name="phone" value="{{ profile.phone|default:'' }}">
+                <input type="hidden" name="address" value="{{ profile.address|default:'' }}">
+
+                <div class="resume-upload-dropzone" id="resume-modal-dropzone">
+                    <input type="file" name="default_resume" id="modal-resume-file" accept=".pdf" class="hidden-file-input">
+                    
+                    <div class="dropzone-idle-state" id="dropzone-idle">
+                        <div class="dropzone-icon-circle">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div class="dropzone-text-main">
+                            <strong>Click to browse</strong> or drag & drop your resume
+                        </div>
+                        <div class="dropzone-text-sub">
+                            PDF format only (Max 5MB)
+                        </div>
+                    </div>
+
+                    <div class="dropzone-selected-state" id="dropzone-selected" style="display: none;">
+                        <div class="selected-file-badge">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <div class="selected-file-info">
+                                <span class="selected-file-title" id="selected-file-name">filename.pdf</span>
+                                <span class="selected-file-size" id="selected-file-size">0 KB</span>
+                            </div>
+                            <button type="button" class="btn-clear-selected" id="clear-selected-resume-btn" title="Choose different file">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="modal-resume-error" class="form-error" style="display: none; margin-top: 12px;"></div>
+
+                <div class="change-resume-modal-actions">
+                    <button type="button" class="change-resume-cancel-btn" id="cancel-resume-modal-btn">
+                        Cancel
+                    </button>
+                    <button type="submit" class="change-resume-submit-btn" id="submit-resume-modal-btn">
+                        <i class="fa-solid fa-arrow-up-from-bracket"></i> Save & Process Resume
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- =========================================
          RESUME PROCESSING OVERLAY
@@ -626,4 +759,8 @@
 
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/profile.js' %}"></script>
 {% endblock %}

@@ -226,16 +226,16 @@
                 </div>
 
                 <!-- Track Button -->
-                {% if tracking_url %}
+                {% if profile_url or tracking_url %}
                 <div class="cta-section">
-                    <a href="{{ tracking_url }}" class="btn-track" target="_blank" rel="noopener noreferrer">
+                    <a href="{{ profile_url|default:tracking_url }}" class="btn-track" target="_blank" rel="noopener noreferrer">
                         Track Application Status &rarr;
                     </a>
                 </div>
                 {% endif %}
 
                 <p style="font-size: 13px; color: #64748b; text-align: center; margin-top: 16px;">
-                    You can also track your progress anytime using your Reference ID (<strong>{{ application.application_id }}</strong>) on our application tracking portal.
+                    You can view your application status and updates anytime on your profile page.
                 </p>
             </div>
 

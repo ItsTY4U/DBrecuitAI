@@ -33,3 +33,5 @@ CAPSTONE-MANUSCRIPT-Ctrl-Alt-Innovate.pdf
 extracted_manuscript.txt
 pyrightconfig.json
 .env.example
+main/emailer.py
+main/management/commands/test_gmail_mailer.py

@@ -1,0 +1,60 @@
+<div class="job-recommendations">
+    {% if recommended_jobs %}
+        {% for recommendation in recommended_jobs %}
+            <a
+                href="{% url 'job_detail' recommendation.job.id %}"
+                class="recommendation-card recommendation-card-link"
+                title="View details for {{ recommendation.job.title }}"
+            >
+                <div class="recommendation-card-header">
+                    <div>
+                        <h3>
+                            {{ recommendation.job.title }}
+                        </h3>
+                        <span class="job-department">
+                            {{ recommendation.job.department }}
+                        </span>
+                    </div>
+                    <span class="match-badge">
+                        {{ recommendation.match_level }} match
+                    </span>
+                </div>
+
+                {% if recommendation.matched_skills %}
+                    <div class="job-tags">
+                        {% for skill in recommendation.matched_skills %}
+                            <span>
+                                {{ skill|title }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <p class="recommendation-blurb">
+                    {{ recommendation.summary }}
+                </p>
+
+                <span class="view-job-btn">
+                    View Job <i class="fa-solid fa-arrow-right" style="font-size: 10px; margin-left: 3px;"></i>
+                </span>
+            </a>
+        {% endfor %}
+    {% else %}
+        <div class="no-recommendations">
+            <h3>
+                No Matching Jobs Available Yet
+            </h3>
+            <p>
+                {% if profile.default_resume or profile.resume_data %}
+                    {% if strongest_field_display %}
+                        None of our currently active job openings in <strong>{{ strongest_field_display }}</strong> match your profile. Check back soon as new openings are posted regularly!
+                    {% else %}
+                        None of our currently active job openings strongly match your uploaded resume's skills and experience. Check back soon as new openings are posted regularly!
+                    {% endif %}
+                {% else %}
+                    Upload and process your resume to receive personalized job recommendations tailored to your skills.
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+</div>

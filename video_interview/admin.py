@@ -19,12 +19,34 @@ class InterviewSessionAdmin(admin.ModelAdmin):
 
     @admin.action(description="Allow applicant to retake interview (for technical issues)")
     def allow_retake(self, request, queryset):
-        queryset.update(can_retake=True, status="PENDING")
-        self.message_user(request, "Selected interviews have been unlocked for retake.")
+        for session in queryset:
+            for resp in session.responses.all():
+                if resp.video_clip:
+                    try:
+                        resp.video_clip.delete(save=False)
+                    except Exception:
+                        pass
+            session.responses.all().delete()
+            session.can_retake = True
+            session.status = "PENDING"
+            session.final_score = None
+            session.overall_feedback = ""
+            session.overall_summary = ""
+            session.ai_analyzed = False
+            session.started_at = None
+            session.completed_at = None
+            session.save()
+        self.message_user(request, "Selected interviews have been unlocked for retake and old video files cleared.")
 
     @admin.action(description="Reset interview session")
     def reset_interview(self, request, queryset):
         for session in queryset:
+            for resp in session.responses.all():
+                if resp.video_clip:
+                    try:
+                        resp.video_clip.delete(save=False)
+                    except Exception:
+                        pass
             session.responses.all().delete()
             session.status = "PENDING"
             session.can_retake = False
@@ -35,7 +57,7 @@ class InterviewSessionAdmin(admin.ModelAdmin):
             session.started_at = None
             session.completed_at = None
             session.save()
-        self.message_user(request, "Selected interviews have been reset.")
+        self.message_user(request, "Selected interviews have been reset and old video files cleared.")
 
 
 @admin.register(BehavioralQuestion)

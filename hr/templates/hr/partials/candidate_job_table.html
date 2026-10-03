@@ -28,7 +28,7 @@
                     <th class="th-candidate">Candidate</th>
                     <th class="th-id">Application ID</th>
                     <th class="th-date">Applied Date</th>
-                    <th class="th-score">AI Score</th>
+                    <th class="th-score" style="text-align: left;">AI Score</th>
                     <th class="th-status">Status</th>
                     <th class="th-action text-right">Action</th>
                 </tr>
@@ -95,18 +95,20 @@
         </table>
     </div>
     {% else %}
-    <div class="empty-table-state">
-        <div class="empty-table-icon">
-            <i class="fas {% if table_data.is_search %}fa-search-minus{% else %}fa-user-check{% endif %}"></i>
-        </div>
         {% if table_data.is_search %}
-        <h5>No candidates found matching "{{ table_data.search_query }}"</h5>
-        <p>Try searching by a different name, email, or application ID.</p>
+        <div class="empty-table-state">
+            <div class="empty-table-icon">
+                <i class="fas fa-search-minus"></i>
+            </div>
+            <h5>No candidates found matching "{{ table_data.search_query }}"</h5>
+            <p>Try searching by a different name, email, or application ID.</p>
+        </div>
         {% else %}
-        <h5>No additional candidates beyond Top 3</h5>
-        <p>{% if job.applicant_count > 0 %}All {{ job.applicant_count }} applicant{{ job.applicant_count|pluralize }} are displayed in the top candidate cards above.{% else %}No applications have been submitted for this position yet.{% endif %}</p>
+        <div class="empty-table-minimized">
+            <i class="fas fa-circle-info"></i>
+            <span>No additional candidates beyond Top 3 &bull; All {{ job.applicant_count }} applicant{{ job.applicant_count|pluralize }} are displayed in the top candidate cards above</span>
+        </div>
         {% endif %}
-    </div>
     {% endif %}
 
     <!-- Pagination Controls (Always visible, disabled if no candidates / single page) -->

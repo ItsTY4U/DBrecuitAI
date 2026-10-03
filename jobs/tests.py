@@ -16,6 +16,9 @@ from jobs.recommendations import (
     calculate_job_match,
     rank_jobs,
     get_recommended_jobs,
+    identify_strongest_field,
+    get_applicant_strongest_field,
+    get_job_field,
 )
 
 
@@ -103,6 +106,171 @@ class ApplicantJobPerformanceTests(TestCase):
             self.assertEqual(len(recs2), 1)
             self.assertEqual(recs2[0]["score"], recs1[0]["score"])
 
+    def test_unrelated_jobs_not_recommended(self):
+        """Applicants with unrelated resumes (e.g. Python programmer) must NOT be recommended unrelated jobs (e.g. Barista)."""
+        cache.clear()
+        # Applicant is an IT software engineer
+        self.profile.resume_data = {
+            "skills": ["Python", "Django", "PostgreSQL", "Docker"],
+            "experience": [{"job_title": "Backend Developer", "description": "Built REST APIs"}],
+            "education": [{"degree": "BS Computer Science"}],
+        }
+        self.profile.resume_text = "Software Engineer with Python, Django, PostgreSQL, Docker."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        # Barista job must NOT be recommended
+        unrelated_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(unrelated_recs, [], "Unrelated job was incorrectly recommended to a software engineer!")
+
+        # Now update applicant profile to be a Barista
+        cache.clear()
+        self.profile.resume_data = {
+            "skills": ["Coffee brewing knowledge", "Customer service skills", "Cash handling"],
+            "experience": [{"job_title": "Cafe Barista", "description": "Brewed specialty espresso beverages"}],
+            "education": [{"degree": "High School Diploma"}],
+        }
+        self.profile.resume_text = "Experienced Barista with coffee brewing knowledge and customer service skills."
+        self.profile.save()
+
+        matching_recs = get_recommended_jobs(self.profile)
+        self.assertEqual(len(matching_recs), 1, "Matching Barista job was not recommended to an actual Barista!")
+        self.assertEqual(matching_recs[0]["job"].id, self.job.id)
+        self.assertGreaterEqual(matching_recs[0]["score"], 70)
+
+    def test_tech_resume_gets_tech_jobs_only(self):
+        """A tech-focused resume must strictly receive tech jobs only, excluding Sales, Warehouse, and Operations."""
+        cache.clear()
+
+        # Create diverse active jobs across multiple departments
+        tech_job = Job.objects.create(
+            title="Junior Front-End Developer",
+            department="IT",
+            job_type="FULL-TIME",
+            description="Build modern web applications with React and JavaScript",
+            requirements="Experience with React, JavaScript, and CSS",
+            status="Active"
+        )
+        Requirement.objects.create(job=tech_job, text="React")
+        Requirement.objects.create(job=tech_job, text="JavaScript")
+
+        sales_job = Job.objects.create(
+            title="Sales Staff",
+            department="Sales",
+            job_type="FULL-TIME",
+            description="Achieve sales quotas and handle client inquiries",
+            requirements="Sales experience and communication skills",
+            status="Active"
+        )
+        Requirement.objects.create(job=sales_job, text="B2B Sales")
+
+        warehouse_job = Job.objects.create(
+            title="Warehouse Helper",
+            department="Warehouse",
+            job_type="FULL-TIME",
+            description="Handle inventory and operate pallet jacks",
+            requirements="Warehouse experience",
+            status="Active"
+        )
+        Requirement.objects.create(job=warehouse_job, text="Inventory Management")
+
+        # Applicant is an IT software engineer
+        self.profile.resume_data = {
+            "skills": ["React", "JavaScript", "Python", "CSS", "Git"],
+            "experience": [{"job_title": "Web Developer", "description": "Developed web applications in React"}],
+            "education": [{"degree": "BS Information Technology"}],
+        }
+        self.profile.resume_text = "Frontend Web Developer specializing in React, JavaScript, Python, and CSS."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        # Check strongest field
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "IT")
+        self.assertEqual(field_display, "Technology & IT")
+
+        # Get recommendations
+        recs = get_recommended_jobs(self.profile)
+        self.assertTrue(len(recs) >= 1)
+
+        # All recommended jobs MUST be in the IT category only
+        for rec in recs:
+            self.assertEqual(get_job_field(rec["job"]), "IT")
+            self.assertEqual(rec["field"], "IT")
+            self.assertNotEqual(rec["job"].id, sales_job.id)
+            self.assertNotEqual(rec["job"].id, warehouse_job.id)
+            self.assertNotEqual(rec["job"].id, self.job.id)  # Barista
+
+    def test_warehouse_resume_gets_warehouse_jobs_only(self):
+        """A warehouse-focused resume must strictly receive warehouse jobs only."""
+        cache.clear()
+
+        wh_job = Job.objects.create(
+            title="Warehouse Assistant",
+            department="Warehouse",
+            job_type="FULL-TIME",
+            description="Organize goods and manage stock",
+            requirements="Forklift operation and inventory skills",
+            status="Active"
+        )
+        Requirement.objects.create(job=wh_job, text="Forklift")
+        Requirement.objects.create(job=wh_job, text="Inventory Management")
+
+        self.profile.resume_data = {
+            "skills": ["Forklift", "Inventory Management", "Picking and Packing", "Stocking"],
+            "experience": [{"job_title": "Warehouse Associate", "description": "Handled order fulfillment"}],
+            "education": [{"degree": "High School Diploma"}],
+        }
+        self.profile.resume_text = "Warehouse associate with forklift certified and inventory management skills."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "Warehouse")
+        self.assertEqual(field_display, "Warehouse & Logistics")
+
+        recs = get_recommended_jobs(self.profile)
+        self.assertTrue(len(recs) >= 1)
+        for rec in recs:
+            self.assertEqual(get_job_field(rec["job"]), "Warehouse")
+            self.assertEqual(rec["field"], "Warehouse")
+            self.assertNotEqual(rec["job"].id, self.job.id)
+
+    def test_mixed_skills_recommends_primary_field_only(self):
+        """An engineer with an incidental soft skill (e.g. customer service) still only receives IT jobs."""
+        cache.clear()
+
+        tech_job = Job.objects.create(
+            title="Software Engineer",
+            department="Engineering",
+            job_type="FULL-TIME",
+            description="Build scalable backend services",
+            requirements="Proficiency in Python and PostgreSQL",
+            status="Active"
+        )
+        Requirement.objects.create(job=tech_job, text="Python")
+
+        self.profile.resume_data = {
+            "skills": ["Python", "Django", "PostgreSQL", "Docker", "Customer Service"],
+            "experience": [
+                {"job_title": "Software Engineer", "description": "Backend API development"},
+                {"job_title": "Store Cashier", "description": "High school summer job"},
+            ],
+            "education": [{"degree": "BS Computer Science"}],
+        }
+        self.profile.resume_text = "Software Engineer with Python, Django, Docker, and customer service experience."
+        self.profile.resume_processed = True
+        self.profile.save()
+
+        field_key, field_display = get_applicant_strongest_field(self.profile)
+        self.assertEqual(field_key, "IT")
+
+        recs = get_recommended_jobs(self.profile)
+        # Should recommend the tech job and NOT the Barista job
+        recommended_job_ids = [r["job"].id for r in recs]
+        self.assertIn(tech_job.id, recommended_job_ids)
+        self.assertNotIn(self.job.id, recommended_job_ids)
+
     def test_single_word_boundary_no_substring_false_positives(self):
         """Single-word skills must not match inside unrelated words (go in good, r in director, art in party)."""
         from jobs.recommendations import find_matched_skills
@@ -151,9 +319,212 @@ class ApplicantJobPerformanceTests(TestCase):
         matched = find_matched_skills(applicant_skills, job_text)
         self.assertEqual(matched, ["Python"])
 
+    @patch("main.emailer.send_application_submitted_email")
+    @patch("jobs.views._async_screen_application")
+    def test_apply_job_allows_name_edit_and_locks_email_phone(self, mock_async_screen, mock_send_email):
+        """Applicants can edit names but email and phone remain strictly locked to their account."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        cache.clear()
+        # Ensure user has a default resume
+        self.profile.default_resume = SimpleUploadedFile("my_resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+        self.profile.phone = "09123456789"
+        self.profile.save()
+
+        self.client.force_login(self.user)
+        post_data = {
+            "first_name": "Alexander",
+            "last_name": "Reyes-Updated",
+            "middle_initial": "M",
+            # Attempt to tamper with email and phone
+            "email": "malicious@tamper.com",
+            "phone": "09999999999",
+        }
+
+        response = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "jobs/partials/application_success.html")
+
+        # Verify application record
+        app = Application.objects.get(applicant=self.user, job=self.job)
+        self.assertEqual(app.first_name, "Alexander")
+        self.assertEqual(app.last_name, "Reyes-Updated")
+        self.assertEqual(app.middle_initial, "M")
+        # Ensure email and phone could NOT be tampered with
+        self.assertEqual(app.email, self.user.email)
+        self.assertEqual(app.phone, "09123456789")
+        # Ensure initial state is screening
+        self.assertEqual(app.status, "Screening")
+        self.assertFalse(app.resume_processed)
+
+        # Ensure background worker was spawned
+        mock_async_screen.assert_called_once()
+        mock_send_email.assert_called_once()
+
+    @patch("jobs.ai.analyze_resume")
+    def test_async_screen_application_updates_ai_score(self, mock_analyze):
+        """_async_screen_application processes resume and populates AI rubric fields."""
+        from jobs.views import _async_screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        mock_analyze.return_value = {
+            "score": 88,
+            "match_level": "Proficient",
+            "recommendation": "Recommended",
+            "summary": "Candidate matches coffee brewing role.",
+            "strengths": ["Strong barista background"],
+            "weaknesses": [],
+            "matched_qualifications": ["Customer service"],
+            "missing_qualifications": [],
+            "skills_match": 90,
+            "experience_match": 85,
+            "education_match": 80,
+            "qualification_match": 95,
+            "criteria_weights": {"skills_weight": 25},
+            "weight_reasoning": {},
+        }
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Alex",
+            last_name="Reyes",
+            email=self.user.email,
+            phone="09123456789",
+            resume=SimpleUploadedFile("alex_resume.pdf", b"%PDF-1.4 dummy text", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        _async_screen_application(app.id, pre_extracted_text="Barista with customer service and coffee skills.")
+        app.refresh_from_db()
+
+        self.assertTrue(app.resume_processed)
+        self.assertEqual(app.ai_score, 88)
+        self.assertEqual(app.ai_recommendation, "Recommended")
+        self.assertEqual(app.ai_match_level, "Proficient")
+        self.assertEqual(app.ai_skills_match, 90)
+
+    @patch("jobs.ai.analyze_resume")
+    def test_screen_application_auto_retries_on_transient_failure(self, mock_analyze):
+        """screen_application automatically retries with backoff if first attempt raises an exception."""
+        from jobs.ai import screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Attempt 1 raises 429 quota exception, Attempt 2 succeeds
+        mock_analyze.side_effect = [
+            Exception("429 Resource Exhausted"),
+            {
+                "score": 85,
+                "match_level": "Proficient",
+                "recommendation": "Recommended",
+                "summary": "Recovered on auto-retry.",
+                "strengths": ["Resilience"],
+                "weaknesses": [],
+                "matched_qualifications": ["Barista"],
+                "missing_qualifications": [],
+                "skills_match": 85,
+                "experience_match": 85,
+                "education_match": 85,
+                "qualification_match": 85,
+                "criteria_weights": {},
+                "weight_reasoning": {},
+            }
+        ]
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Marco",
+            last_name="Diaz",
+            email=self.user.email,
+            phone="09110001111",
+            resume=SimpleUploadedFile("marco.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        success = screen_application(app, pre_extracted_text="Coffee barista with 3 years espresso experience.", max_retries=2)
+        self.assertTrue(success)
+
+        app.refresh_from_db()
+        self.assertTrue(app.resume_processed)
+        self.assertEqual(app.ai_score, 85)
+        self.assertEqual(mock_analyze.call_count, 2)
+
+    @patch("jobs.ai.analyze_resume")
+    def test_screen_application_queues_for_retry_when_all_retries_fail(self, mock_analyze):
+        """When all Gemini retries fail, leaves resume_processed=False and Pending Review so HR auto-reanalyzes."""
+        from jobs.ai import screen_application
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        mock_analyze.side_effect = Exception("503 Service Unavailable")
+
+        app = Application.objects.create(
+            applicant=self.user,
+            job=self.job,
+            first_name="Nina",
+            last_name="Santos",
+            email=self.user.email,
+            phone="09220002222",
+            resume=SimpleUploadedFile("nina.pdf", b"%PDF-1.4 dummy", content_type="application/pdf"),
+            status="Pending",
+            resume_processed=False,
+        )
+
+        success = screen_application(app, pre_extracted_text="Cashier and barista with high customer satisfaction.", max_retries=2)
+        self.assertFalse(success)
+
+        app.refresh_from_db()
+        # Crucial: resume_processed stays False so HR view will auto-reanalyze!
+        self.assertFalse(app.resume_processed)
+        self.assertEqual(app.ai_score, 0)
+        self.assertEqual(app.ai_recommendation, "Pending Review")
+        self.assertIn("temporarily delayed", app.ai_summary)
+
+
+    @patch("main.emailer.send_application_submitted_email")
+    @patch("jobs.views._async_screen_application")
+    def test_apply_job_requires_phone_if_empty_on_profile(self, mock_async_screen, mock_send_email):
+        """If profile phone is empty, applicant must enter phone, and it is saved to profile and application."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        cache.clear()
+        self.profile.default_resume = SimpleUploadedFile("resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
+        self.profile.phone = ""
+        self.profile.save()
+
+        self.client.force_login(self.user)
+
+        # 1. Missing phone submission fails
+        res_fail = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
+            "first_name": "Alex",
+            "last_name": "Reyes",
+            "phone": "",
+        })
+        self.assertEqual(res_fail.status_code, 200)
+        self.assertContains(res_fail, "Please provide a valid phone number")
+
+        # 2. Provided phone submission succeeds and updates profile (clear debounce cache first)
+        cache.clear()
+        res_ok = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
+            "first_name": "Alex",
+            "last_name": "Reyes",
+            "phone": "09876543210",
+        })
+        self.assertEqual(res_ok.status_code, 200)
+        self.assertTemplateUsed(res_ok, "jobs/partials/application_success.html")
+
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.phone, "09876543210")
+
+        app = Application.objects.get(applicant=self.user, job=self.job)
+        self.assertEqual(app.phone, "09876543210")
+
 
 class JobsAIEngineTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.job = Job.objects.create(
             title="Software Engineer",
             department="Engineering",
@@ -163,6 +534,9 @@ class JobsAIEngineTests(TestCase):
         )
         Requirement.objects.create(job=self.job, text="Python and Django expertise")
         Requirement.objects.create(job=self.job, text="PostgreSQL experience")
+
+    def tearDown(self):
+        cache.clear()
 
     def test_parse_resume_short_circuit_empty(self):
         """parse_resume returns None immediately on empty or too-short inputs without calling API."""
@@ -251,6 +625,12 @@ class JobsAIEngineTests(TestCase):
         mock_client.models.generate_content.return_value = mock_response
         mock_get_client.return_value = mock_client
 
+        self.job.qualification_weight = 25
+        self.job.experience_weight = 35
+        self.job.skills_weight = 25
+        self.job.education_weight = 15
+        self.job.save()
+
         resume_sample = "Software Engineer with 4 years building Django REST APIs and PostgreSQL backends."
         result = analyze_resume(resume_sample, self.job)
 
@@ -260,6 +640,68 @@ class JobsAIEngineTests(TestCase):
         self.assertEqual(len(result["strengths"]), 2)
         self.assertIn("Extensive Django experience", result["strengths"])
         self.assertFalse(result["hard_fail"])
+        self.assertEqual(result["criteria_weights"], self.job.criteria_weights)
+
+    @patch("jobs.ai.get_genai_client")
+    def test_parse_resume_sha256_caching(self, mock_get_client):
+        """parse_resume uses SHA-256 caching so repeated parsing skips Gemini API calls completely."""
+        from jobs.ai import parse_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "personal": {"first_name": "Juan", "last_name": "Luna"},
+            "skills": ["Painter", "Artist"]
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Juan Luna, professional artist and painter from Ilocos Norte with 10 years experience."
+
+        # First call hits the mock Gemini API
+        res1 = parse_resume(resume_sample)
+        self.assertEqual(res1["personal"]["first_name"], "Juan")
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+        # Second call with identical resume must return from cache with 0 additional API calls
+        res2 = parse_resume(resume_sample)
+        self.assertEqual(res2["personal"]["first_name"], "Juan")
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+    @patch("jobs.ai.get_genai_client")
+    def test_analyze_resume_sha256_caching(self, mock_get_client):
+        """analyze_resume caches evaluation per candidate resume & job requirements."""
+        from jobs.ai import analyze_resume
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "skills_match": 80,
+            "experience_match": 80,
+            "education_match": 80,
+            "qualification_match": 80,
+            "criteria_weights": {"qualification_weight": 25, "experience_weight": 25, "skills_weight": 25, "education_weight": 25},
+            "weight_reasoning": {},
+            "matched_qualifications": ["Artistic mastery"],
+            "missing_qualifications": [],
+            "strengths": ["Classic visual arts"],
+            "weaknesses": [],
+            "summary": "Fit for the role."
+        })
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        resume_sample = "Juan Luna, master of visual arts with 10 years experience painting large canvases."
+
+        # First call executes Gemini
+        res1 = analyze_resume(resume_sample, self.job)
+        self.assertEqual(res1["score"], 80.0)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+        # Second call with same candidate resume and job hits cache, call_count remains 1
+        res2 = analyze_resume(resume_sample, self.job)
+        self.assertEqual(res2["score"], 80.0)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
 
 
 class RecommendationLogicTests(unittest.TestCase):
@@ -452,125 +894,62 @@ class RecommendationLogicTests(unittest.TestCase):
         empty_profile.default_resume = None
         self.assertEqual(get_recommended_jobs(empty_profile), [])
 
-    @patch("main.emailer.send_application_submitted_email")
-    @patch("jobs.views._async_screen_application")
-    def test_apply_job_allows_name_edit_and_locks_email_phone(self, mock_async_screen, mock_send_email):
-        """Applicants can edit names but email and phone remain strictly locked to their account."""
-        from django.core.files.uploadedfile import SimpleUploadedFile
+    @patch("jobs.ai.get_genai_client")
+    def test_ai_screening_enforces_hr_criteria_weights(self, mock_get_client):
+        """Screening strictly uses HR-configured weights and overrides any weights returned by the AI."""
+        from jobs.ai import analyze_resume
 
-        # Ensure user has a default resume
-        self.profile.default_resume = SimpleUploadedFile("my_resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
-        self.profile.phone = "09123456789"
-        self.profile.save()
-
-        self.client.force_login(self.user)
-        post_data = {
-            "first_name": "Alexander",
-            "last_name": "Reyes-Updated",
-            "middle_initial": "M",
-            # Attempt to tamper with email and phone
-            "email": "malicious@tamper.com",
-            "phone": "09999999999",
-        }
-
-        response = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), post_data)
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "jobs/partials/application_success.html")
-
-        # Verify application record
-        app = Application.objects.get(applicant=self.user, job=self.job)
-        self.assertEqual(app.first_name, "Alexander")
-        self.assertEqual(app.last_name, "Reyes-Updated")
-        self.assertEqual(app.middle_initial, "M")
-        # Ensure email and phone could NOT be tampered with
-        self.assertEqual(app.email, self.user.email)
-        self.assertEqual(app.phone, "09123456789")
-        # Ensure initial state is non-blocking pending
-        self.assertEqual(app.status, "Pending")
-        self.assertFalse(app.resume_processed)
-
-        # Ensure background worker was spawned
-        mock_async_screen.assert_called_once()
-        mock_send_email.assert_called_once()
-
-    @patch("jobs.ai.analyze_resume")
-    def test_async_screen_application_updates_ai_score(self, mock_analyze):
-        """_async_screen_application processes resume and populates AI rubric fields."""
-        from jobs.views import _async_screen_application
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
-        mock_analyze.return_value = {
-            "score": 88,
-            "match_level": "Proficient",
-            "recommendation": "Recommended",
-            "summary": "Candidate matches coffee brewing role.",
-            "strengths": ["Strong barista background"],
-            "weaknesses": [],
-            "matched_qualifications": ["Customer service"],
-            "missing_qualifications": [],
-            "skills_match": 90,
-            "experience_match": 85,
-            "education_match": 80,
-            "qualification_match": 95,
-            "criteria_weights": {"skills_weight": 25},
-            "weight_reasoning": {},
-        }
-
-        app = Application.objects.create(
-            applicant=self.user,
-            job=self.job,
-            first_name="Alex",
-            last_name="Reyes",
-            email=self.user.email,
-            phone="09123456789",
-            resume=SimpleUploadedFile("alex_resume.pdf", b"%PDF-1.4 dummy text", content_type="application/pdf"),
-            status="Pending",
-            resume_processed=False,
+        # Custom HR weights totaling 100%
+        custom_job = Job.objects.create(
+            title="Senior QA Engineer",
+            department="Engineering",
+            skills_weight=40,
+            experience_weight=20,
+            qualification_weight=30,
+            education_weight=10,
         )
 
-        _async_screen_application(app.id, pre_extracted_text="Barista with customer service and coffee skills.")
-        app.refresh_from_db()
-
-        self.assertTrue(app.resume_processed)
-        self.assertEqual(app.ai_score, 88)
-        self.assertEqual(app.ai_recommendation, "Recommended")
-        self.assertEqual(app.ai_match_level, "Proficient")
-        self.assertEqual(app.ai_skills_match, 90)
-
-    @patch("main.emailer.send_application_submitted_email")
-    @patch("jobs.views._async_screen_application")
-    def test_apply_job_requires_phone_if_empty_on_profile(self, mock_async_screen, mock_send_email):
-        """If profile phone is empty, applicant must enter phone, and it is saved to profile and application."""
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
-        self.profile.default_resume = SimpleUploadedFile("resume.pdf", b"%PDF-1.4 dummy", content_type="application/pdf")
-        self.profile.phone = ""
-        self.profile.save()
-
-        self.client.force_login(self.user)
-
-        # 1. Missing phone submission fails
-        res_fail = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
-            "first_name": "Alex",
-            "last_name": "Reyes",
-            "phone": "",
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        # AI attempts to decide different weights (e.g., all 25%)
+        mock_response.text = json.dumps({
+            "skills_match": 100,       # 100 * 0.40 = 40.0
+            "experience_match": 80,    # 80 * 0.20 = 16.0
+            "qualification_match": 90, # 90 * 0.30 = 27.0
+            "education_match": 70,     # 70 * 0.10 = 7.0
+            "criteria_weights": {      # Sum = 90.0 under HR weights (vs 85.0 under AI 25% weights)
+                "qualification_weight": 25,
+                "experience_weight": 25,
+                "skills_weight": 25,
+                "education_weight": 25,
+            },
+            "weight_reasoning": {
+                "qualification": "AI proposed rationale",
+                "experience": "AI proposed rationale",
+                "skills": "AI proposed rationale",
+                "education": "AI proposed rationale",
+            },
+            "matched_qualifications": ["Selenium"],
+            "missing_qualifications": [],
+            "strengths": ["Automated Testing"],
+            "weaknesses": [],
+            "summary": "Great QA engineer."
         })
-        self.assertEqual(res_fail.status_code, 200)
-        self.assertContains(res_fail, "Please provide a valid phone number")
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
 
-        # 2. Provided phone submission succeeds and updates profile
-        res_ok = self.client.post(reverse("apply", kwargs={"pk": self.job.pk}), {
-            "first_name": "Alex",
-            "last_name": "Reyes",
-            "phone": "09876543210",
-        })
-        self.assertEqual(res_ok.status_code, 200)
-        self.assertTemplateUsed(res_ok, "jobs/partials/application_success.html")
+        resume = "QA automation engineer with extensive Selenium, Python, and testing expertise."
+        result = analyze_resume(resume, custom_job)
 
-        self.profile.refresh_from_db()
-        self.assertEqual(self.profile.phone, "09876543210")
+        # Result criteria weights MUST match HR weights, not AI weights
+        self.assertEqual(result["criteria_weights"]["skills_weight"], 40)
+        self.assertEqual(result["criteria_weights"]["experience_weight"], 20)
+        self.assertEqual(result["criteria_weights"]["qualification_weight"], 30)
+        self.assertEqual(result["criteria_weights"]["education_weight"], 10)
 
-        app = Application.objects.get(applicant=self.user, job=self.job)
-        self.assertEqual(app.phone, "09876543210")
+        # Final score must be 90.0 based on HR weights (40 + 16 + 27 + 7)
+        self.assertEqual(result["score"], 90.0)
+        self.assertEqual(result["recommendation"], "Qualified")
+        self.assertEqual(result["match_level"], "Exceptional")
 
 

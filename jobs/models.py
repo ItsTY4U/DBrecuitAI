@@ -54,7 +54,44 @@ class Job(models.Model):
         verbose_name="General Requirements",
         help_text="Applicant-facing requirements shown directly on the job posting (education, general experience, etc.)."
     )
+    vacancies = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Number of Vacancies",
+        help_text="Number of open positions available for this job."
+    )
     
+    skills_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Skills Weight",
+        help_text="Weight percentage for Skills in candidate screening."
+    )
+    education_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Education Weight",
+        help_text="Weight percentage for Education in candidate screening."
+    )
+    experience_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Experience Weight",
+        help_text="Weight percentage for Experience in candidate screening."
+    )
+    qualification_weight = models.PositiveIntegerField(
+        default=25,
+        verbose_name="Qualification Weight",
+        help_text="Weight percentage for Key Qualifications in candidate screening."
+    )
+
+    @property
+    def criteria_weights(self):
+        return {
+            "qualification_weight": self.qualification_weight if self.qualification_weight is not None else 25,
+            "experience_weight": self.experience_weight if self.experience_weight is not None else 25,
+            "skills_weight": self.skills_weight if self.skills_weight is not None else 25,
+            "education_weight": self.education_weight if self.education_weight is not None else 25,
+        }
+
+    def get_criteria_weights(self):
+        return self.criteria_weights
 
     def __str__(self):
         return self.title
@@ -94,10 +131,12 @@ def application_resume_upload_path(instance, filename):
 class Application(models.Model):
     STATUS_CHOICES =[
         ("Pending", "Pending"),
-        ("Screening","Screening"),
-        ("Interview","Interview"),
+        ("Screening", "Screening"),
+        ("Shortlisted", "Shortlisted"),
+        ("Interview", "Interview"),
+        ("Evaluation", "Evaluation"),
+        ("Hired", "Hired"),
         ("Rejected", "Rejected"),
-        ("Hired","Hired"),
     ]
     
     application_id = models.CharField(
@@ -136,7 +175,7 @@ class Application(models.Model):
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default="Pending"
+        default="Screening"
     )
     
     created_at = models.DateTimeField(auto_now_add=True)
@@ -177,8 +216,13 @@ class Application(models.Model):
             models.Index(fields=["applicant", "-created_at"]),        # applicant profile applications list
             models.Index(fields=["applicant", "job"]),                # applicant duplicate application checks
         ]
-    
-        
+        constraints = [
+            models.UniqueConstraint(
+                fields=["applicant", "job"],
+                name="unique_applicant_job_application"
+            )
+        ]
+
     ai_match_level = models.CharField(max_length=30, blank=True)
     ai_recommendation = models.CharField(max_length=30, blank=True)
     ai_matched_qualifications = models.TextField(blank=True)

@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,15 +11,20 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+_last_credential_error = None
+
+
 def get_gmail_credentials():
     """
     Returns valid Google OAuth2 credentials using refresh token, or None if credentials are not configured.
     """
+    global _last_credential_error
     client_id = getattr(settings, "GMAIL_CLIENT_ID", "")
     client_secret = getattr(settings, "GMAIL_CLIENT_SECRET", "")
     refresh_token = getattr(settings, "GMAIL_REFRESH_TOKEN", "")
 
     if not (client_id and client_secret and refresh_token):
+        _last_credential_error = "Missing GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, or GMAIL_REFRESH_TOKEN in settings/.env"
         return None
 
     try:
@@ -34,9 +40,23 @@ def get_gmail_credentials():
             scopes=["https://www.googleapis.com/auth/gmail.send"],
         )
         creds.refresh(Request())
+        _last_credential_error = None
         return creds
     except Exception as e:
-        logger.error("Failed to refresh Gmail API OAuth2 credentials: %s", e)
+        err_str = str(e)
+        if "invalid_grant" in err_str:
+            _last_credential_error = (
+                "invalid_grant: The refresh token was revoked or expired. "
+                "This happens after publishing the app or changing OAuth consent status in Google Cloud Console."
+            )
+            logger.error(
+                "Failed to refresh Gmail API OAuth2 credentials: %s. "
+                "Your GMAIL_REFRESH_TOKEN was invalidated by Google Cloud Console. A new refresh token is required.",
+                e,
+            )
+        else:
+            _last_credential_error = str(e)
+            logger.error("Failed to refresh Gmail API OAuth2 credentials: %s", e)
         return None
 
 
@@ -50,13 +70,25 @@ def send_gmail_message(to_email: str, subject: str, html_content: str, text_cont
 
     creds = get_gmail_credentials()
     if not creds:
+        reason = _last_credential_error or "failed to refresh"
         logger.warning(
-            "[Gmail Emailer] Gmail API credentials not configured or failed to refresh. "
+            "[Gmail Emailer] Gmail API credentials not configured or %s. "
             "Skipping email to %s (Subject: %s).",
+            reason,
             to_email,
             subject,
         )
-        return {"success": False, "error": "Gmail API credentials not configured"}
+        if getattr(settings, "DEBUG", False):
+            logger.info(
+                "[DEV EMAIL FALLBACK] Email to: %s | Subject: %s\n%s",
+                to_email,
+                subject,
+                text_content or "(HTML content omitted)",
+            )
+        return {
+            "success": False,
+            "error": f"Gmail API credentials not configured or failed to refresh ({reason})",
+        }
 
     sender_email = getattr(settings, "GMAIL_SENDER_EMAIL", "DBRecruitAI <noreply@dbrecruitai.com>")
 
@@ -103,10 +135,12 @@ def send_gmail_message(to_email: str, subject: str, html_content: str, text_cont
         return {"success": False, "error": str(e)}
 
 
-def send_application_submitted_email(application, async_send: bool = True) -> bool:
+def send_application_submitted_email(application, async_send: bool = False) -> bool:
     """
     Sends a confirmation email to the applicant ONLY when their job application is
     successfully submitted. This is the sole trigger currently authorized.
+    Defaults to synchronous sending (async_send=False) to ensure serverless (Vercel)
+    and worker processes do not terminate before the Gmail API network call finishes.
     """
     recipient_email = application.email
     if not recipient_email and application.applicant:
@@ -126,7 +160,8 @@ def send_application_submitted_email(application, async_send: bool = True) -> bo
     )
 
     site_domain = getattr(settings, "SITE_DOMAIN", "http://127.0.0.1:8000").rstrip("/")
-    tracking_url = f"{site_domain}/track/?application_id={application.application_id}"
+    profile_url = f"{site_domain}/accounts/profile/"
+    tracking_url = profile_url
 
     submission_dt = application.created_at or timezone.now()
     submitted_at_str = submission_dt.strftime("%B %d, %Y at %I:%M %p")
@@ -136,6 +171,7 @@ def send_application_submitted_email(application, async_send: bool = True) -> bo
         "job": application.job,
         "applicant_name": applicant_name,
         "tracking_url": tracking_url,
+        "profile_url": profile_url,
         "submitted_at": submitted_at_str,
     }
 
@@ -150,16 +186,124 @@ def send_application_submitted_email(application, async_send: bool = True) -> bo
 
     def _worker():
         try:
-            send_gmail_message(
+            result = send_gmail_message(
                 to_email=recipient_email,
                 subject=subject,
                 html_content=html_content,
                 text_content=text_content,
             )
+            if result.get("success"):
+                logger.info(
+                    "Application confirmation email successfully dispatched to %s (App ID: %s)",
+                    recipient_email,
+                    application.application_id,
+                )
+            else:
+                logger.error(
+                    "Failed to dispatch application confirmation email to %s (App ID: %s): %s",
+                    recipient_email,
+                    application.application_id,
+                    result.get("error"),
+                )
         except Exception as exc:
             logger.error("Error in background Gmail worker: %s", exc)
 
-    if async_send:
+    # In serverless environments like Vercel, daemon threads are killed when the response finishes.
+    is_serverless = getattr(settings, "IS_VERCEL", False) or bool(os.getenv("VERCEL"))
+    if async_send and not is_serverless:
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
+        return True
+    else:
+        result = send_gmail_message(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content,
+        )
+        if result.get("success"):
+            logger.info(
+                "Application confirmation email successfully dispatched to %s (App ID: %s)",
+                recipient_email,
+                application.application_id,
+            )
+        else:
+            logger.error(
+                "Failed to dispatch application confirmation email to %s (App ID: %s): %s",
+                recipient_email,
+                application.application_id,
+                result.get("error"),
+            )
+        return result.get("success", False)
+
+
+def send_interview_invitation_email(application, interview, async_send: bool = True) -> bool:
+    """
+    Sends an interview invitation email with full session details (date, time,
+    interview type, location/link, and notes) to the candidate.
+    """
+    recipient_email = application.email
+    if not recipient_email and application.applicant:
+        recipient_email = application.applicant.email
+
+    if not recipient_email:
+        logger.warning(
+            "Cannot send interview invitation: no email found for application %s",
+            application.application_id,
+        )
+        return False
+
+    applicant_name = (
+        f"{application.first_name} {application.last_name}".strip()
+        or (application.applicant.get_full_name() if application.applicant else "")
+        or "Applicant"
+    )
+
+    site_domain = getattr(settings, "SITE_DOMAIN", "http://127.0.0.1:8000").rstrip("/")
+    profile_url = f"{site_domain}/accounts/profile/"
+
+    context = {
+        "application": application,
+        "job": application.job,
+        "interview": interview,
+        "applicant_name": applicant_name,
+        "profile_url": profile_url,
+    }
+
+    subject = f"Interview Invitation: {interview.interview_type} - {application.job.title} (#{application.application_id})"
+
+    try:
+        html_content = render_to_string("emails/interview_invitation.html", context)
+        text_content = render_to_string("emails/interview_invitation.txt", context)
+    except Exception as e:
+        logger.error("Failed to render interview invitation email templates: %s", e)
+        return False
+
+    def _worker():
+        try:
+            result = send_gmail_message(
+                to_email=recipient_email,
+                subject=subject,
+                html_content=html_content,
+                text_content=text_content,
+            )
+            if result.get("success"):
+                logger.info(
+                    "Interview invitation email dispatched to %s for interview #%s",
+                    recipient_email,
+                    interview.id,
+                )
+            else:
+                logger.error(
+                    "Failed to dispatch interview invitation email to %s: %s",
+                    recipient_email,
+                    result.get("error"),
+                )
+        except Exception as exc:
+            logger.error("Error in interview invitation background email worker: %s", exc)
+
+    is_serverless = getattr(settings, "IS_VERCEL", False) or bool(os.getenv("VERCEL"))
+    if async_send and not is_serverless:
         thread = threading.Thread(target=_worker, daemon=True)
         thread.start()
         return True

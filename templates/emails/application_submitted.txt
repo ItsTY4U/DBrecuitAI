@@ -17,10 +17,8 @@ WHAT HAPPENS NEXT:
 Our AI screening intelligence matches your profile and qualifications with role requirements. If your background aligns with our criteria, our recruitment team will reach out with the next steps.
 
 TRACK YOUR APPLICATION:
-You can check your status at any time by visiting:
-{{ tracking_url }}
-
-(Or enter your Reference ID {{ application.application_id }} on our application tracking page).
+You can check your status at any time by visiting your profile:
+{{ profile_url|default:tracking_url }}
 
 Best regards,
 The DBRecruitAI Team

@@ -4,34 +4,40 @@
     <div class="bg-container dim"></div>
     <main class="main-content-wide">
         <div class="content-header">
+            <a href="{% url 'home' %}" class="mobile-back-circle-btn" aria-label="Back to Home">
+                <i class="fas fa-arrow-left"></i>
+            </a>
             <h1 class="page-title">Browse Job Openings</h1>
             <p class="page-subtitle">Smart Hiring Starts Here!</p>
         </div>
         <div class="jobs-search-container glass-white">
             <div class="search-box">
-                <i class="fas fa-search search-icon"></i>
-                <input id="search-input" name="q" type="text"
-                    placeholder="Search for Jobs (e.g. Admin Staff, Marketing, etc.)" hx-get="{% url 'jobs' %}"
-                    hx-trigger="keyup changed delay:300ms"
-                    hx-include="[name='department']"
-                    hx-target="#jobs-list"
-                    hx-swap="innerHTML">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input id="search-input" name="q" type="text"
+                        placeholder="Search for Jobs (e.g. Admin Staff, Marketing, etc.)" hx-get="{% url 'jobs' %}"
+                        hx-trigger="keyup changed delay:300ms"
+                        hx-include="[name='department']"
+                        hx-target="#jobs-list"
+                        hx-swap="innerHTML">
+                </div>
                 <div class="back-button-container">
                     <a href="{% url 'home' %}" class="btn btn-outline-alt">
                         <i class="fas fa-arrow-left"></i> Back
                     </a>
                 </div>
-                <button class="btn btn-primary btn-search">
+                <button type="button" class="btn btn-primary btn-search"
+                    onclick="document.getElementById('search-input').dispatchEvent(new Event('keyup'))">
                     Search
                 </button>
             </div>
-            <select class="status-select" name="department" hx-get="{% url 'jobs' %}" hx-trigger="change"
+            {% comment %} <select class="status-select" name="department" hx-get="{% url 'jobs' %}" hx-trigger="change"
                 hx-target="#jobs-list" hx-swap="innerHTML" hx-include="#search-input">
                 <option value="">All Department</option>
                 <option value="Administrative">Administrative</option>
                 <option value="Sales">Sales</option>
                 <option value="Warehouse">Warehouse</option>
-            </select>
+            </select> {% endcomment %}
             <div class="jobs-list" id="jobs-list">
                 {% include "jobs/partials/jobs_list.html" %}
             </div>

@@ -1,7 +1,7 @@
 {% extends "home_admin.html" %}
 {% load static %}
 {% block admin_body %}
-<main class="main-dashboard">
+<main class="main-dashboard main-content">
     <div class="page-nav-header">
         <a href="{% url 'job_management' %}" class="back-link-pill">
             <i class="fas fa-arrow-left"></i>
@@ -40,7 +40,7 @@
 
                     <div class="form-section-title">
                         <i class="fas fa-info-circle"></i>
-                        <span>General Information</span>
+                        <span>Job Details</span>
                     </div>
 
                     <div class="form-group">
@@ -48,17 +48,22 @@
                         <input type="text" id="edit-title" name="title" value="{{ job.title }}" class="form-input" required>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
+                        <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
+                    </div>
+
                     <div class="form-row-2col">
-                        <div class="form-group">
-                            <label class="form-label" for="edit-dept">Department <span class="required-star">*</span></label>
-                            <input type="text" id="edit-dept" name="department" value="{{ job.department }}" class="form-input" required>
-                        </div>
                         <div class="form-group">
                             <label class="form-label" for="edit-type">Employment Type</label>
                             <select id="edit-type" name="job_type" class="form-select">
                                 <option value="FULL-TIME" {% if job.job_type == "FULL-TIME" %}selected{% endif %}>Full-Time</option>
                                 <option value="PART-TIME" {% if job.job_type == "PART-TIME" %}selected{% endif %}>Part-Time</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="edit-vacancies">Number of Vacancies <span class="required-star">*</span></label>
+                            <input type="number" id="edit-vacancies" name="vacancies" value="{{ job.vacancies|default:1 }}" class="form-input" min="1" required>
                         </div>
                     </div>
 
@@ -99,7 +104,7 @@
 
                     <div class="form-section-title" style="margin-top: 24px;">
                         <i class="fas fa-align-left"></i>
-                        <span>Role Description</span>
+                        <span>Job Description</span>
                     </div>
 
                     <div class="form-group">

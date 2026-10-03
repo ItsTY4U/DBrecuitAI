@@ -1,50 +1,117 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}DBRecruitAI{% endblock %}</title>
-    <link rel="stylesheet" href="{% static "css/account.css" %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/account.css' %}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"></noscript>
+    {% block extra_css %}{% endblock %}
 </head>
 
 <body>
+    <div class="bg-container" aria-hidden="true"></div>
     <div class="landing-page">
-        {% comment %} <header class="navbar glass">
+        <!-- Navigation -->
+        <header class="navbar glass">
             <div class="nav-logo">
-                <img src="{% static 'images/logo.png'%}" alt="DBRecruitAI Logo">
+                <a href="{% url 'home' %}" aria-label="DBRecruitAI Home">
+                    <img src="{% static 'images/logo.png' %}" alt="DBRecruitAI Logo">
+                </a>
             </div>
-            <nav class="nav-menu">
-                <a href="{% url 'home' %}" class="nav-link">Home</a>
-                <a href="{% url 'jobs' %}" class="nav-link">Jobs</a>
+
+            <!-- Mobile menu button -->
+            <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navMenu">
+                <i class="fa-solid fa-bars" id="navToggleIcon"></i>
+            </button>
+
+            <!-- Nav links -->
+            <nav class="nav-menu" id="navMenu">
+                <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a>
+                <a href="{% url 'jobs' %}" class="nav-link {% if request.resolver_match.url_name == 'jobs' or request.resolver_match.url_name == 'job_detail' or request.resolver_match.url_name == 'apply' %}active{% endif %}">Jobs</a>
                 {% if user.is_authenticated and not user.is_staff %}
-                <a href="{% url 'profile' %}" class="nav-link">Profile</a>
-                <a href="{% url 'applicant_logout' %}" class="nav-link">Logout</a>
+                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">Profile</a>
+                <a href="{% url 'applicant_logout' %}" class="nav-link nav-btn-link">Logout</a>
                 {% else %}
-                <a href="{% url 'applicant_login' %}" class="nav-link">Login</a>
-                <a href="{% url 'signup' %}" class="nav-link">Sign Up</a>
+                <a href="{% url 'applicant_login' %}" class="nav-link nav-btn-signup nav-btn-signin {% if request.resolver_match.url_name == 'applicant_login' or request.resolver_match.url_name == 'forgot_password' or request.resolver_match.url_name == 'verify_password_otp' or request.resolver_match.url_name == 'reset_password' %}active{% endif %}">Sign In</a>
                 {% endif %}
             </nav>
-        </header> {% endcomment %}
+        </header>
 
         {% block content %}
+            {% block body %}
+            {% endblock %}
         {% endblock %}
 
         <footer class="landing-footer glass">
-
+            <p>&copy; 2026 DBRecruitAI - Powered by Don Benito's. All Rights Reserved.</p>
         </footer>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
         integrity="sha384-H5SrcfygHmAuTDZphMHqBJLc3FhssKjG7w/CeCpFReSfwBWDTKpkzPP8c+cLsK+V" 
         crossorigin="anonymous" defer>
     </script>
-    <script src="{% static 'js/signup.js' %}" defer></script>
+    
+    <script>
+        // Universal Mobile Navbar Toggle
+        (function() {
+            const toggle = document.getElementById('mobileNavToggle');
+            const menu = document.getElementById('navMenu');
+            const icon = document.getElementById('navToggleIcon');
+            if (!toggle || !menu) return;
+
+            function toggleMenu(force) {
+                const isOpen = force !== undefined ? force : !menu.classList.contains('is-open');
+                menu.classList.toggle('is-open', isOpen);
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                if (icon) {
+                    if (isOpen) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-xmark');
+                    } else {
+                        icon.classList.remove('fa-xmark');
+                        icon.classList.add('fa-bars');
+                    }
+                }
+            }
+
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleMenu();
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', function(e) {
+                if (menu.classList.contains('is-open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+                    toggleMenu(false);
+                }
+            });
+
+            // Close on ESC
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+                    toggleMenu(false);
+                }
+            });
+
+            // Close when link clicked
+            menu.querySelectorAll('.nav-link').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    toggleMenu(false);
+                });
+            });
+        })();
+    </script>
+
+    {% block extra_js %}{% endblock %}
 </body>
 
 </html>

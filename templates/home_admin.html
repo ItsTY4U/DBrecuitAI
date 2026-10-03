@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HR Dashboard | DBRecruitAI</title>
+    <meta name="csrf-token" content="{{ csrf_token }}">
 
     <!-- Preconnect & DNS-Prefetch for external origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,8 +16,8 @@
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 
     <!-- Preload Critical CSS -->
-    <link rel="preload" href="{% static "css/style.css" %}" as="style">
-    <link rel="stylesheet" href="{% static "css/style.css" %}">
+    <link rel="preload" href="{% static "css/hr.css" %}" as="style">
+    <link rel="stylesheet" href="{% static "css/hr.css" %}">
 
     <!-- Non-render-blocking Web Fonts -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -33,7 +34,7 @@
 </head>
 <body class="dashboard-body light-bg">
     <div class="bg-container dim"></div>
-    <div class="dashboard-container" id="admin-root">
+    <div class="dashboard-container app-wrapper" id="admin-root">
         <!-- Sidebar -->
         <aside class="sidebar" hx-boost="true" hx-select="#admin-root" hx-target="#admin-root" hx-swap="outerHTML show:top">
             <div class="sidebar-logo">
@@ -52,8 +53,11 @@
                 <li class="menu-item {% if request.resolver_match.url_name == 'candidates' or request.resolver_match.url_name == 'candidate_department' or request.resolver_match.url_name == 'candidate_detail' %} active {% endif %}" >
                     <a href="{% url "candidates" %}" class="nav-link menu-link"><i class="fas fa-user-group"></i> <span>Candidates</span></a>
                 </li>
-                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' or request.resolver_match.url_name == 'interview_detail' %}active{% endif %}">
+                <li class="menu-item {% if request.resolver_match.url_name == 'interviews' or request.resolver_match.url_name == 'schedule_interview' %}active{% endif %}">
                     <a href="{% url "interviews" %}" class="nav-link menu-link"><i class="fas fa-calendar-check"></i> <span>Interviews</span></a>
+                </li>
+                <li class="menu-item {% if request.resolver_match.url_name == 'reports' or 'report' in request.resolver_match.url_name %}active{% endif %}">
+                    <a href="{% url "reports" %}" class="nav-link menu-link"><i class="fas fa-chart-line"></i> <span>Reports</span></a>
                 </li>
             </ul>
             <div id="sidebar-alert-container" class="sidebar-alert-container">
@@ -70,6 +74,27 @@
                 {% endif %}
             </div>
             <div class="sidebar-footer">
+
+                <!--HR identity-->
+                <div class="hr-user-profile">
+                    <div class="hr-user-avatar">
+                        {% if user.first_name %}
+                            {{ user.first_name|first|upper }}
+                        {% else %}
+                            {{ user.username|first|upper }}
+                        {% endif %}
+                    </div>
+
+                    <div class="hr-user-info">
+                        <span class="hr-user-label">HR STAFF</span>
+                        <span class="hr-user-name">
+                            {{ user.first_name }}
+                            {{ user.last_name }}
+                        </span>
+                    </div>
+
+                </div>
+
                 <ul class="sidebar-footer-menu">
                     <li class="menu-item">
                         <a href="{% url "hr_logout" %}" class="menu-link-logout" hx-boost="false">
@@ -87,5 +112,165 @@
     <script src="{% static "js/modal.js" %}"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="{% static "js/hr_loader.js" %}"></script>
+    <script src="{% static "js/hr_notifications.js" %}"></script>
+    <script src="{% static "js/hr_concurrency.js" %}"></script>
+
+    <!-- Real-Time Subtle Toast Stream (Completely Silent Background Polling) -->
+    <div id="hr-toast-stream" class="hr-toast-stream" aria-live="polite"></div>
+    <script>
+        window.hrLastToastId = {{ latest_audit_log_id|default:0 }};
+        function dismissToast(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.add('toast-exit');
+                setTimeout(() => { if (el && el.parentElement) el.remove(); }, 320);
+            }
+        }
+        document.body.addEventListener('setToastCursor', function(evt) {
+            if (evt.detail && evt.detail.id) {
+                window.hrLastToastId = evt.detail.id;
+            }
+        });
+
+        // Completely silent 2.5s change detector (never triggers global logo loader)
+        (function() {
+            let isPolling = false;
+            async function checkUpdates() {
+                if (isPolling || document.hidden) return;
+                isPolling = true;
+                try {
+                    const lastId = window.hrLastToastId || 0;
+                    const isDash = document.getElementById('stat-total-val') ? 'true' : 'false';
+                    const resp = await fetch(`/hr/api/live-toasts/?last_log_id=${lastId}&is_dashboard=${isDash}`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+
+                    // HTTP 204: Nothing changed -> zero DOM work
+                    if (resp.status === 204) {
+                        const triggerHeader = resp.headers.get('HX-Trigger');
+                        if (triggerHeader) {
+                            try {
+                                const parsed = JSON.parse(triggerHeader);
+                                if (parsed.setToastCursor && parsed.setToastCursor.id) {
+                                    window.hrLastToastId = parsed.setToastCursor.id;
+                                }
+                            } catch(e) {}
+                        }
+                    } else if (resp.status === 200) {
+                        // HTTP 200: Something changed!
+                        const html = await resp.text();
+                        if (html.trim()) {
+                            const temp = document.createElement('div');
+                            temp.innerHTML = html;
+
+                            // Handle out-of-band stat updates
+                            temp.querySelectorAll('[hx-swap-oob="true"]').forEach(el => {
+                                const target = document.getElementById(el.id);
+                                if (target) {
+                                    target.outerHTML = el.outerHTML;
+                                }
+                                el.remove();
+                            });
+
+                            // Run inline scripts
+                            Array.from(temp.querySelectorAll('script')).forEach(s => {
+                                const newScript = document.createElement('script');
+                                newScript.textContent = s.textContent;
+                                document.body.appendChild(newScript);
+                                newScript.remove();
+                            });
+
+                            // Append toast notifications
+                            const stream = document.getElementById('hr-toast-stream');
+                            if (stream) {
+                                while (temp.firstChild) {
+                                    stream.appendChild(temp.firstChild);
+                                }
+                            }
+                        }
+
+                        // Dispatch hrDataChanged event
+                        const triggerHeader = resp.headers.get('HX-Trigger');
+                        if (triggerHeader) {
+                            try {
+                                const parsed = JSON.parse(triggerHeader);
+                                if (parsed.hrDataChanged) {
+                                    document.body.dispatchEvent(new CustomEvent('hrDataChanged', { detail: parsed.hrDataChanged }));
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                } catch(e) {
+                    // Silently ignore network interruptions
+                } finally {
+                    isPolling = false;
+                }
+            }
+
+            setInterval(checkUpdates, 2500);
+        })();
+
+        // Approach 1: Only fetch data when something actually changed
+        document.body.addEventListener('hrDataChanged', function(evt) {
+            const detail = evt.detail || {};
+            const scopes = detail.scopes || [];
+
+            if (detail.new_log_id) {
+                window.hrLastToastId = detail.new_log_id;
+            }
+
+            // Do not disrupt the user if typing in an input or if a modal is open
+            const activeEl = document.activeElement;
+            const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+            const openModal = document.querySelector('.modal.show, .modal-open, [data-modal-open="true"], [id$="-modal"]:not([style*="none"])');
+
+            if (openModal || isTyping) {
+                return;
+            }
+
+            // 1. Refresh Candidates Views
+            if (scopes.includes('candidates') || scopes.includes('general')) {
+                const recentPane = document.getElementById('tab-pane-recent');
+                if (recentPane && recentPane.style.display !== 'none' && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#tab-pane-recent', select: '#tab-pane-recent > *', swap: 'innerHTML' });
+                }
+
+                document.querySelectorAll('.job-table-container').forEach(function(tbl) {
+                    const parentCard = tbl.closest('.job-section-card');
+                    if (parentCard && parentCard.offsetParent !== null && typeof htmx !== 'undefined') {
+                        const jobId = parentCard.getAttribute('data-job-id');
+                        if (jobId) {
+                            htmx.ajax('GET', '/hr/candidates/job/' + jobId + '/table/', {
+                                target: tbl,
+                                select: '.job-candidate-table-inner',
+                                swap: 'innerHTML'
+                            });
+                        }
+                    }
+                });
+
+                const candStats = document.querySelector('.stats-grid-5');
+                if (candStats && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '.stats-grid-5', select: '.stats-grid-5', swap: 'outerHTML' });
+                }
+            }
+
+            // 2. Refresh Interviews Views
+            if (scopes.includes('interviews') || scopes.includes('general')) {
+                const activeInterviewPane = document.querySelector('.interview-tab-pane[style*="block"], .interview-tab-pane:not([style*="none"])');
+                if (activeInterviewPane && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: '#' + activeInterviewPane.id, select: '#' + activeInterviewPane.id + ' > *', swap: 'innerHTML' });
+                }
+            }
+
+            // 3. Refresh Jobs Management Page
+            if (scopes.includes('jobs') || scopes.includes('general')) {
+                const jobsContainer = document.querySelector('.job-management-content, .job-grid-section');
+                if (jobsContainer && typeof htmx !== 'undefined') {
+                    htmx.ajax('GET', window.location.href, { target: jobsContainer, select: jobsContainer.id ? '#' + jobsContainer.id : '.job-management-content', swap: 'innerHTML' });
+                }
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,8 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse, HttpResponse
 from jobs.models import Application, Job, Requirement, Department
-from .models import Interview
-from video_interview.models import InterviewSession
-from django.db.models import Q, Count, Prefetch
+from .models import Interview, CandidateEvaluation, AuditLog, HRNotification, HRActionLock
+from .utils import log_hr_action, seed_applicant_management_logs_if_empty, seed_initial_notifications_if_empty
+from video_interview.models import InterviewSession, InterviewResponse
+from .evaluation_ai import analyze_interview_audio
+from django.db.models import Q, Count, Prefetch, F, Window, Avg
+import json
+from django.db.models.functions import RowNumber
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -16,12 +21,17 @@ from functools import wraps
 from django.core.paginator import Paginator
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 
 from collections import defaultdict
 import ast
 import math
 from urllib.parse import quote
 from django.urls import reverse
+import asyncio
+from asgiref.sync import sync_to_async
+from django.conf import settings
+import os
 
 def invalidate_hr_cache():
     """Clear short-lived cache keys when mutations occur."""
@@ -36,6 +46,7 @@ def hr_required(view_func=None, login_url="hr_login"):
     - If user is authenticated and HR: grants access.
     - Otherwise: raises PermissionDenied (403).
     Supports both @hr_required and @hr_required(login_url="...").
+    Supports both sync and async view functions.
     """
     if isinstance(view_func, str):
         actual_login_url = view_func
@@ -45,17 +56,38 @@ def hr_required(view_func=None, login_url="hr_login"):
         actual_view_func = view_func
 
     def decorator(view):
-        @wraps(view)
-        def wrapper(request, *args, **kwargs):
-            user = request.user
-            if not user.is_authenticated:
-                return redirect_to_login(request.get_full_path(), actual_login_url)
+        if asyncio.iscoroutinefunction(view):
+            @wraps(view)
+            async def async_wrapper(request, *args, **kwargs):
+                @sync_to_async(thread_sensitive=True)
+                def check_access():
+                    user = request.user
+                    if not user.is_authenticated:
+                        return "unauthenticated"
+                    if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                        return "authorized"
+                    return "forbidden"
 
-            if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
-                return view(request, *args, **kwargs)
+                status = await check_access()
+                if status == "unauthenticated":
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
+                elif status == "authorized":
+                    return await view(request, *args, **kwargs)
+                else:
+                    raise PermissionDenied
+            return async_wrapper
+        else:
+            @wraps(view)
+            def wrapper(request, *args, **kwargs):
+                user = request.user
+                if not user.is_authenticated:
+                    return redirect_to_login(request.get_full_path(), actual_login_url)
 
-            raise PermissionDenied
-        return wrapper
+                if user.is_staff and not user.is_superuser and user.groups.filter(name="HR").exists():
+                    return view(request, *args, **kwargs)
+
+                raise PermissionDenied
+            return wrapper
 
     if callable(actual_view_func):
         return decorator(actual_view_func)
@@ -90,6 +122,14 @@ def hr_login(request):
             
             if is_hr:
                 login(request, user)
+                log_hr_action(
+                    request,
+                    action="HR_LOGIN",
+                    target_repr=f"HR Staff {user.get_full_name() or user.username}",
+                    details=f"HR Staff '{user.get_full_name() or user.username}' logged into HR portal.",
+                    target_model="User",
+                    target_id=user.pk,
+                )
                 return redirect("dashboard")
         
         messages.error(request, "Invalid username or password.")
@@ -99,12 +139,14 @@ def hr_login(request):
 def parse_ai_bullets(text):
     if not text:
         return []
-    text = text.strip()
+    if isinstance(text, list):
+        return [str(item).strip().lstrip("-*• ") for item in text if str(item).strip()]
+    text = str(text).strip()
     if text.startswith("[") and text.endswith("]"):
         try:
-            items = ast.literal_eval(text)
-            if isinstance(items, list):
-                return [str(i).strip() for i in items if i and str(i).strip()]
+            evaluated = ast.literal_eval(text)
+            if isinstance(evaluated, list):
+                return [str(item).strip().lstrip("-*• ") for item in evaluated if str(item).strip()]
         except Exception:
             pass
     lines = [line.strip().lstrip("-*• ") for line in text.split("\n") if line.strip()]
@@ -113,21 +155,31 @@ def parse_ai_bullets(text):
 @never_cache
 @hr_required
 def hr_logout(request):
+    if request.user.is_authenticated:
+        log_hr_action(
+            request,
+            action="HR_LOGOUT",
+            target_repr=f"HR Staff {request.user.get_full_name() or request.user.username}",
+            details=f"HR Staff '{request.user.get_full_name() or request.user.username}' logged out.",
+            target_model="User",
+            target_id=request.user.pk,
+        )
     logout(request)
     return redirect("hr_login")
 
 
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def dashboard(request):
     cache_key = "hr_dashboard_data"
     content = cache.get(cache_key)
     if content is None:
-        # 1. Single conditional aggregation query for all application counts
         app_counts = Application.objects.aggregate(
             total=Count("id"),
             screening=Count("id", filter=Q(status="Screening")),
             hired=Count("id", filter=Q(status="Hired")),
             interview=Count("id", filter=Q(status="Interview")),
+            evaluation=Count("id", filter=Q(status="Evaluation")),
             pending=Count("id", filter=Q(status="Pending")),
         )
 
@@ -135,41 +187,673 @@ def dashboard(request):
         screening = app_counts["screening"]
         hired = app_counts["hired"]
         interview = app_counts["interview"]
+        evaluation = app_counts["evaluation"]
         pending_count = app_counts["pending"]
         interview_count = app_counts["interview"]
 
         active_jobs = Job.objects.filter(status="Active").count()
-        
+
         if total_applications > 0:
             screening_percent = screening / total_applications * 100
             interview_percent = interview / total_applications * 100
+            evaluation_percent = evaluation / total_applications * 100
             hired_percent = hired / total_applications * 100
         else:
             screening_percent = 0
             interview_percent = 0
+            evaluation_percent = 0
             hired_percent = 0
-        
-        recent_applications = list(
-            Application.objects.select_related("job")
-            .only("id", "first_name", "last_name", "email", "status", "created_at", "job__id", "job__title")
-            .order_by("-created_at")[:5]
+
+        # 1. 6-Month Recruitment Velocity (Application Inflow & Hires)
+        now = timezone.now()
+        months_labels = []
+        monthly_apps = []
+        monthly_hires = []
+        for i in range(5, -1, -1):
+            m_year = now.year
+            m_month = now.month - i
+            while m_month <= 0:
+                m_month += 12
+                m_year -= 1
+            dt_label = date(m_year, m_month, 1).strftime("%b %Y")
+            months_labels.append(dt_label)
+
+            app_cnt = Application.objects.filter(
+                created_at__year=m_year,
+                created_at__month=m_month,
+            ).count()
+            monthly_apps.append(app_cnt)
+
+            hire_cnt = Application.objects.filter(
+                status="Hired",
+                created_at__year=m_year,
+                created_at__month=m_month,
+            ).count()
+            monthly_hires.append(hire_cnt)
+
+        # 2. Department Breakdown
+        dept_qs = (
+            Application.objects.values("job__department")
+            .annotate(total=Count("id"))
+            .order_by("-total")
         )
-        
+        dept_labels = []
+        dept_counts = []
+        for item in dept_qs:
+            dept_name = (item["job__department"] or "General").strip()
+            if not dept_name:
+                dept_name = "General"
+            dept_labels.append(dept_name)
+            dept_counts.append(item["total"])
+
+        if not dept_labels:
+            dept_labels = ["No Applications"]
+            dept_counts = [0]
+
+        # 3. AI Talent Quality / Score Distribution
+        score_tiers_agg = Application.objects.aggregate(
+            tier_top=Count("id", filter=Q(ai_score__gte=90)),
+            tier_high=Count("id", filter=Q(ai_score__gte=80, ai_score__lt=90)),
+            tier_qualified=Count("id", filter=Q(ai_score__gte=70, ai_score__lt=80)),
+            tier_review=Count("id", filter=Q(ai_score__lt=70)),
+        )
+        score_labels = ["Top Tier (90-100)", "High Potential (80-89)", "Qualified (70-79)", "Review Needed (<70)"]
+        score_counts = [
+            score_tiers_agg["tier_top"] or 0,
+            score_tiers_agg["tier_high"] or 0,
+            score_tiers_agg["tier_qualified"] or 0,
+            score_tiers_agg["tier_review"] or 0,
+        ]
+
+        chart_data = {
+            "months_labels": months_labels,
+            "monthly_apps": monthly_apps,
+            "monthly_hires": monthly_hires,
+            "dept_labels": dept_labels,
+            "dept_counts": dept_counts,
+            "score_labels": score_labels,
+            "score_counts": score_counts,
+        }
+
         content = {
             "total_applications": total_applications,
             "screening": screening,
             "hired": hired,
             "interview": interview,
+            "evaluation": evaluation,
             "active_jobs": active_jobs,
-            "recent_applications": recent_applications,
             "pending_count": pending_count,
             "interview_count": interview_count,
             "screening_percent": screening_percent,
             "interview_percent": interview_percent,
+            "evaluation_percent": evaluation_percent,
             "hired_percent": hired_percent,
+            "chart_data_json": json.dumps(chart_data),
         }
         cache.set(cache_key, content, 15)
-    return render(request, "hr/dashboard.html", content)
+
+    # Seed initial notifications if empty
+    seed_initial_notifications_if_empty()
+
+    # Dynamic notification counts and greeting for the logged-in HR staff
+    context = dict(content)
+    hr_user = request.user
+    full_name = f"{hr_user.first_name} {hr_user.last_name}".strip()
+    context["hr_user_name"] = full_name or hr_user.first_name or hr_user.username
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+    context["unread_notifs_count"] = unread_count
+    recent_notifs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:10]
+    )
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
+    for n in recent_notifs:
+        n.is_read = (n.id in read_ids)
+    context["recent_notifications"] = recent_notifs
+
+    return render(request, "hr/dashboard.html", context)
+
+
+@hr_required(login_url="hr_login")
+def hr_notifications_feed(request):
+    """
+    Returns latest HR notifications and unread count in JSON format for reactive updates,
+    isolated per logged-in HR staff user.
+    """
+    seed_initial_notifications_if_empty()
+    hr_user = request.user
+    notifs_qs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:15]
+    )
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
+
+    def format_time_ago(dt):
+        if not dt:
+            return ""
+        delta = timezone.now() - dt
+        seconds = int(delta.total_seconds())
+        if seconds < 60:
+            return "Just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = hours // 24
+        if days < 7:
+            return f"{days}d ago"
+        return dt.strftime("%b %d")
+
+    def get_category(notif_type):
+        if notif_type == "NEW_APPLICATION":
+            return "applications"
+        elif notif_type == "VIDEO_INTERVIEW_COMPLETED":
+            return "interviews"
+        elif notif_type in ("HR_ACTION", "INTERVIEW_SCHEDULED", "EVALUATION_COMPLETED"):
+            return "team"
+        return "system"
+
+    data = {
+        "status": "success",
+        "unread_count": unread_count,
+        "notifications": [
+            {
+                "id": n.id,
+                "title": n.title,
+                "message": n.message,
+                "type": n.notification_type,
+                "category": get_category(n.notification_type),
+                "link": n.link or reverse("candidates"),
+                "is_read": (n.id in read_ids),
+                "time_ago": format_time_ago(n.created_at),
+            }
+            for n in notifs_qs
+        ],
+    }
+    return JsonResponse(data)
+
+
+@hr_required(login_url="hr_login")
+def mark_notification_read(request):
+    """
+    Marks a single notification or all notifications as read for the current HR user.
+    Never alters other HR users' read states or unread counts.
+    """
+    if request.method == "POST":
+        notif_id = request.POST.get("notification_id")
+        if not notif_id and request.content_type == "application/json":
+            try:
+                body_data = json.loads(request.body.decode("utf-8")) if request.body else {}
+                notif_id = body_data.get("notification_id")
+            except Exception:
+                pass
+
+        hr_user = request.user
+        if notif_id:
+            notif = HRNotification.objects.filter(
+                Q(recipient=hr_user) | Q(recipient__isnull=True),
+                id=notif_id
+            ).first()
+            if notif:
+                notif.read_by.add(hr_user)
+        else:
+            unread_notifs = HRNotification.objects.filter(
+                Q(recipient=hr_user) | Q(recipient__isnull=True)
+            ).exclude(read_by=hr_user)
+            hr_user.read_hr_notifications.add(*unread_notifs)
+
+        unread_count = HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).exclude(read_by=hr_user).count()
+        return JsonResponse({"status": "success", "unread_count": unread_count})
+
+    return JsonResponse({"status": "error", "message": "POST required"}, status=405)
+
+
+def clean_expired_hr_locks():
+    """Removes all expired action locks across the platform."""
+    try:
+        HRActionLock.objects.filter(expires_at__lte=timezone.now()).delete()
+    except Exception:
+        pass
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_live_sync(request):
+    """
+    High-performance real-time synchronization endpoint polled by HR portal frontend.
+    Returns:
+      - Isolated unread notification count & recent notifications for request.user
+      - Active action locks held across the portal (with lock holder details)
+      - Ongoing draft candidate evaluations (to lock/hide evaluation forms for others)
+    """
+    clean_expired_hr_locks()
+    hr_user = request.user
+
+    # 1. Unread count and recent notifications for hr_user
+    unread_count = HRNotification.objects.filter(
+        Q(recipient=hr_user) | Q(recipient__isnull=True)
+    ).exclude(read_by=hr_user).count()
+
+    read_ids = set(hr_user.read_hr_notifications.values_list("id", flat=True))
+    recent_notifs_qs = list(
+        HRNotification.objects.filter(
+            Q(recipient=hr_user) | Q(recipient__isnull=True)
+        ).order_by("-created_at")[:15]
+    )
+
+    def format_time_ago(dt):
+        if not dt:
+            return ""
+        delta = timezone.now() - dt
+        seconds = int(delta.total_seconds())
+        if seconds < 60:
+            return "Just now"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}m ago"
+        hours = minutes // 60
+        if hours < 24:
+            return f"{hours}h ago"
+        days = hours // 24
+        if days < 7:
+            return f"{days}d ago"
+        return dt.strftime("%b %d")
+
+    def get_category(notif_type):
+        if notif_type == "NEW_APPLICATION":
+            return "applications"
+        elif notif_type == "VIDEO_INTERVIEW_COMPLETED":
+            return "interviews"
+        elif notif_type in ("HR_ACTION", "INTERVIEW_SCHEDULED", "EVALUATION_COMPLETED"):
+            return "team"
+        return "system"
+
+    notifications_data = [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.notification_type,
+            "category": get_category(n.notification_type),
+            "link": n.link or reverse("candidates"),
+            "is_read": (n.id in read_ids),
+            "time_ago": format_time_ago(n.created_at),
+        }
+        for n in recent_notifs_qs
+    ]
+
+    # 2. Active Action Locks (Application target_id -> lock details)
+    locks_qs = HRActionLock.objects.filter(
+        expires_at__gt=timezone.now()
+    ).select_related("user")
+
+    active_locks = [
+        {
+            "target_model": lock.target_model,
+            "target_id": lock.target_id,
+            "action_type": lock.action_type,
+            "user_id": lock.user_id,
+            "user_name": lock.user_name,
+            "is_me": (lock.user_id == hr_user.id),
+        }
+        for lock in locks_qs
+    ]
+
+    # 3. Ongoing Candidate Evaluations (actively evaluating/editing evaluations with evaluator)
+    ongoing_evals_qs = CandidateEvaluation.objects.filter(
+        is_evaluating=True,
+        evaluator__isnull=False,
+    ).select_related("evaluator", "application")
+
+    ongoing_evaluations = [
+        {
+            "application_id": ev.application_id,
+            "evaluator_id": ev.evaluator_id,
+            "evaluator_name": ev.evaluator_name or (ev.evaluator.get_full_name() if ev.evaluator else "Another HR"),
+            "is_my_evaluation": (ev.evaluator_id == hr_user.id),
+            "status": ev.status,
+        }
+        for ev in ongoing_evals_qs
+    ]
+
+    return JsonResponse({
+        "status": "success",
+        "current_user_id": hr_user.id,
+        "unread_count": unread_count,
+        "notifications": notifications_data,
+        "active_locks": active_locks,
+        "ongoing_evaluations": ongoing_evaluations,
+    })
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def hr_live_toast_feed(request):
+    """
+    HTMX partial swapping endpoint polled every 2.5s.
+    Delivers subtle, non-intrusive notifications when another HR staff member
+    or applicant performs an action.
+    Returns HTTP 204 (No Content) when no updates exist so HTMX performs zero DOM modifications.
+    """
+    try:
+        last_log_id = int(request.GET.get("last_log_id", 0) or 0)
+    except (ValueError, TypeError):
+        last_log_id = 0
+
+    hr_user = request.user
+    latest_log_id = AuditLog.objects.order_by("-id").values_list("id", flat=True).first() or 0
+
+    if last_log_id == 0:
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({"setToastCursor": {"id": latest_log_id}})
+        return response
+
+    if latest_log_id <= last_log_id:
+        return HttpResponse(status=204)
+
+    # Fetch new audit logs performed by others or applicants
+    new_logs = list(
+        AuditLog.objects.filter(id__gt=last_log_id)
+        .exclude(user=hr_user)
+        .order_by("id")[:4]
+    )
+
+    if not new_logs:
+        # Logs were created by this user themselves; advance cursor silently
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({"setToastCursor": {"id": latest_log_id}})
+        return response
+
+    toasts = []
+    for log in new_logs:
+        act = (log.action or "").upper()
+        if any(k in act for k in ("HIRE", "SHORTLIST")):
+            theme = "emerald"
+            category = "Applicant Advanced"
+        elif any(k in act for k in ("INTERVIEW_SCHEDULED", "INTERVIEW_RESCHEDULED")):
+            theme = "blue"
+            category = "Interview Update"
+        elif "EVALUATION" in act:
+            theme = "purple"
+            category = "Evaluation Update"
+        elif any(k in act for k in ("REJECT", "CANCEL", "NOT_HIRED")):
+            theme = "rose"
+            category = "Application Update"
+        elif any(k in act for k in ("JOB", "DEPARTMENT")):
+            theme = "amber"
+            category = "Jobs & Depts"
+        else:
+            theme = "slate"
+            category = "HR Update"
+
+        target_link = reverse("candidates")
+        if log.target_model == "Application" and log.target_id:
+            target_link = reverse("candidate_detail", kwargs={"pk": log.target_id})
+        elif log.target_model == "Interview":
+            target_link = reverse("interviews")
+        elif log.target_model == "Job":
+            target_link = reverse("job_management")
+        elif "FINAL_DECISION" in act:
+            target_link = f"{reverse('reports')}?tab=final_decision"
+
+        actor = log.user_name or "HR Team"
+        title = log.action_display or "Dashboard Update"
+        desc = log.target_repr or log.details or ""
+        if len(desc) > 80:
+            desc = desc[:77] + "..."
+
+        toasts.append({
+            "id": log.id,
+            "theme": theme,
+            "category": category,
+            "actor": actor,
+            "title": title,
+            "description": desc,
+            "link": target_link,
+        })
+
+    is_dashboard = request.GET.get("is_dashboard") == "true"
+    context = {
+        "toasts": toasts,
+        "new_last_log_id": latest_log_id,
+        "is_dashboard": is_dashboard,
+    }
+
+    if is_dashboard:
+        app_counts = Application.objects.aggregate(
+            total=Count("id"),
+            screening=Count("id", filter=Q(status="Screening")),
+            hired=Count("id", filter=Q(status="Hired")),
+            interview=Count("id", filter=Q(status="Interview")),
+        )
+        context["stat_total"] = app_counts["total"] or 0
+        context["stat_screening"] = app_counts["screening"] or 0
+        context["stat_interview"] = app_counts["interview"] or 0
+        context["stat_jobs"] = Job.objects.filter(status="Active").count()
+
+    # Determine affected scopes from the new logs so clients only refresh relevant views
+    affected_scopes = set()
+    for log in new_logs:
+        act = (log.action or "").upper()
+        tm = (log.target_model or "").lower()
+        if tm == "application" or "APPLICATION" in act or "CANDIDATE" in act:
+            affected_scopes.add("candidates")
+        elif tm == "interview" or "INTERVIEW" in act or "EVALUATION" in act:
+            affected_scopes.add("interviews")
+        elif tm in ("job", "department") or "JOB" in act or "DEPT" in act:
+            affected_scopes.add("jobs")
+
+    if not affected_scopes:
+        affected_scopes.add("general")
+
+    response = render(request, "hr/partials/subtle_toast.html", context)
+    response["HX-Trigger"] = json.dumps({
+        "hrDataChanged": {
+            "scopes": list(affected_scopes),
+            "new_log_id": latest_log_id,
+        }
+    })
+    return response
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_acquire_lock(request):
+    """
+    Acquires or refreshes an operational action lock on an entity (e.g. Application).
+    Supports single target_id or batch target_ids.
+    Guarantees concurrency isolation so only one HR user can schedule, reschedule, or evaluate.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_ids = data.get("target_ids")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type", "SCHEDULE")
+
+    ids = []
+    if target_ids and isinstance(target_ids, list):
+        ids = [int(i) for i in target_ids if str(i).isdigit()]
+    elif target_id and str(target_id).isdigit():
+        ids = [int(target_id)]
+
+    if not ids:
+        return JsonResponse({"success": False, "message": "Missing or invalid target_id"}, status=400)
+
+    clean_expired_hr_locks()
+
+    # Check if active lock held by another HR staff member
+    if action_type in ("SCHEDULE", "RESCHEDULE", "EVALUATE"):
+        conflict_locks = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            action_type__in=["SCHEDULE", "RESCHEDULE", "EVALUATE"],
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user)
+    else:
+        conflict_locks = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            action_type=action_type,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user)
+
+    if conflict_locks.exists():
+        first_lock = conflict_locks.first()
+        return JsonResponse({
+            "success": False,
+            "locked": True,
+            "locked_by": first_lock.user_name,
+            "action": first_lock.get_action_type_display(),
+            "message": f"Candidate is currently being handled by {first_lock.user_name}."
+        })
+
+    # If attempting to schedule or reschedule, candidate must not have an active ongoing evaluation
+    if action_type in ("SCHEDULE", "RESCHEDULE") and target_model == "Application":
+        active_eval = CandidateEvaluation.objects.filter(
+            application_id__in=ids,
+            status="Draft",
+            is_evaluating=True,
+            evaluator__isnull=False
+        ).exclude(evaluator=request.user).first()
+        if active_eval:
+            eval_name = active_eval.evaluator_name or (active_eval.evaluator.get_full_name() if active_eval.evaluator else "another HR staff member")
+            return JsonResponse({
+                "success": False,
+                "locked": True,
+                "locked_by": eval_name,
+                "action": "Evaluation",
+                "message": f"Candidate is currently being evaluated by {eval_name}."
+            })
+
+    user_name = request.user.get_full_name() or request.user.username
+    exp_time = timezone.now() + timedelta(minutes=5)
+    for tid in ids:
+        HRActionLock.objects.update_or_create(
+            target_model=target_model,
+            target_id=tid,
+            action_type=action_type,
+            defaults={
+                "user": request.user,
+                "user_name": user_name,
+                "expires_at": exp_time
+            }
+        )
+
+    return JsonResponse({
+        "success": True,
+        "message": f"Lock acquired for {action_type}.",
+        "expires_at": exp_time.isoformat()
+    })
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_release_lock(request):
+    """
+    Releases an action lock currently held by the logged-in HR staff user.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_ids = data.get("target_ids")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type")
+
+    ids = []
+    if target_ids and isinstance(target_ids, list):
+        ids = [int(i) for i in target_ids if str(i).isdigit()]
+    elif target_id and str(target_id).isdigit():
+        ids = [int(target_id)]
+
+    if ids:
+        qs = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id__in=ids,
+            user=request.user
+        )
+        if action_type:
+            qs = qs.filter(action_type=action_type)
+        qs.delete()
+
+    return JsonResponse({"success": True})
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def api_heartbeat_lock(request):
+    """
+    Extends the active lease of an action lock held by the logged-in HR staff user.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "POST required"}, status=405)
+
+    data = {}
+    if request.content_type == "application/json" and request.body:
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+        except Exception:
+            pass
+    if not data:
+        data = request.POST
+
+    target_model = data.get("target_model", "Application")
+    target_id = data.get("target_id")
+    action_type = data.get("action_type")
+
+    if not target_id:
+        return JsonResponse({"success": False, "message": "Missing target_id"}, status=400)
+
+    try:
+        target_id = int(target_id)
+        qs = HRActionLock.objects.filter(
+            target_model=target_model,
+            target_id=target_id,
+            user=request.user
+        )
+        if action_type:
+            qs = qs.filter(action_type=action_type)
+        lock = qs.first()
+        if lock:
+            lock.expires_at = timezone.now() + timedelta(minutes=5)
+            lock.save(update_fields=["expires_at"])
+            return JsonResponse({"success": True, "expires_at": lock.expires_at.isoformat()})
+        else:
+            return JsonResponse({"success": False, "message": "Lock not found or expired."}, status=404)
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
 
 def get_job_management_context(selected_department=""):
     active_jobs = list(
@@ -252,8 +936,17 @@ def create_department(request):
     if request.method == "POST":
         dept_name = request.POST.get("name", "").strip()
         if dept_name:
-            Department.objects.get_or_create(name=dept_name)
+            dept_obj, created = Department.objects.get_or_create(name=dept_name)
             invalidate_hr_cache()
+            if created:
+                log_hr_action(
+                    request,
+                    action="DEPARTMENT_CREATED",
+                    target_repr=dept_name,
+                    details=f"Created new department '{dept_name}'.",
+                    target_model="Department",
+                    target_id=dept_obj.pk,
+                )
 
     if request.headers.get("HX-Request"):
         data = get_job_management_context()
@@ -264,6 +957,31 @@ def create_department(request):
     messages.success(request, "New department created successfully!")
     return redirect("job_management")
 
+def _parse_criteria_weight(val, default=25):
+    try:
+        w = int(val)
+        return max(0, min(100, w))
+    except (ValueError, TypeError):
+        return default
+
+def _normalize_job_weights(s, edu, exp, qual):
+    total = s + edu + exp + qual
+    if total == 100:
+        return s, edu, exp, qual
+    if total > 0:
+        scaled = {
+            "s": round(s * 100.0 / total),
+            "edu": round(edu * 100.0 / total),
+            "exp": round(exp * 100.0 / total),
+            "qual": round(qual * 100.0 / total),
+        }
+        drift = 100 - sum(scaled.values())
+        if drift:
+            max_k = max(scaled, key=scaled.get)
+            scaled[max_k] += drift
+        return scaled["s"], scaled["edu"], scaled["exp"], scaled["qual"]
+    return 25, 25, 25, 25
+
 @never_cache
 @hr_required(login_url="hr_login")
 def create_job(request):
@@ -272,14 +990,30 @@ def create_job(request):
         if dept_name:
             Department.objects.get_or_create(name=dept_name)
 
+        skills_w = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), 25)
+        edu_w = _parse_criteria_weight(request.POST.get("criteria_education_weight"), 25)
+        exp_w = _parse_criteria_weight(request.POST.get("criteria_experience_weight"), 25)
+        qual_w = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), 25)
+        skills_w, edu_w, exp_w, qual_w = _normalize_job_weights(skills_w, edu_w, exp_w, qual_w)
+        vacancies_raw = request.POST.get("vacancies", "1").strip()
+        try:
+            vacancies = max(1, int(vacancies_raw))
+        except (ValueError, TypeError):
+            vacancies = 1
+
         job = Job.objects.create(
             title=request.POST.get("title", "").strip(),
             department=dept_name,
             job_type=request.POST.get("job_type", "FULL-TIME"),
             schedule=request.POST.get("schedule", "").strip(),
             shift=request.POST.get("shift", "").strip(),
+            vacancies=vacancies,
             description=request.POST.get("description", "").strip(),
             requirements=request.POST.get("requirements", "").strip(),
+            skills_weight=skills_w,
+            education_weight=edu_w,
+            experience_weight=exp_w,
+            qualification_weight=qual_w,
             status="Active",
         )
 
@@ -299,6 +1033,15 @@ def create_job(request):
                 )
         invalidate_hr_cache()
 
+        log_hr_action(
+            request,
+            action="JOB_CREATED",
+            target_repr=job.title,
+            details=f"Created job posting '{job.title}' in {job.department} ({job.job_type}).",
+            target_model="Job",
+            target_id=job.pk,
+        )
+
         if request.headers.get("HX-Request"):
             data = get_job_management_context()
             response = render(request, "hr/partials/job_management_content.html", data)
@@ -309,6 +1052,7 @@ def create_job(request):
     return redirect("job_management")
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def job_management(request):
     selected_department = request.GET.get("department", "").strip()
@@ -337,6 +1081,19 @@ def manage_job(request, pk):
         job.description = request.POST.get("description", "").strip()
         job.requirements = request.POST.get("requirements", "").strip()
         job.status = request.POST.get("status", job.status)
+        if any(k in request.POST for k in ["criteria_skills_weight", "criteria_education_weight", "criteria_experience_weight", "criteria_qualification_weight"]):
+            sw = _parse_criteria_weight(request.POST.get("criteria_skills_weight"), job.skills_weight if job.skills_weight is not None else 25)
+            ew = _parse_criteria_weight(request.POST.get("criteria_education_weight"), job.education_weight if job.education_weight is not None else 25)
+            expw = _parse_criteria_weight(request.POST.get("criteria_experience_weight"), job.experience_weight if job.experience_weight is not None else 25)
+            qw = _parse_criteria_weight(request.POST.get("criteria_qualification_weight"), job.qualification_weight if job.qualification_weight is not None else 25)
+            job.skills_weight, job.education_weight, job.experience_weight, job.qualification_weight = _normalize_job_weights(sw, ew, expw, qw)
+
+        vacancies_raw = request.POST.get("vacancies", "").strip()
+        if vacancies_raw:
+            try:
+                job.vacancies = max(1, int(vacancies_raw))
+            except (ValueError, TypeError):
+                pass
         job.save()
         
         key_qualifications = request.POST.getlist(
@@ -350,6 +1107,15 @@ def manage_job(request, pk):
                 Requirement.objects.create(job=job, text=qualification.strip())
                 
         invalidate_hr_cache()
+
+        log_hr_action(
+            request,
+            action="JOB_UPDATED",
+            target_repr=job.title,
+            details=f"Updated job posting '{job.title}' in {job.department} (Status: {job.status}).",
+            target_model="Job",
+            target_id=job.pk,
+        )
 
         if request.headers.get("HX-Request"):
             data = get_job_management_context()
@@ -376,6 +1142,33 @@ def manage_job(request, pk):
         return render(request, "hr/partials/edit_job_modal.html", context)
 
     return render(request, "hr/manage_job.html", context)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def job_candidates_modal(request, pk):
+    """
+    Renders the in-page candidates modal for a specific job (active or inactive)
+    within Job Management (/hr/jobs/), allowing HR to review applicants without
+    navigating away.
+    """
+    job = get_object_or_404(Job, pk=pk)
+    applications = list(
+        Application.objects.filter(job=job)
+        .only(
+            "id", "application_id", "first_name", "middle_initial", "last_name",
+            "email", "phone", "ai_score", "status", "created_at", "resume"
+        )
+        .order_by("-ai_score", "-created_at")
+    )
+    hired_count = sum(1 for app in applications if app.status == "Hired")
+    context = {
+        "job": job,
+        "applications": applications,
+        "hired_count": hired_count,
+        "total_applicants": len(applications),
+    }
+    return render(request, "hr/partials/job_candidates_modal.html", context)
 
 TABLE_PAGE_SIZE = 5
 
@@ -483,16 +1276,39 @@ def get_job_candidates_table_context(job, search_query="", page_number=1):
         }
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def candidates(request):
     selected_department = request.GET.get("department", "").strip()
     selected_job = request.GET.get("job", "").strip()
+    search_query = request.GET.get("search", "").strip()
+    active_tab = request.GET.get("tab", "").strip().lower()
+    if not active_tab:
+        if selected_department or selected_job or search_query:
+            active_tab = "all"
+        else:
+            active_tab = "recent"
+    elif active_tab not in ["recent", "all"]:
+        active_tab = "recent"
 
-    # Single aggregate query for all candidate status counts
-    counts = Application.objects.aggregate(
+    # Recent candidate submissions across active jobs
+    recent_applications = list(
+        Application.objects.filter(job__status="Active")
+        .select_related("job")
+        .only(
+            "id", "application_id", "first_name", "middle_initial", "last_name",
+            "email", "phone", "ai_score", "status", "created_at",
+            "job__id", "job__title", "job__department"
+        )
+        .order_by("-created_at", "-id")[:50]
+    )
+
+    # Single aggregate query for candidate status counts of active jobs
+    counts = Application.objects.filter(job__status="Active").aggregate(
         total=Count("id"),
         screening=Count("id", filter=Q(status="Screening")),
-        interview=Count("id", filter=Q(status="Interview")),
+        interview=Count("id", filter=Q(status__in=["Interview", "Shortlisted"])),
+        evaluation=Count("id", filter=Q(status="Evaluation")),
         hired=Count("id", filter=Q(status="Hired")),
     )
 
@@ -514,25 +1330,105 @@ def candidates(request):
         target_job_id = int(selected_job)
         filtered_jobs = [j for j in filtered_jobs if j.id == target_job_id]
 
+    search_q = Q()
+    if search_query:
+        search_q = (
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(application_id__icontains=search_query)
+        )
+        matching_job_ids = set(
+            Application.objects.filter(job__status="Active")
+            .filter(search_q)
+            .values_list("job_id", flat=True)
+        )
+        filtered_jobs = [j for j in filtered_jobs if j.id in matching_job_ids]
+        job_match_counts = dict(
+            Application.objects.filter(job_id__in=[j.id for j in filtered_jobs])
+            .filter(search_q)
+            .values("job_id")
+            .annotate(cnt=Count("id"))
+            .values_list("job_id", "cnt")
+        )
+        for j in filtered_jobs:
+            j.applicant_count = job_match_counts.get(j.id, 0)
+
     base_candidate_fields = (
         "id", "application_id", "first_name", "middle_initial", "last_name",
         "email", "phone", "ai_score", "status", "created_at", "job_id"
     )
 
-    # Group jobs by department and prepare top 3 cards + initial table context for each job
+    filtered_job_ids = [j.id for j in filtered_jobs]
+    top_candidates_by_job = defaultdict(list)
+    table_candidates_by_job = defaultdict(list)
+
+    if filtered_job_ids:
+        # 1. Fetch top 3 candidates for ALL filtered jobs in 1 single partitioned query
+        top_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .filter(search_q if search_query else Q())
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc(), F("id").asc()]
+                )
+            )
+            .filter(row_num__lte=3)
+            .only(*base_candidate_fields)
+        )
+        for cand in top_cands_qs:
+            top_candidates_by_job[cand.job_id].append(cand)
+
+        # 2. Fetch table candidates (ranks 4 to 8) for ALL filtered jobs in 1 single partitioned query
+        table_cands_qs = (
+            Application.objects.filter(job_id__in=filtered_job_ids)
+            .filter(search_q if search_query else Q())
+            .annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("job_id")],
+                    order_by=[F("ai_score").desc(), F("created_at").desc(), F("id").asc()]
+                )
+            )
+            .filter(row_num__gte=4, row_num__lte=8)
+            .only(*base_candidate_fields)
+        )
+        for cand in table_cands_qs:
+            cand.table_rank = cand.row_num
+            table_candidates_by_job[cand.job_id].append(cand)
+
+    # Group jobs by department and assign top 3 cards + initial table context for each job
     departments_dict = defaultdict(list)
     for job in filtered_jobs:
-        top_candidates = list(
-            Application.objects.filter(job=job)
-            .only(*base_candidate_fields)
-            .order_by("-ai_score", "-created_at", "id")[:3]
-        )
+        top_candidates = top_candidates_by_job.get(job.id, [])
         for idx, cand in enumerate(top_candidates):
             cand.top_rank = idx + 1
         job.top_candidates = top_candidates
 
-        # Default initial table context (Page 1: ranks 4 to 8)
-        job.table_data = get_job_candidates_table_context(job, search_query="", page_number=1)
+        total_apps = job.applicant_count if hasattr(job, "applicant_count") else len(top_candidates)
+        total_table_candidates = max(0, total_apps - 3)
+        total_pages = max(1, math.ceil(total_table_candidates / TABLE_PAGE_SIZE)) if total_table_candidates > 0 else 1
+        
+        table_page = table_candidates_by_job.get(job.id, [])
+        job.table_data = {
+            "job": job,
+            "candidates": table_page,
+            "is_search": bool(search_query),
+            "search_query": search_query,
+            "total_count": total_apps,
+            "total_table_candidates": total_table_candidates,
+            "start_index": 4 if total_table_candidates > 0 else 0,
+            "end_index": min(3 + len(table_page), total_apps),
+            "current_page": 1,
+            "total_pages": total_pages,
+            "has_previous": False,
+            "has_next": total_pages > 1,
+            "previous_page": 1,
+            "next_page": 2,
+            "page_range": range(1, total_pages + 1),
+        }
         departments_dict[job.department].append(job)
 
     department_sections = []
@@ -556,10 +1452,15 @@ def candidates(request):
         "available_departments": available_departments,
         "selected_department": selected_department,
         "selected_job": selected_job,
+        "search_query": search_query,
         "total_candidates": counts["total"],
         "screening_count": counts["screening"],
         "interview_count": counts["interview"],
+        "evaluation_count": counts["evaluation"],
         "hired_count": counts["hired"],
+        "active_tab": active_tab,
+        "recent_applications": recent_applications,
+        "recent_applications_count": len(recent_applications),
     })
 
 @never_cache
@@ -585,31 +1486,119 @@ def candidate_department(request, department):
     return redirect(f"{reverse('candidates')}?department={quote(department)}")
 
 @never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def candidate_detail(request, pk):
     application = get_object_or_404(
-        Application.objects.select_related("job"),
+        Application.objects.select_related("job", "applicant"),
         pk=pk
     )
+
+    # Normalize legacy Pending status to Screening
+    if application.status == "Pending":
+        application.status = "Screening"
+        application.save(update_fields=["status"])
+        invalidate_hr_cache()
+
+    # Auto re-analyze candidate with AI if score is 0, pending, or not yet processed
+    has_resume = bool(application.resume or (application.applicant and getattr(application.applicant, "default_resume", None)))
+    if has_resume and (not application.resume_processed or application.ai_score == 0 or application.ai_recommendation == "Pending Review"):
+        try:
+            from jobs.ai import screen_application
+            screen_application(application, max_retries=2)
+            application.refresh_from_db()
+        except Exception as auto_err:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Auto re-analysis on candidate_detail failed for app %s: %s",
+                getattr(application, "application_id", application.id),
+                auto_err,
+            )
     
     strengths = parse_ai_bullets(application.ai_strengths)
     weaknesses = parse_ai_bullets(application.ai_weaknesses)
 
     interview_session = InterviewSession.objects.filter(
         application=application
-    ).prefetch_related("responses").first()
+    ).prefetch_related(
+        Prefetch("responses", queryset=InterviewResponse.objects.order_by("question_number"))
+    ).first()
 
-    interview_responses = []
-    if interview_session:
-        interview_responses = interview_session.responses.all().order_by("question_number")
+    interview_responses = list(interview_session.responses.all()) if interview_session else []
+
+    candidate_evaluation = getattr(application, "evaluation", None)
+    if candidate_evaluation is None:
+        try:
+            candidate_evaluation = CandidateEvaluation.objects.filter(application=application).first()
+        except Exception:
+            candidate_evaluation = None
+
+    scheduled_interviews = list(application.interview.all().order_by("-date", "-time"))
+    scheduled_interview = scheduled_interviews[0] if scheduled_interviews else None
+
+    # Calculate true AI match rank of the candidate within this job role
+    all_job_app_ids = list(
+        Application.objects.filter(job=application.job)
+        .order_by("-ai_score", "-created_at", "id")
+        .values_list("id", flat=True)
+    )
+    try:
+        candidate_rank = all_job_app_ids.index(application.id) + 1
+    except ValueError:
+        candidate_rank = None
+    total_job_applicants = len(all_job_app_ids)
+
+    # Determine whether the evaluation form should be open or show the "not initiated" banner
+    clean_expired_hr_locks()
+    active_manage_lock = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type__in=["SCHEDULE", "RESCHEDULE"],
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+
+    evaluate_param = request.GET.get("evaluate") == "1"
+    is_draft = bool(candidate_evaluation and candidate_evaluation.status == "Draft")
+    is_eval_active = bool(
+        candidate_evaluation and (
+            getattr(candidate_evaluation, "is_evaluating", False) 
+            or (is_draft and candidate_evaluation.evaluator_id is not None)
+        )
+    )
+    is_manage_locked_by_other = bool(active_manage_lock)
+    is_eval_locked_by_other = bool(
+        (is_eval_active and candidate_evaluation.evaluator and candidate_evaluation.evaluator != request.user)
+        or is_manage_locked_by_other
+    )
+    show_eval_form = (evaluate_param or is_eval_active) and not is_eval_locked_by_other
     
-    return render(request, "hr/candidate_detail.html", {
+    scroll_to = request.GET.get("scroll_to", "").strip()
+    is_modal = bool(request.headers.get("HX-Request") or request.GET.get("modal") == "1")
+
+    context = {
         "application": application,
         "strengths": strengths,
         "weaknesses": weaknesses,
         "interview_session": interview_session,
         "interview_responses": interview_responses,
-    })
+        "candidate_evaluation": candidate_evaluation,
+        "scheduled_interviews": scheduled_interviews,
+        "scheduled_interview": scheduled_interview,
+        "candidate_rank": candidate_rank,
+        "total_job_applicants": total_job_applicants,
+        "show_eval_form": show_eval_form,
+        "is_eval_locked_by_other": is_eval_locked_by_other,
+        "is_manage_locked_by_other": is_manage_locked_by_other,
+        "active_manage_lock": active_manage_lock,
+        "scroll_to": scroll_to,
+        "is_modal": is_modal,
+    }
+
+    if is_modal:
+        return render(request, "hr/partials/candidate_profile_modal.html", context)
+
+    return render(request, "hr/candidate_detail.html", context)
+
 
 @never_cache
 @hr_required(login_url="hr_login")
@@ -617,12 +1606,52 @@ def reset_candidate_interview(request, pk):
     application = get_object_or_404(Application, pk=pk)
     session = InterviewSession.objects.filter(application=application).first()
     if session:
+        from django.core.files.storage import default_storage
+
+        # 1. Clean up old video clips from object storage
+        for resp in session.responses.all():
+            if resp.video_clip:
+                try:
+                    resp.video_clip.delete(save=False)
+                except Exception:
+                    pass
+
+        # 2. Check and purge any standard video filenames for this application from storage
+        app_id = application.application_id
+        for q_num in range(1, 10):
+            for ext in [".webm", ".mp4"]:
+                key = f"videos/{app_id}_q{q_num}{ext}"
+                try:
+                    if default_storage.exists(key):
+                        default_storage.delete(key)
+                except Exception:
+                    pass
+
+        # 3. Delete old response records from database
+        session.responses.all().delete()
+
+        # 4. Reset interview session state cleanly
         session.can_retake = True
         session.status = "PENDING"
+        session.final_score = None
+        session.overall_feedback = ""
+        session.overall_summary = ""
+        session.ai_analyzed = False
+        session.started_at = None
+        session.completed_at = None
         session.save()
+
+        log_hr_action(
+            request,
+            action="EVALUATION_RESET",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Video interview for {application.first_name} {application.last_name} was reset and old recordings cleared to allow retake.",
+            target_model="InterviewSession",
+            target_id=session.pk,
+        )
         messages.success(
             request,
-            f"Video interview for {application.first_name} {application.last_name} has been reset to allow a retake."
+            f"Video interview for {application.first_name} {application.last_name} has been reset. Previous video files have been cleared and applicant is now permitted to retake."
         )
     return redirect("candidate_detail", pk=pk)
 
@@ -655,19 +1684,149 @@ def update_application_status(request, pk):
     application = get_object_or_404(Application, pk=pk)
     
     if request.method == "POST":
-        application.status = request.POST.get("status")
-        application.save()
-        invalidate_hr_cache()
+        # Guard against changing status if candidate is actively locked by another user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot update status: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(request.META.get("HTTP_REFERER", "candidates"))
+
+        old_status = application.status
+        new_status = request.POST.get("status")
+        if new_status and new_status != old_status:
+            application.status = new_status
+            application.save()
+            invalidate_hr_cache()
+
+            action_key = "STATUS_CHANGE"
+            if new_status == "Rejected":
+                action_key = "REJECT_APPLICATION"
+            elif new_status == "Shortlisted":
+                action_key = "SHORTLIST_APPLICATION"
+            elif new_status == "Hired":
+                action_key = "HIRE_APPLICATION"
+
+            log_hr_action(
+                request,
+                action=action_key,
+                target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+                details=f"Application status changed from '{old_status}' to '{new_status}' for position {application.job.title}.",
+                target_model="Application",
+                target_id=application.pk,
+            )
+
+            # Auto-inactivate active job if vacancies are fulfilled
+            if new_status == "Hired":
+                job = application.job
+                if job and job.status == "Active":
+                    hired_count = Application.objects.filter(job=job, status="Hired").count()
+                    if hired_count >= job.vacancies:
+                        job.status = "Inactive"
+                        job.save(update_fields=["status"])
+                        log_hr_action(
+                            request,
+                            action="JOB_INACTIVATED",
+                            target_repr=job.title,
+                            details=f"Job posting '{job.title}' automatically set to Inactive as all {job.vacancies} vacancies have been filled by hired candidates.",
+                            target_model="Job",
+                            target_id=job.pk,
+                        )
         
     return redirect(request.META.get("HTTP_REFERER", "candidates"))
 
+
 @never_cache
+@hr_required(login_url="hr_login")
+def restore_candidate(request, pk):
+    """
+    Restores a rejected or cancelled application back to Screening stage.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        target_stage = request.POST.get("target_stage", "Screening")
+        if target_stage not in ["Screening", "Shortlisted"]:
+            target_stage = "Screening"
+
+        old_status = application.status
+        application.status = target_stage
+        application.save(update_fields=["status"])
+        invalidate_hr_cache()
+
+        log_hr_action(
+            request,
+            action="STATUS_CHANGE",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Application restored from '{old_status}' back to '{target_stage}'.",
+            target_model="Application",
+            target_id=application.pk,
+        )
+        messages.success(
+            request,
+            f"Application for {application.first_name} {application.last_name} has been restored to {target_stage}."
+        )
+        return redirect(f"{reverse('reports')}?tab=cancelled")
+
+    return redirect(f"{reverse('reports')}?tab=cancelled")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def send_candidate_email(request, pk):
+    application = get_object_or_404(Application, pk=pk)
+
+    if request.method == "POST":
+        subject = request.POST.get("subject", "").strip()
+        body = request.POST.get("message", "").strip()
+        recipient_email = request.POST.get("recipient_email", "").strip() or application.email
+
+        if not subject or not body:
+            messages.error(request, "Email subject and message cannot be empty.")
+            return redirect("candidate_detail", pk=pk)
+
+        html_content = (
+            f"<div style='font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.6;'>"
+            f"{body.replace(chr(10), '<br>')}"
+            f"</div>"
+        )
+
+        from main.emailer import send_gmail_message
+        result = send_gmail_message(
+            to_email=recipient_email,
+            subject=subject,
+            html_content=html_content,
+            text_content=body,
+        )
+
+        if result.get("success"):
+            log_hr_action(
+                request,
+                action="EMAIL_SENT",
+                target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+                details=f"Sent candidate email '{subject}' to {recipient_email}.",
+                target_model="Application",
+                target_id=application.pk,
+            )
+            messages.success(request, f"Email successfully sent to {recipient_email}!")
+        else:
+            err = result.get("error", "Gmail API not configured or failed.")
+            messages.warning(request, f"Could not send email automatically ({err}). Please use desktop email.")
+
+    return redirect("candidate_detail", pk=pk)
+
+@never_cache
+@ensure_csrf_cookie
 @hr_required(login_url="hr_login")
 def interviews(request):
     # 1. Combine 5 separate COUNT queries into 1 single aggregate query
     counts = Interview.objects.aggregate(
         total=Count("id"),
-        scheduled=Count("id", filter=Q(status="Scheduled")),
+        scheduled=Count("id", filter=Q(status__in=["Scheduled", "Rescheduled"])),
         ongoing=Count("id", filter=Q(status="Ongoing")),
         completed=Count("id", filter=Q(status="Completed")),
         cancelled=Count("id", filter=Q(status="Cancelled")),
@@ -681,7 +1840,7 @@ def interviews(request):
         Interview.objects.filter(
             Q(date=today) |
             Q(date__gt=today, date__lte=three_days) |
-            Q(date__lt=today, status__in=["Scheduled", "Ongoing"])
+            Q(date__lt=today, status__in=["Scheduled", "Rescheduled", "Ongoing"])
         )
         .prefetch_related("applicants__job")
         .order_by("date", "time")
@@ -691,15 +1850,14 @@ def interviews(request):
     todays_schedule.sort(key=lambda x: x.time)
 
     upcoming_interviews = [i for i in all_interviews if today < i.date <= three_days]
-    overdue_interviews = [i for i in all_interviews if i.date < today and i.status in ("Scheduled", "Ongoing")]
+    overdue_interviews = [i for i in all_interviews if i.date < today and i.status in ("Scheduled", "Rescheduled", "Ongoing")]
 
     # 3. Prefetch waiting applicants into `waiting_applicants` attribute on each job
     jobs = list(Job.objects.filter(status="Active").prefetch_related(
         Prefetch(
             "application",
             queryset=Application.objects.filter(
-                status="Interview",
-                interview__isnull=True
+                Q(status="Shortlisted") | Q(status="Interview", interview__isnull=True)
             ).order_by("-ai_score"),
             to_attr="waiting_applicants"
         )
@@ -739,6 +1897,177 @@ def interviews(request):
             "interviews": job_interviews_list,
         })
 
+    # 7. Collect scheduled applications grouped by Department and Position for the Evaluation section
+    clean_expired_hr_locks()
+    active_locks_qs = HRActionLock.objects.filter(
+        target_model="Application",
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user)
+    active_locks = {}
+    for lock in active_locks_qs:
+        curr = active_locks.get(lock.target_id)
+        if curr is None or lock.action_type in ("RESCHEDULE", "SCHEDULE"):
+            active_locks[lock.target_id] = lock
+
+    scheduled_applications = list(
+        Application.objects.filter(interview__isnull=False)
+        .select_related("job", "evaluation", "evaluation__evaluator")
+        .prefetch_related(
+            Prefetch(
+                "interview",
+                queryset=Interview.objects.order_by("-date", "-time"),
+                to_attr="ordered_interviews"
+            )
+        )
+        .distinct()
+        .order_by("job__department", "job__title", "-ai_score")
+    )
+
+    evaluation_dept_dict = defaultdict(lambda: defaultdict(list))
+    eval_ready_total = 0
+    eval_rescheduled_total = 0
+    eval_ongoing_total = 0
+    eval_completed_total = 0
+
+    for app in scheduled_applications:
+        if not hasattr(app, "ordered_interviews") or not app.ordered_interviews:
+            continue
+        latest_intv = app.ordered_interviews[0]
+        app.active_interview = latest_intv
+        app.active_lock = active_locks.get(app.id)
+
+        # Determine individual candidate evaluation status
+        has_eval = hasattr(app, "evaluation") and app.evaluation is not None
+        if has_eval and app.evaluation.status == "Completed":
+            app.candidate_status = "Completed"
+        elif has_eval and app.evaluation.status == "Draft" and app.evaluation.evaluator:
+            app.candidate_status = "Ongoing"
+            app.is_my_evaluation = (app.evaluation.evaluator == request.user)
+            app.evaluator_display_name = app.evaluation.evaluator_name or (app.evaluation.evaluator.get_full_name() if app.evaluation.evaluator else "Another HR")
+        elif latest_intv.status == "Rescheduled":
+            app.candidate_status = "Rescheduled"
+        else:
+            app.candidate_status = "Scheduled"
+
+        dept_name = app.job.department if (app.job and app.job.department) else "General"
+        job_obj = app.job
+        evaluation_dept_dict[dept_name][job_obj].append(app)
+
+        if app.candidate_status == "Rescheduled":
+            eval_rescheduled_total += 1
+            eval_ready_total += 1
+        elif app.candidate_status == "Scheduled":
+            eval_ready_total += 1
+        elif app.candidate_status == "Ongoing":
+            eval_ongoing_total += 1
+        elif app.candidate_status == "Completed":
+            eval_completed_total += 1
+
+    evaluation_departments = []
+    for dept_name in sorted(evaluation_dept_dict.keys()):
+        job_map = evaluation_dept_dict[dept_name]
+        dept_jobs = []
+        dept_total = 0
+        dept_ready = 0
+        dept_ongoing = 0
+        dept_completed = 0
+        for job_obj, app_list in job_map.items():
+            for idx, a in enumerate(app_list):
+                a.table_rank = idx + 1
+            job_ready = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") in ("Scheduled", "Rescheduled"))
+            job_ongoing = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Ongoing")
+            job_completed = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Completed")
+            job_rescheduled = sum(1 for a in app_list if getattr(a, "candidate_status", "Scheduled") == "Rescheduled")
+            dept_jobs.append({
+                "job": job_obj,
+                "applicants": app_list,
+                "total_count": len(app_list),
+                "ready_count": job_ready,
+                "ongoing_count": job_ongoing,
+                "completed_count": job_completed,
+                "rescheduled_count": job_rescheduled,
+            })
+            dept_total += len(app_list)
+            dept_ready += job_ready
+            dept_ongoing += job_ongoing
+            dept_completed += job_completed
+
+        evaluation_departments.append({
+            "name": dept_name,
+            "jobs": dept_jobs,
+            "all_jobs": [{"id": j["job"].id, "title": j["job"].title} for j in dept_jobs],
+            "job_count": len(dept_jobs),
+            "total_applicants": dept_total,
+            "ready_count": dept_ready,
+            "ongoing_count": dept_ongoing,
+            "completed_count": dept_completed,
+        })
+
+    # 8. Collect applications waiting for interview scheduling grouped by Department and Position
+    waiting_applications = list(
+        Application.objects.filter(
+            Q(status="Shortlisted") | Q(status="Interview", interview__isnull=True)
+        )
+        .select_related("job", "applicant")
+        .order_by("job__department", "job__title", "-ai_score")
+    )
+
+    waiting_dept_dict = defaultdict(lambda: defaultdict(list))
+    waiting_total = 0
+    for app in waiting_applications:
+        app.active_lock = active_locks.get(app.id)
+        dept_name = app.job.department if (app.job and app.job.department) else "General"
+        waiting_dept_dict[dept_name][app.job].append(app)
+        waiting_total += 1
+
+    waiting_departments = []
+    for dept_name in sorted(waiting_dept_dict.keys()):
+        job_map = waiting_dept_dict[dept_name]
+        dept_jobs = []
+        dept_total = 0
+        for job_obj, app_list in job_map.items():
+            for idx, a in enumerate(app_list):
+                a.table_rank = idx + 1
+            dept_jobs.append({
+                "job": job_obj,
+                "applicants": app_list,
+                "total_count": len(app_list),
+            })
+            dept_total += len(app_list)
+        waiting_departments.append({
+            "name": dept_name,
+            "jobs": dept_jobs,
+            "all_jobs": [{"id": j["job"].id, "title": j["job"].title} for j in dept_jobs],
+            "job_count": len(dept_jobs),
+            "total_applicants": dept_total,
+        })
+
+    # 9. Aggregate today's interviews by Department and Position for Today's Schedule view
+    today_dept_map = defaultdict(lambda: {"job": None, "department": "", "count": 0, "applicants": [], "interviews": []})
+    for interview in todays_schedule:
+        job = interview.primary_job
+        if not job:
+            continue
+        dept = job.department or "General"
+        key = (dept, job.id)
+        today_dept_map[key]["job"] = job
+        today_dept_map[key]["department"] = dept
+        apps = list(interview.applicants.all())
+        today_dept_map[key]["count"] += len(apps)
+        today_dept_map[key]["applicants"].extend(apps)
+        today_dept_map[key]["interviews"].append(interview)
+
+    today_dept_positions = list(today_dept_map.values())
+
+    # 10. HR Staff list for scheduling panel selection
+    hr_staff = list(User.objects.filter(groups__name="HR", is_active=True).order_by("first_name", "last_name"))
+    if not hr_staff:
+        hr_staff = list(User.objects.filter(is_staff=True, is_active=True).order_by("first_name", "last_name"))
+
+    active_tab = request.GET.get("tab", "schedules")
+    if active_tab not in ("schedules", "waiting", "evaluations"):
+        active_tab = "schedules"
+
     context = {
         "total": counts["total"],
         "scheduled": counts["scheduled"],
@@ -751,8 +2080,22 @@ def interviews(request):
         "today": today,
 
         "todays_schedule": todays_schedule,
+        "today_dept_positions": today_dept_positions,
         "upcoming_interviews": upcoming_interviews,
         "overdue_interviews": overdue_interviews,
+
+        "waiting_departments": waiting_departments,
+        "waiting_total": waiting_total,
+
+        "evaluation_departments": evaluation_departments,
+        "eval_ready_total": eval_ready_total,
+        "eval_rescheduled_total": eval_rescheduled_total,
+        "eval_ongoing_total": eval_ongoing_total,
+        "eval_completed_total": eval_completed_total,
+        "eval_total": len(scheduled_applications),
+
+        "hr_staff": hr_staff,
+        "active_tab": active_tab,
     }
 
     return render(request, "hr/interview.html", context)
@@ -763,84 +2106,1607 @@ def interviews(request):
 def schedule_interview(request, job_id):
     job = get_object_or_404(Job, pk=job_id)
 
-    applicants = Application.objects.filter(
-        job=job,
-        status="Interview",
-        interview__isnull=True,
-    ).order_by("-ai_score")
-
     if request.method == "POST":
-        interview = Interview.objects.create(
-            interview_type=request.POST["interview_type"],
-            interviewer=request.POST["interviewer"],
-            date=request.POST["date"],
-            time=request.POST["time"],
-            location=request.POST["location"],
-            notes=request.POST["notes"],
+        ids = request.POST.getlist("applicants")
+        if not ids:
+            messages.warning(request, "No candidates were selected for batch scheduling.")
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        # Check if any candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=ids,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot batch schedule: Candidate #{locked.target_id} is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        interview_type = request.POST.get("interview_type", "HR Interview")
+        interviewer = request.POST.get("interviewer", "").strip() or (request.user.get_full_name() or request.user.username)
+        date = request.POST.get("date")
+        base_time = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
+        if not date or not base_time:
+            messages.error(request, "Please provide the scheduled date and default start time.")
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        # Group selected applicants by effective time
+        # If applicant_time_<id> is provided, use it; otherwise fallback to base_time
+        time_to_applicants = defaultdict(list)
+        for app_id in ids:
+            cand_time = request.POST.get(f"applicant_time_{app_id}", "").strip()
+            effective_time = cand_time if cand_time else base_time
+            time_to_applicants[effective_time].append(app_id)
+
+        # Create Interview record(s) for each time slot
+        for slot_time, slot_app_ids in time_to_applicants.items():
+            interview = Interview.objects.create(
+                interview_type=interview_type,
+                interviewer=interviewer,
+                date=date,
+                time=slot_time,
+                location=location,
+                notes=notes,
+                status="Scheduled",
+            )
+            interview.applicants.set(slot_app_ids)
+
+        # Automatically move scheduled applicants to Interview stage
+        Application.objects.filter(id__in=ids).update(
+            status="Interview",
+            interview_scheduled=True
         )
 
-        ids = request.POST.getlist("applicants")
-        interview.applicants.set(ids)
+        send_email_invitation = request.POST.get("send_email_invitation") in ("1", "true", "on") or request.POST.get("action_type") == "confirm_and_email"
+        if send_email_invitation:
+            from main.emailer import send_interview_invitation_email
+            for slot_app in Application.objects.filter(id__in=ids).select_related("job", "applicant"):
+                cand_intv = slot_app.interview.order_by("-date", "-time").first()
+                if cand_intv:
+                    send_interview_invitation_email(slot_app, cand_intv, async_send=True)
+                    log_hr_action(
+                        request,
+                        action="EMAIL_SENT",
+                        target_repr=f"{slot_app.first_name} {slot_app.last_name}",
+                        details=f"Interview invitation sent for {cand_intv.interview_type} on {cand_intv.date} at {cand_intv.time}.",
+                        target_model="Application",
+                        target_id=slot_app.id,
+                    )
+
         invalidate_hr_cache()
 
-        return redirect("interviews")
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=ids,
+            user=request.user
+        ).delete()
 
-    return render(
-        request,
-        "hr/schedule_interview.html",
-        {
-            "job": job,
-            "applicants": applicants,
-            "interview": Interview,
-        },
-    )
+        log_hr_action(
+            request,
+            action="INTERVIEW_SCHEDULED",
+            target_repr=f"Batch for {job.title} ({len(ids)} candidates)",
+            details=f"Batch scheduled {interview_type} on {date} with interviewer {interviewer}." + (" (Email invitations dispatched)" if send_email_invitation else ""),
+            target_model="Job",
+            target_id=job.pk,
+        )
+
+        if send_email_invitation:
+            messages.success(
+                request,
+                f"Successfully batch scheduled interview and sent email invitations for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
+            )
+        else:
+            messages.success(
+                request,
+                f"Successfully batch scheduled interview for {len(ids)} candidate(s) in {job.title}. They are now ready for evaluation."
+            )
+        return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def move_to_interview_waiting(request, pk):
+    """
+    Called from candidate profile confirmation popup when HR decides to advance
+    a candidate from Screening stage into Interview scheduling pipeline.
+    Marks candidate as Shortlisted and moves them to Candidates Waiting for Interview scheduling.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        application.status = "Shortlisted"
+        application.interview_scheduled = False
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+
+        log_hr_action(
+            request,
+            action="SHORTLIST_APPLICATION",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Shortlisted candidate and moved to Interview waiting pipeline.",
+            target_model="Application",
+            target_id=application.pk,
+        )
+
+        messages.success(
+            request,
+            f"{application.first_name} {application.last_name} has been shortlisted and moved to Candidates Waiting for Interview scheduling."
+        )
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def schedule_candidate_interview(request):
+    """
+    Called from Candidates Waiting for Interview tab to schedule an interview session
+    for one or more candidates applying for a position.
+    """
+    if request.method == "POST":
+        interview_type = request.POST.get("interview_type", "HR Interview")
+        interviewer = request.POST.get("interviewer", "").strip()
+        date_str = request.POST.get("date")
+        time_str = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        notes = request.POST.get("notes", "").strip()
+
+        applicant_ids = request.POST.getlist("applicants")
+        if not applicant_ids and request.POST.get("applicant_id"):
+            applicant_ids = [request.POST.get("applicant_id")]
+
+        if not date_str or not time_str or not applicant_ids:
+            messages.error(request, "Please provide the interview date, time, and select at least one candidate.")
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=applicant_ids,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot schedule interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        interviewer_name = interviewer or request.user.get_full_name() or request.user.username
+        interview = Interview.objects.create(
+            interview_type=interview_type,
+            interviewer=interviewer_name,
+            date=date_str,
+            time=time_str,
+            location=location,
+            notes=notes,
+            status="Scheduled",
+        )
+        interview.applicants.set(applicant_ids)
+        Application.objects.filter(id__in=applicant_ids).update(
+            status="Interview",
+            interview_scheduled=True
+        )
+
+        send_email_invitation = request.POST.get("send_email_invitation") in ("1", "true", "on") or request.POST.get("action_type") == "confirm_and_email"
+        if send_email_invitation:
+            from main.emailer import send_interview_invitation_email
+            for app in Application.objects.filter(id__in=applicant_ids).select_related("job", "applicant"):
+                send_interview_invitation_email(app, interview, async_send=True)
+                log_hr_action(
+                    request,
+                    action="EMAIL_SENT",
+                    target_repr=f"{app.first_name} {app.last_name}",
+                    details=f"Interview invitation sent for {interview.interview_type} on {date_str} at {time_str}.",
+                    target_model="Application",
+                    target_id=app.id,
+                )
+
+        invalidate_hr_cache()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id__in=applicant_ids,
+            user=request.user
+        ).delete()
+
+        log_hr_action(
+            request,
+            action="INTERVIEW_SCHEDULED",
+            target_repr=f"{len(applicant_ids)} candidate(s)",
+            details=f"Scheduled {interview_type} on {date_str} at {time_str} with {interviewer_name}." + (" (Email invitations dispatched)" if send_email_invitation else ""),
+            target_model="Interview",
+            target_id=interview.pk,
+        )
+
+        if send_email_invitation:
+            messages.success(
+                request,
+                f"Interview successfully scheduled and email invitation(s) sent for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
+            )
+        else:
+            messages.success(
+                request,
+                f"Interview successfully scheduled for {len(applicant_ids)} candidate(s). They are now ready for evaluation."
+            )
+        return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def reschedule_candidate_interview(request, pk):
+    """
+    Called from Candidates Waiting for Interview tab to reschedule an interview
+    with updated date, time, logistics, and timestamped per-applicant notes.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        # Check if candidate evaluation is actively ongoing
+        if hasattr(application, "evaluation") and application.evaluation and getattr(application.evaluation, "is_evaluating", False):
+            messages.error(
+                request,
+                "Cannot reschedule interview: Candidate evaluation is currently ongoing."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot reschedule interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=waiting")
+
+        new_date = request.POST.get("date")
+        new_time = request.POST.get("time")
+        location = request.POST.get("location", "").strip()
+        interviewer = request.POST.get("interviewer", "").strip()
+        reschedule_notes = request.POST.get("reschedule_notes", "").strip()
+
+        interview = application.interview.order_by("-date", "-time").first()
+        interviewer_name = interviewer or (interview.interviewer if interview else (request.user.get_full_name() or request.user.username))
+
+        if not interview:
+            interview = Interview.objects.create(
+                interview_type=request.POST.get("interview_type", "HR Interview"),
+                interviewer=interviewer_name,
+                date=new_date,
+                time=new_time,
+                location=location,
+                notes=f"Rescheduled: {reschedule_notes}" if reschedule_notes else "",
+                status="Rescheduled",
+            )
+            interview.applicants.add(application)
+        else:
+            if new_date:
+                interview.date = new_date
+            if new_time:
+                interview.time = new_time
+            if location:
+                interview.location = location
+            if interviewer:
+                interview.interviewer = interviewer
+            interview.status = "Rescheduled"
+            if reschedule_notes:
+                stamp = timezone.localtime().strftime("%b %d, %Y %I:%M %p")
+                note_entry = f"[Rescheduled on {stamp}]: {reschedule_notes}"
+                interview.notes = f"{interview.notes}\n{note_entry}".strip() if interview.notes else note_entry
+            interview.save()
+
+        application.interview_scheduled = True
+        application.status = "Interview"
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            user=request.user
+        ).delete()
+
+        log_hr_action(
+            request,
+            action="INTERVIEW_RESCHEDULED",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Interview rescheduled to {new_date} at {new_time}. Notes: {reschedule_notes or 'None'}",
+            target_model="Application",
+            target_id=application.pk,
+        )
+
+        messages.success(
+            request,
+            f"Interview for {application.first_name} {application.last_name} has been rescheduled to {new_date}."
+        )
+
+        next_tab = request.POST.get("next_tab", "waiting")
+        return redirect(f"{reverse('interviews')}?tab={next_tab}")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def cancel_candidate_interview(request, pk):
+    """
+    Called to cancel an interview,
+    recording cancellation notes per applicant and handling status transition.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    if request.method == "POST":
+        # Check if candidate evaluation is actively ongoing
+        if hasattr(application, "evaluation") and application.evaluation and getattr(application.evaluation, "is_evaluating", False):
+            messages.error(
+                request,
+                "Cannot cancel interview: Candidate evaluation is currently ongoing."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+        # Check if candidate is locked by another HR user
+        locked = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if locked:
+            messages.error(
+                request,
+                f"Cannot cancel interview: Candidate is currently locked by {locked.user_name}."
+            )
+            return redirect(f"{reverse('interviews')}?tab=evaluations")
+
+        cancel_notes = request.POST.get("cancel_notes", "").strip()
+        cancel_action = request.POST.get("cancel_action", "cancel_interview")
+
+        interview = application.interview.order_by("-date", "-time").first()
+        if interview:
+            stamp = timezone.localtime().strftime("%b %d, %Y %I:%M %p")
+            note_entry = f"[Cancelled on {stamp} for {application.first_name} {application.last_name}]: {cancel_notes}".strip()
+            interview.notes = f"{interview.notes}\n{note_entry}".strip() if interview.notes else note_entry
+            if interview.applicants.count() <= 1:
+                interview.status = "Cancelled"
+            interview.applicants.remove(application)
+            interview.save()
+
+        # Release locks held by user
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            user=request.user
+        ).delete()
+
+        if cancel_action == "reject":
+            application.status = "Rejected"
+        else:
+            application.status = "Shortlisted"
+        application.interview_scheduled = False
+        application.save(update_fields=["status", "interview_scheduled"])
+        invalidate_hr_cache()
+
+        log_hr_action(
+            request,
+            action="INTERVIEW_CANCELLED",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Interview cancelled. Action: {cancel_action}. Notes: {cancel_notes or 'No notes provided'}",
+            target_model="Application",
+            target_id=application.pk,
+        )
+        if cancel_action == "reject":
+            log_hr_action(
+                request,
+                action="REJECT_APPLICATION",
+                target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+                details=f"Candidate marked as Rejected following interview cancellation. Reason: {cancel_notes or 'Disqualified during interview stage'}",
+                target_model="Application",
+                target_id=application.pk,
+            )
+
+        messages.info(
+            request,
+            f"Interview for {application.first_name} {application.last_name} has been cancelled with recorded notes."
+        )
+        next_tab = request.POST.get("next_tab", "waiting")
+        return redirect(f"{reverse('interviews')}?tab={next_tab}")
+
+    return redirect(f"{reverse('interviews')}?tab=waiting")
 
 
 @never_cache
 @hr_required(login_url="hr_login")
 def interview_detail(request, pk):
-    interview = get_object_or_404(
-        Interview.objects.prefetch_related("applicants__job"),
-        pk=pk
-    )
+    """Legacy session detail endpoint redirected to Candidates Ready for Evaluation tab."""
+    return redirect(f"{reverse('interviews')}?tab=evaluations")
 
-    return render(
-        request,
-        "hr/interview_detail.html",
-        {"interview": interview}
-    )
-    
+
 @never_cache
 @hr_required(login_url="hr_login")
-def update_interview_status(request, pk):
-
-    interview = get_object_or_404(
-        Interview,
+def evaluate_candidate(request, pk):
+    """
+    Submits or updates a candidate interview evaluation (F2F, Online, Call),
+    including rubric ratings, notes, audio recording, and AI audio intelligence.
+    Automatically moves candidate to the 'Evaluation' stage.
+    """
+    application = get_object_or_404(
+        Application.objects.select_related("job"),
         pk=pk
     )
 
     if request.method == "POST":
+        clean_expired_hr_locks()
+        active_manage = HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id,
+            action_type__in=["SCHEDULE", "RESCHEDULE"],
+            expires_at__gt=timezone.now()
+        ).exclude(user=request.user).first()
+        if active_manage:
+            messages.error(request, f"This candidate's interview is currently being managed by {active_manage.user_name}.")
+            return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
 
-        status = request.POST.get("status")
+        existing_eval = CandidateEvaluation.objects.filter(application=application).first()
+        if (
+            existing_eval 
+            and getattr(existing_eval, "is_evaluating", False) 
+            and existing_eval.evaluator 
+            and existing_eval.evaluator != request.user
+        ):
+            lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
+            if lease_seconds < 7200:
+                messages.error(request, f"This candidate's evaluation is currently locked and being conducted by {existing_eval.evaluator_name or existing_eval.evaluator.username}.")
+                return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
 
-        interview.status = status
+        evaluation, _ = CandidateEvaluation.objects.get_or_create(application=application)
 
-        # If rescheduled, update date and time
-        if status == "Rescheduled":
+        evaluator_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = evaluator_name
+        evaluation.interview_mode = request.POST.get("interview_mode", "Face-to-Face")
 
-            new_date = request.POST.get("date")
-            new_time = request.POST.get("time")
+        if not evaluation.interview:
+            evaluation.interview = application.interview.order_by("-date", "-time").first()
 
-            if new_date:
-                interview.date = new_date
+        eval_date_str = request.POST.get("evaluation_date")
+        if eval_date_str:
+            try:
+                evaluation.evaluation_date = eval_date_str
+            except Exception:
+                pass
 
-            if new_time:
-                interview.time = new_time
+        try:
+            evaluation.technical_competence = int(request.POST.get("technical_competence", 3))
+            evaluation.communication_skills = int(request.POST.get("communication_skills", 3))
+            evaluation.problem_solving = int(request.POST.get("problem_solving", 3))
+            evaluation.cultural_fit = int(request.POST.get("cultural_fit", 3))
+            evaluation.leadership_potential = int(request.POST.get("leadership_potential", 3))
+        except (ValueError, TypeError):
+            pass
 
-        interview.save()
+        evaluation.strengths_notes = request.POST.get("strengths_notes", "").strip()
+        evaluation.weaknesses_notes = request.POST.get("weaknesses_notes", "").strip()
+        evaluation.general_notes = request.POST.get("general_notes", "").strip()
+
+        evaluation.expected_salary = request.POST.get("expected_salary", "").strip()
+        evaluation.notice_period = request.POST.get("notice_period", "").strip()
+        evaluation.availability_date = request.POST.get("availability_date", "").strip()
+
+        rec = request.POST.get("recommendation", "Hire")
+        if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
+            evaluation.recommendation = rec
+
+        evaluation.status = "Completed"
+        evaluation.is_evaluating = False
+
+        # Handle uploaded audio recording or live recorded audio blob
+        audio_file = request.FILES.get("audio_file")
+        if audio_file:
+            evaluation.audio_file = audio_file
+
+        evaluation.save()
+
+        # Trigger Gemini AI audio analysis if audio is present and requested
+        run_ai = (request.POST.get("run_ai_audio") == "1") or (audio_file is not None)
+        if run_ai and evaluation.audio_file:
+            try:
+                cand_name = f"{application.first_name} {application.last_name}"
+                job_title = application.job.title if application.job else "Role"
+                ai_result = analyze_interview_audio(
+                    audio_path=evaluation.audio_file.path,
+                    candidate_name=cand_name,
+                    job_title=job_title,
+                    interviewer_notes=evaluation.general_notes,
+                )
+                evaluation.ai_audio_transcript = ai_result.get("transcript", "")
+                evaluation.ai_audio_summary = ai_result.get("summary", "")
+                evaluation.ai_audio_score = int(ai_result.get("score", 75))
+                evaluation.ai_audio_insights = {
+                    "key_points": ai_result.get("key_points", []),
+                    "red_flags": ai_result.get("red_flags", []),
+                    "ai_recommendation": ai_result.get("recommendation", "Hire"),
+                }
+                evaluation.save()
+            except Exception as ai_err:
+                import logging
+                logging.getLogger(__name__).warning("Candidate evaluation AI audio analysis failed: %s", ai_err)
+
+        # Move candidate to Evaluation stage if in Screening, Shortlisted, or Interview stage
+        if application.status in ["Screening", "Shortlisted", "Interview"]:
+            application.status = "Evaluation"
+            application.save(update_fields=["status"])
+
+        # Update interview session status:
+        # If all applicants in the session have completed evaluations, session is Completed.
+        # Otherwise, session is Ongoing.
+        interview = evaluation.interview or application.interview.order_by("-date", "-time").first()
+        if interview:
+            all_apps = list(interview.applicants.all())
+            all_completed = all(
+                hasattr(a, "evaluation") and a.evaluation and a.evaluation.status == "Completed"
+                for a in all_apps
+            ) if all_apps else True
+            if all_completed:
+                interview.status = "Completed"
+            else:
+                interview.status = "Ongoing"
+            interview.save(update_fields=["status"])
+
+        HRActionLock.objects.filter(
+            target_model="Application",
+            target_id=application.id
+        ).delete()
+
         invalidate_hr_cache()
 
-    return redirect(
-        "interview_detail",
-        pk=interview.id
+        log_hr_action(
+            request,
+            action="EVALUATION_COMPLETED",
+            target_repr=f"{application.first_name} {application.last_name} (#{application.application_id})",
+            details=f"Completed evaluation: Rating {evaluation.overall_rating}/5.0, Mode: {evaluation.interview_mode}, Recommendation: '{evaluation.recommendation}'.",
+            target_model="CandidateEvaluation",
+            target_id=evaluation.pk,
+        )
+
+        messages.success(
+            request,
+            f"Candidate evaluation for {application.first_name} {application.last_name} has been saved successfully."
+        )
+
+        redirect_to = request.POST.get("redirect_to")
+        if redirect_to == "reports":
+            return redirect("reports")
+        if redirect_to == "interviews":
+            return redirect("interviews")
+
+        return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    return redirect("candidate_detail", pk=pk)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def start_candidate_evaluation(request, pk):
+    """
+    Called when HR initiates evaluation on an applicant.
+    Creates or sets a Draft evaluation for this specific candidate (Ongoing).
+    Binds the draft evaluation to request.user and prevents concurrent takeover while active.
+    Also sets the shared interview session status to Ongoing.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    interview = application.interview.order_by("-date", "-time").first()
+
+    accept_hdr = request.headers.get("accept", "")
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("format") == "json"
+        or request.content_type == "application/json"
+        or ("application/json" in accept_hdr and "text/html" not in accept_hdr)
     )
+
+    user_name = request.user.get_full_name() or request.user.username
+
+    # 1. Check if candidate has active SCHEDULE or RESCHEDULE lock held by another HR staff member
+    reschedule_lock = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type__in=["SCHEDULE", "RESCHEDULE"],
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+    if reschedule_lock:
+        locked_name = reschedule_lock.user_name
+        msg = f"Candidate interview is currently being managed by {locked_name}."
+        if is_ajax:
+            return JsonResponse({
+                "success": False,
+                "locked": True,
+                "evaluator_name": locked_name,
+                "message": msg
+            }, status=423)
+        messages.warning(request, msg)
+        return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    # 2. Check if existing evaluation is actively ongoing by another user (Draft or Completed being edited)
+    existing_eval = CandidateEvaluation.objects.filter(application=application).first()
+    if (
+        existing_eval 
+        and getattr(existing_eval, "is_evaluating", False) 
+        and existing_eval.evaluator 
+        and existing_eval.evaluator != request.user
+    ):
+        lease_seconds = (timezone.now() - existing_eval.updated_at).total_seconds() if existing_eval.updated_at else 0
+        if lease_seconds < 7200:  # 2 hours
+            locked_name = existing_eval.evaluator_name or existing_eval.evaluator.username
+            msg = f"Candidate evaluation is currently being edited by {locked_name}."
+            if is_ajax:
+                return JsonResponse({
+                    "success": False,
+                    "locked": True,
+                    "evaluator_name": locked_name,
+                    "message": msg
+                }, status=423)
+            messages.warning(request, msg)
+            return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}#candidate-evaluation-section")
+
+    # 3. Candidate-specific evaluation state
+    evaluation, created = CandidateEvaluation.objects.get_or_create(
+        application=application,
+        defaults={
+            "status": "Draft",
+            "is_evaluating": True,
+            "interview": interview,
+            "evaluator": request.user,
+            "evaluator_name": user_name,
+        }
+    )
+    if not created:
+        if evaluation.status != "Completed":
+            evaluation.status = "Draft"
+        evaluation.is_evaluating = True
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = user_name
+        if not evaluation.interview and interview:
+            evaluation.interview = interview
+        evaluation.save()
+    elif created:
+        evaluation.is_evaluating = True
+        evaluation.evaluator = request.user
+        evaluation.evaluator_name = user_name
+        evaluation.save()
+
+    # Register concurrency action lock for real-time live sync across other HR users
+    HRActionLock.objects.update_or_create(
+        target_model="Application",
+        target_id=application.id,
+        action_type="EVALUATE",
+        defaults={
+            "user": request.user,
+            "user_name": user_name,
+            "expires_at": timezone.now() + timedelta(minutes=60),
+        }
+    )
+
+    # 4. Update session status to Ongoing if it was Scheduled or Rescheduled
+    if interview and interview.status in ("Scheduled", "Rescheduled"):
+        interview.status = "Ongoing"
+        interview.save(update_fields=["status"])
+
+    invalidate_hr_cache()
+
+    if is_ajax:
+        return JsonResponse({
+            "success": True,
+            "status": "Ongoing" if evaluation.status != "Completed" else "Completed",
+            "applicant_id": application.id,
+            "evaluator_name": user_name,
+            "message": "Candidate evaluation set to Ongoing."
+        })
+
+    if request.headers.get("HX-Request") or request.GET.get("modal") == "1":
+        q = request.GET.copy()
+        q["modal"] = "1"
+        q["evaluate"] = "1"
+        q["scroll_to"] = "candidate-evaluation-section"
+        request.GET = q
+        return candidate_detail(request, pk)
+
+    return redirect(f"{reverse('candidate_detail', kwargs={'pk': pk})}?evaluate=1#candidate-evaluation-section")
+
+
+@never_cache
+@csrf_exempt
+@hr_required(login_url="hr_login")
+def cancel_candidate_evaluation(request, pk):
+    """
+    Called when HR cancels the candidate evaluation modal without saving or leaves the page.
+    Preserves draft evaluation fields (rubric scores, notes, etc.) if provided or existing,
+    sets is_evaluating = False, releases evaluator lock, and sets status = 'Draft'.
+    If previously Completed, keeps Completed status while resetting is_evaluating = False.
+    If no other candidate in the session has an active evaluation, reverts session to Scheduled or Rescheduled.
+    """
+    application = get_object_or_404(Application, pk=pk)
+    evaluation = CandidateEvaluation.objects.filter(application=application).first()
+
+    if evaluation:
+        if evaluation.status == "Completed":
+            evaluation.is_evaluating = False
+            evaluation.evaluator = None
+            evaluation.evaluator_name = ""
+            evaluation.save(update_fields=["is_evaluating", "evaluator", "evaluator_name"])
+        else:
+            # If user submitted draft form data, save it into the evaluation draft
+            if request.method == "POST":
+                # Interview mode
+                interview_mode = request.POST.get("interview_mode")
+                if interview_mode:
+                    evaluation.interview_mode = interview_mode
+
+                # Evaluator name
+                evaluator_name = request.POST.get("evaluator_name", "").strip()
+                if evaluator_name:
+                    evaluation.evaluator_name = evaluator_name
+
+                # Rubric ratings
+                for field in ["technical_competence", "communication_skills", "problem_solving", "cultural_fit", "leadership_potential"]:
+                    val = request.POST.get(field)
+                    if val:
+                        try:
+                            setattr(evaluation, field, int(val))
+                        except (ValueError, TypeError):
+                            pass
+
+                # Notes
+                for field in ["strengths_notes", "weaknesses_notes", "general_notes"]:
+                    val = request.POST.get(field)
+                    if val is not None:
+                        setattr(evaluation, field, val.strip())
+
+                # Practical details
+                for field in ["expected_salary", "notice_period", "availability_date"]:
+                    val = request.POST.get(field)
+                    if val is not None:
+                        setattr(evaluation, field, val.strip())
+
+                # Recommendation
+                rec = request.POST.get("recommendation")
+                if rec in ["Strong Hire", "Hire", "Hold", "No Hire"]:
+                    evaluation.recommendation = rec
+
+            evaluation.status = "Draft"
+            evaluation.is_evaluating = False
+            evaluation.evaluator = None
+            evaluation.evaluator_name = ""
+            evaluation.save()
+
+    # Revert session status if no other candidate has active evaluation
+    interview = application.interview.order_by("-date", "-time").first()
+    if interview:
+        has_active_evals = CandidateEvaluation.objects.filter(
+            interview=interview,
+            is_evaluating=True
+        ).exists()
+        if not has_active_evals and interview.status == "Ongoing":
+            if interview.notes and "[Rescheduled on" in interview.notes:
+                interview.status = "Rescheduled"
+            else:
+                interview.status = "Scheduled"
+            interview.save(update_fields=["status"])
+
+    # Release any active action lock on this application
+    HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id
+    ).delete()
+
+    invalidate_hr_cache()
+
+    accept_hdr = request.headers.get("accept", "")
+    is_ajax = (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        or request.GET.get("format") == "json"
+        or request.content_type == "application/json"
+        or ("application/json" in accept_hdr and "text/html" not in accept_hdr)
+    )
+
+    if is_ajax:
+        return JsonResponse({
+            "success": True,
+            "status": "Scheduled",
+            "applicant_id": application.id,
+            "message": "Candidate evaluation reverted to Scheduled."
+        })
+
+    return redirect("interviews")
+
+
+def build_final_decision_department_sections(decision_type, filter_dept=None, filter_search=None, filter_month=None, filter_year=None, filter_from=None, filter_to=None):
+    """
+    Builds department-and-job grouped hierarchy for candidates with final decisions (Hired or Not Hired).
+    Follows the exact layout specification of Candidate Management (/hr/candidates/).
+    """
+    if decision_type == "Hired":
+        qs = Application.objects.filter(
+            Q(evaluation__final_decision="Hired") | (Q(status="Hired") & Q(evaluation__final_decision__isnull=True))
+        )
+    else:
+        qs = Application.objects.filter(evaluation__final_decision="Not Hired")
+
+    qs = qs.select_related(
+        "job", "applicant", "evaluation", "evaluation__final_decision_by"
+    ).order_by("-evaluation__final_decision_date", "-evaluation__updated_at")
+
+    if filter_dept:
+        qs = qs.filter(job__department=filter_dept)
+
+    if filter_search:
+        qs = qs.filter(
+            Q(first_name__icontains=filter_search)
+            | Q(last_name__icontains=filter_search)
+            | Q(application_id__icontains=filter_search)
+            | Q(email__icontains=filter_search)
+            | Q(job__title__icontains=filter_search)
+            | Q(evaluation__final_decision_notes__icontains=filter_search)
+        )
+
+    if filter_month:
+        try:
+            m_val = int(filter_month)
+            qs = qs.filter(
+                Q(evaluation__final_decision_date__month=m_val)
+                | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__month=m_val))
+            )
+        except (ValueError, TypeError):
+            pass
+
+    if filter_year:
+        try:
+            y_val = int(filter_year)
+            qs = qs.filter(
+                Q(evaluation__final_decision_date__year=y_val)
+                | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__year=y_val))
+            )
+        except (ValueError, TypeError):
+            pass
+
+    if filter_from:
+        qs = qs.filter(
+            Q(evaluation__final_decision_date__date__gte=filter_from)
+            | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__date__gte=filter_from))
+        )
+
+    if filter_to:
+        qs = qs.filter(
+            Q(evaluation__final_decision_date__date__lte=filter_to)
+            | (Q(evaluation__final_decision_date__isnull=True) & Q(created_at__date__lte=filter_to))
+        )
+
+    apps = list(qs)
+
+    dept_map = defaultdict(lambda: defaultdict(list))
+    all_jobs_per_dept = defaultdict(dict)
+
+    for app in apps:
+        d_name = app.job.department.strip() if app.job.department else "General"
+        j_id = app.job.id
+        j_title = app.job.title
+        all_jobs_per_dept[d_name][j_id] = j_title
+        dept_map[d_name][app.job].append(app)
+
+    department_sections = []
+    for d_name in sorted(dept_map.keys()):
+        jobs_in_dept = []
+        for job_obj, cand_list in dept_map[d_name].items():
+            jobs_in_dept.append({
+                "job": job_obj,
+                "candidates": cand_list,
+                "candidate_count": len(cand_list),
+            })
+
+        all_dept_jobs = [
+            {"id": j_id, "title": title}
+            for j_id, title in all_jobs_per_dept[d_name].items()
+        ]
+
+        department_sections.append({
+            "name": d_name,
+            "jobs": jobs_in_dept,
+            "all_jobs": all_dept_jobs,
+            "job_count": len(jobs_in_dept),
+            "total_candidates": sum(len(c["candidates"]) for c in jobs_in_dept),
+        })
+
+    return department_sections
+
+
+@hr_required(login_url="hr_login")
+def final_review_modal(request, pk):
+    """
+    Renders the Final Review modal partial for an applicant.
+    Allows HR to view applicant profile, rubric scores, evaluator notes,
+    and make the final hiring determination (Hired or Not Hired + note).
+    """
+    application = get_object_or_404(
+        Application.objects.select_related("job", "applicant").prefetch_related("interview"),
+        pk=pk
+    )
+    evaluation = getattr(application, "evaluation", None)
+    if evaluation is None:
+        try:
+            evaluation = CandidateEvaluation.objects.filter(application=application).first()
+        except Exception:
+            evaluation = None
+
+    interview_session = InterviewSession.objects.filter(application=application).first()
+    last_interview = application.interview.order_by("-date", "-time").first()
+
+    context = {
+        "application": application,
+        "evaluation": evaluation,
+        "interview_session": interview_session,
+        "last_interview": last_interview,
+    }
+    return render(request, "hr/partials/final_review_modal.html", context)
+
+
+@hr_required(login_url="hr_login")
+def finalize_candidate_decision(request, pk):
+    """
+    Processes the final hiring decision submission from HR.
+    Sets CandidateEvaluation.final_decision to 'Hired' or 'Not Hired'.
+    Enforces a mandatory note when 'Not Hired' is chosen.
+    Updates Application.status to 'Hired' or 'Rejected'.
+    Logs the action in AuditLog.
+    """
+    if request.method != "POST":
+        return redirect("reports")
+
+    application = get_object_or_404(Application.objects.select_related("job"), pk=pk)
+
+    # Check if candidate is locked for final decision by another HR user
+    locked = HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type="FINAL_DECISION",
+        expires_at__gt=timezone.now()
+    ).exclude(user=request.user).first()
+    if locked:
+        msg = f"Cannot finalize decision: Candidate is currently under review by {locked.user_name}."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": msg}, status=423)
+        messages.error(request, msg)
+        return redirect(reverse("reports") + "?tab=evaluations")
+
+    decision = request.POST.get("decision", "").strip()
+    final_notes = request.POST.get("final_notes", "").strip()
+
+    if decision not in ["Hired", "Not Hired"]:
+        messages.error(request, "Please choose a valid final decision: Hired or Not Hired.")
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": "Invalid decision"}, status=400)
+        return redirect(reverse("reports") + "?tab=evaluations")
+
+    if decision == "Not Hired" and not final_notes:
+        messages.error(request, "A reason explaining why the candidate was not hired is required.")
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": "Reason note is required when marking candidate as Not Hired."}, status=400)
+        return redirect(reverse("reports") + "?tab=evaluations")
+
+    # Update or create evaluation
+    evaluation, _ = CandidateEvaluation.objects.get_or_create(application=application)
+    evaluation.final_decision = decision
+    evaluation.final_decision_notes = final_notes
+    evaluation.final_decision_date = timezone.now()
+    evaluation.final_decision_by = request.user
+    evaluation.save()
+
+    # Update application status
+    new_status = "Hired" if decision == "Hired" else "Rejected"
+    application.status = new_status
+    application.save(update_fields=["status"])
+
+    # Auto-inactivate active job if vacancies are fulfilled
+    if new_status == "Hired":
+        job = application.job
+        if job and job.status == "Active":
+            hired_count = Application.objects.filter(job=job, status="Hired").count()
+            if hired_count >= job.vacancies:
+                job.status = "Inactive"
+                job.save(update_fields=["status"])
+                log_hr_action(
+                    request,
+                    action="JOB_INACTIVATED",
+                    target_repr=job.title,
+                    details=f"Job posting '{job.title}' automatically set to Inactive as all {job.vacancies} vacancies have been filled by hired candidates.",
+                    target_model="Job",
+                    target_id=job.pk,
+                )
+
+    # Release any final decision locks held by user
+    HRActionLock.objects.filter(
+        target_model="Application",
+        target_id=application.id,
+        action_type="FINAL_DECISION",
+        user=request.user
+    ).delete()
+
+    # Log HR Action strictly for applicant management
+    action_key = "FINAL_DECISION_HIRED" if decision == "Hired" else "FINAL_DECISION_NOT_HIRED"
+    log_hr_action(
+        request,
+        action=action_key,
+        target_model="Application",
+        target_id=str(application.id),
+        target_repr=f"{application.first_name} {application.last_name} ({application.application_id})",
+        details=f"Final Decision finalized as '{decision}' for {application.job.title}. Notes: {final_notes or 'None'}"
+    )
+
+    invalidate_hr_cache()
+
+    msg = f"Final decision '{decision}' recorded successfully for {application.first_name} {application.last_name}."
+    messages.success(request, msg)
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({
+            "success": True,
+            "message": msg,
+            "decision": decision,
+            "redirect_url": reverse("reports") + "?tab=final_decision"
+        })
+
+    next_url = request.POST.get("next") or (reverse("reports") + "?tab=final_decision")
+    return redirect(next_url)
+
+
+@never_cache
+@ensure_csrf_cookie
+@hr_required(login_url="hr_login")
+def reports_dashboard(request):
+    """
+    Unified HR Reports & Compliance Hub:
+    Centralized navigation for:
+      1. Audit Logs (HR Applicant Actions & Activity Trail)
+      2. Cancelled (Rejected Applications)
+      3. Evaluated Candidates (Pending Final Decision)
+      4. Candidates with Final Decision (Hired and Not Hired by Dept & Job)
+    """
+    seed_applicant_management_logs_if_empty()
+
+    active_tab = request.GET.get("tab", "audit").strip().lower()
+    if active_tab not in ["audit", "cancelled", "evaluations", "final_decision"]:
+        active_tab = "audit"
+
+    MONTH_NAMES = {
+        1: "January", 2: "February", 3: "March", 4: "April",
+        5: "May", 6: "June", 7: "July", 8: "August",
+        9: "September", 10: "October", 11: "November", 12: "December"
+    }
+
+    # -------------------------------------------------------------
+    # Universal Report Customization & Timeframe Filtering
+    # -------------------------------------------------------------
+    selected_month = (
+        request.GET.get(f"{active_tab}_month")
+        or request.GET.get("month")
+        or request.GET.get("report_month", "")
+    ).strip()
+    selected_year = (
+        request.GET.get(f"{active_tab}_year")
+        or request.GET.get("year")
+        or request.GET.get("report_year", "")
+    ).strip()
+    selected_date_from = (
+        request.GET.get(f"{active_tab}_date_from")
+        or request.GET.get("date_from", "")
+    ).strip()
+    selected_date_to = (
+        request.GET.get(f"{active_tab}_date_to")
+        or request.GET.get("date_to", "")
+    ).strip()
+    selected_date_range = (
+        request.GET.get(f"{active_tab}_date_range")
+        or request.GET.get("audit_date_range")
+        or request.GET.get("date_range", "")
+    ).strip()
+
+    selected_month_int = None
+    selected_month_name = ""
+    if selected_month:
+        try:
+            selected_month_int = int(selected_month)
+            selected_month_name = MONTH_NAMES.get(selected_month_int, "")
+        except (ValueError, TypeError):
+            pass
+
+    auto_print = request.GET.get("print") == "1" or request.GET.get("print_now") == "1"
+    include_kpi = request.GET.get("include_kpi", "1") != "0"
+    include_notes = request.GET.get("include_notes", "1") != "0"
+    include_details = request.GET.get("include_details", "1") != "0"
+
+    # ==========================================
+    # 1. AUDIT LOGS DATA & METRICS (HR Actions Only)
+    # ==========================================
+    audit_qs = AuditLog.objects.select_related("user").all()
+
+    audit_action = request.GET.get("audit_action", "").strip()
+    audit_user = request.GET.get("audit_user", "").strip()
+    audit_date_range = selected_date_range
+    audit_search = request.GET.get("audit_search", "").strip()
+
+    if audit_action:
+        audit_qs = audit_qs.filter(action=audit_action)
+    if audit_user:
+        audit_qs = audit_qs.filter(user_id=audit_user)
+
+    if selected_month_int:
+        audit_qs = audit_qs.filter(timestamp__month=selected_month_int)
+    if selected_year:
+        try:
+            audit_qs = audit_qs.filter(timestamp__year=int(selected_year))
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        audit_qs = audit_qs.filter(timestamp__date__gte=selected_date_from)
+    if selected_date_to:
+        audit_qs = audit_qs.filter(timestamp__date__lte=selected_date_to)
+
+    if audit_date_range == "today":
+        audit_qs = audit_qs.filter(timestamp__date=timezone.now().date())
+    elif audit_date_range == "7days":
+        audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=7))
+    elif audit_date_range == "30days":
+        audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=30))
+    elif audit_date_range == "quarter":
+        audit_qs = audit_qs.filter(timestamp__gte=timezone.now() - timedelta(days=90))
+
+    if audit_search:
+        audit_qs = audit_qs.filter(
+            Q(target_repr__icontains=audit_search)
+            | Q(details__icontains=audit_search)
+            | Q(user_name__icontains=audit_search)
+            | Q(ip_address__icontains=audit_search)
+            | Q(action_display__icontains=audit_search)
+        )
+
+    all_audit_logs = AuditLog.objects.all()
+    total_audit_logs = all_audit_logs.count()
+    audit_today_count = all_audit_logs.filter(timestamp__date=timezone.now().date()).count()
+    audit_status_changes_count = all_audit_logs.filter(
+        action__in=[
+            "STATUS_CHANGE", "REJECT_APPLICATION", "SHORTLIST_APPLICATION",
+            "HIRE_APPLICATION", "FINAL_DECISION_HIRED", "FINAL_DECISION_NOT_HIRED"
+        ]
+    ).count()
+    active_staff_count = all_audit_logs.exclude(user__isnull=True).values("user").distinct().count()
+
+    available_audit_actions = AuditLog.ACTION_CHOICES
+    available_audit_users = User.objects.filter(is_staff=True).order_by("first_name", "username")
+
+    audit_logs_list = list(audit_qs[:200])
+
+    # ==========================================
+    # 2. CANCELLED (REJECTED APPLICATIONS) DATA & METRICS
+    # ==========================================
+    cancelled_qs = Application.objects.filter(status="Rejected").select_related("job", "applicant").prefetch_related("interview").order_by("-created_at")
+
+    cancelled_dept = request.GET.get("cancelled_dept", "").strip()
+    cancelled_job = request.GET.get("cancelled_job", "").strip()
+    cancelled_search = request.GET.get("cancelled_search", "").strip()
+    cancelled_phase = request.GET.get("cancelled_phase", "").strip()
+
+    if cancelled_dept:
+        cancelled_qs = cancelled_qs.filter(job__department=cancelled_dept)
+    if cancelled_job:
+        cancelled_qs = cancelled_qs.filter(job_id=cancelled_job)
+
+    if selected_month_int:
+        cancelled_qs = cancelled_qs.filter(created_at__month=selected_month_int)
+    if selected_year:
+        try:
+            cancelled_qs = cancelled_qs.filter(created_at__year=int(selected_year))
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        cancelled_qs = cancelled_qs.filter(created_at__date__gte=selected_date_from)
+    if selected_date_to:
+        cancelled_qs = cancelled_qs.filter(created_at__date__lte=selected_date_to)
+
+    if selected_date_range == "today":
+        cancelled_qs = cancelled_qs.filter(created_at__date=timezone.now().date())
+    elif selected_date_range == "7days":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=7))
+    elif selected_date_range == "30days":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=30))
+    elif selected_date_range == "quarter":
+        cancelled_qs = cancelled_qs.filter(created_at__gte=timezone.now() - timedelta(days=90))
+
+    if cancelled_search:
+        cancelled_qs = cancelled_qs.filter(
+            Q(first_name__icontains=cancelled_search)
+            | Q(last_name__icontains=cancelled_search)
+            | Q(application_id__icontains=cancelled_search)
+            | Q(email__icontains=cancelled_search)
+            | Q(job__title__icontains=cancelled_search)
+        )
+
+    total_applications = Application.objects.count()
+    total_cancelled = Application.objects.filter(status="Rejected").count()
+    rejection_rate = round((total_cancelled / total_applications * 100), 1) if total_applications > 0 else 0.0
+
+    cancelled_applications_list = list(cancelled_qs)
+    for app in cancelled_applications_list:
+        last_interview = app.interview.order_by("-date", "-time").first()
+        if hasattr(app, "evaluation") and app.evaluation:
+            app.disqualified_stage = "Post-Evaluation"
+            app.stage_badge_class = "badge-purple"
+            app.disqualified_notes = app.evaluation.final_decision_notes or app.evaluation.weaknesses_notes or app.evaluation.general_notes or "Did not meet evaluation rubric benchmark."
+        elif last_interview:
+            app.disqualified_stage = "Interview Stage"
+            app.stage_badge_class = "badge-blue"
+            app.disqualified_notes = last_interview.notes or "Cancelled or disqualified during interview stage."
+        else:
+            app.disqualified_stage = "Screening Stage"
+            app.stage_badge_class = "badge-amber"
+            app.disqualified_notes = app.ai_summary or "Application not selected during resume screening."
+
+    if cancelled_phase:
+        cancelled_applications_list = [a for a in cancelled_applications_list if a.disqualified_stage == cancelled_phase]
+
+    cancelled_screening_count = sum(1 for a in cancelled_applications_list if a.disqualified_stage == "Screening Stage")
+    cancelled_interview_count = sum(1 for a in cancelled_applications_list if a.disqualified_stage in ["Interview Stage", "Post-Evaluation"])
+
+    # ==========================================
+    # 3. EVALUATED CANDIDATES (Pending Final Decision)
+    # ==========================================
+    # Candidates whose evaluation is completed but final decision is NOT yet finalized
+    eval_qs = CandidateEvaluation.objects.filter(
+        status="Completed"
+    ).filter(
+        Q(final_decision__isnull=True) | Q(final_decision="")
+    ).select_related(
+        "application__job", "evaluator", "interview"
+    ).order_by("-evaluation_date", "-created_at")
+
+    selected_department = request.GET.get("department", "").strip()
+    selected_mode = request.GET.get("mode", "").strip()
+    selected_recommendation = request.GET.get("recommendation", "").strip()
+    search_query = request.GET.get("search", "").strip()
+
+    if selected_department:
+        eval_qs = eval_qs.filter(application__job__department=selected_department)
+    if selected_mode:
+        eval_qs = eval_qs.filter(interview_mode=selected_mode)
+    if selected_recommendation:
+        eval_qs = eval_qs.filter(recommendation=selected_recommendation)
+
+    if selected_month_int:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__month=selected_month_int)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__month=selected_month_int))
+        )
+    if selected_year:
+        try:
+            eval_qs = eval_qs.filter(
+                Q(evaluation_date__year=int(selected_year))
+                | (Q(evaluation_date__isnull=True) & Q(created_at__year=int(selected_year)))
+            )
+        except (ValueError, TypeError):
+            pass
+    if selected_date_from:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=selected_date_from)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date__gte=selected_date_from))
+        )
+    if selected_date_to:
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__lte=selected_date_to)
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date__lte=selected_date_to))
+        )
+    if selected_date_range == "today":
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date=timezone.now().date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__date=timezone.now().date()))
+        )
+    elif selected_date_range == "7days":
+        cut_dt = timezone.now() - timedelta(days=7)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+    elif selected_date_range == "30days":
+        cut_dt = timezone.now() - timedelta(days=30)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+    elif selected_date_range == "quarter":
+        cut_dt = timezone.now() - timedelta(days=90)
+        eval_qs = eval_qs.filter(
+            Q(evaluation_date__gte=cut_dt.date())
+            | (Q(evaluation_date__isnull=True) & Q(created_at__gte=cut_dt))
+        )
+
+    if search_query:
+        eval_qs = eval_qs.filter(
+            Q(application__first_name__icontains=search_query) |
+            Q(application__last_name__icontains=search_query) |
+            Q(application__application_id__icontains=search_query) |
+            Q(application__job__title__icontains=search_query)
+        )
+
+    evaluations_list = list(eval_qs)
+
+    # Calculate metrics for evaluated candidates
+    all_evals = CandidateEvaluation.objects.all()
+    total_evaluations = all_evals.count()
+    avg_score_agg = all_evals.aggregate(avg_val=Avg("overall_rating"))
+    avg_score = round(float(avg_score_agg["avg_val"] or 0), 1)
+
+    rec_counts = all_evals.aggregate(
+        strong_hire=Count("id", filter=Q(recommendation="Strong Hire")),
+        hire=Count("id", filter=Q(recommendation="Hire")),
+        hold=Count("id", filter=Q(recommendation="Hold")),
+        no_hire=Count("id", filter=Q(recommendation="No Hire")),
+        audio_analyzed=Count("id", filter=Q(ai_audio_score__gt=0)),
+    )
+
+    all_departments = sorted(list(set(
+        Job.objects.exclude(department="").values_list("department", flat=True)
+    )))
+    all_jobs = Job.objects.all().order_by("title")
+
+    pending_eval_candidates = list(
+        Application.objects.filter(status="Interview", evaluation__isnull=True)
+        .select_related("job")
+        .order_by("-created_at")[:10]
+    )
+
+    # ==========================================
+    # 4. CANDIDATES WITH FINAL DECISION (Hired & Not Hired by Dept & Job)
+    # ==========================================
+    final_dept_filter = request.GET.get("final_dept", "").strip()
+    final_search_filter = request.GET.get("final_search", "").strip()
+    final_outcome = request.GET.get("final_outcome", "").strip()
+
+    hired_department_sections = []
+    not_hired_department_sections = []
+    if final_outcome == "Not Hired":
+        not_hired_department_sections = build_final_decision_department_sections(
+            "Not Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+    elif final_outcome == "Hired":
+        hired_department_sections = build_final_decision_department_sections(
+            "Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+    else:
+        hired_department_sections = build_final_decision_department_sections(
+            "Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+        not_hired_department_sections = build_final_decision_department_sections(
+            "Not Hired", final_dept_filter, final_search_filter,
+            selected_month_int, selected_year, selected_date_from, selected_date_to
+        )
+
+    total_hired_final = sum(d["total_candidates"] for d in hired_department_sections)
+    total_not_hired_final = sum(d["total_candidates"] for d in not_hired_department_sections)
+    total_final_decisions_count = total_hired_final + total_not_hired_final
+    pending_final_decisions_count = len(evaluations_list)
+
+    # -------------------------------------------------------------
+    # Report Metadata & Label Formatting
+    # -------------------------------------------------------------
+    if selected_month_name and selected_year:
+        report_period_display = f"{selected_month_name} {selected_year}"
+    elif selected_month_name:
+        report_period_display = f"{selected_month_name} {timezone.now().year}"
+    elif selected_date_from and selected_date_to:
+        report_period_display = f"{selected_date_from} to {selected_date_to}"
+    elif selected_date_from:
+        report_period_display = f"From {selected_date_from}"
+    elif selected_date_to:
+        report_period_display = f"Up to {selected_date_to}"
+    elif selected_date_range and selected_date_range != "all":
+        range_labels = {
+            "today": "Today",
+            "7days": "Past 7 Days",
+            "30days": "Past 30 Days",
+            "quarter": "This Quarter",
+        }
+        report_period_display = range_labels.get(selected_date_range, selected_date_range.title())
+    else:
+        report_period_display = "All Records / Unrestricted Period"
+
+    tab_display_names = {
+        "audit": "HR System Audit Trail",
+        "cancelled": "Cancelled & Disqualified Candidates",
+        "evaluations": "Evaluated Candidates",
+        "final_decision": "Candidates with Final Decision",
+    }
+    report_title = tab_display_names.get(active_tab, "HR Operations Report")
+
+    is_custom_report = bool(
+        selected_month or selected_date_from or selected_date_to or (selected_date_range and selected_date_range != "all")
+        or audit_action or audit_user or cancelled_dept or cancelled_job or cancelled_phase
+        or selected_department or selected_mode or selected_recommendation
+        or final_dept_filter or final_outcome
+        or auto_print
+    )
+
+    all_months_list = [
+        ("1", "January"), ("2", "February"), ("3", "March"), ("4", "April"),
+        ("5", "May"), ("6", "June"), ("7", "July"), ("8", "August"),
+        ("9", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+    ]
+    cur_year = timezone.now().year
+    all_years_list = [str(cur_year), str(cur_year - 1), str(cur_year - 2)]
+
+    context = {
+        "active_tab": active_tab,
+        # Global Top Stat Cards Metrics
+        "pending_final_decisions_count": pending_final_decisions_count,
+        "total_final_decisions_count": total_final_decisions_count,
+        "total_hired_final": total_hired_final,
+        "total_not_hired_final": total_not_hired_final,
+        "total_cancelled": total_cancelled,
+        "rejection_rate": rejection_rate,
+        "total_audit_logs": total_audit_logs,
+        "audit_today_count": audit_today_count,
+        # Audit Logs Context
+        "audit_logs": audit_logs_list,
+        "audit_status_changes_count": audit_status_changes_count,
+        "active_staff_count": active_staff_count,
+        "available_audit_actions": available_audit_actions,
+        "available_audit_users": available_audit_users,
+        "audit_action": audit_action,
+        "audit_user": audit_user,
+        "audit_date_range": audit_date_range,
+        "audit_search": audit_search,
+        # Cancelled Applications Context
+        "cancelled_applications": cancelled_applications_list,
+        "cancelled_screening_count": cancelled_screening_count,
+        "cancelled_interview_count": cancelled_interview_count,
+        "cancelled_dept": cancelled_dept,
+        "cancelled_job": cancelled_job,
+        "cancelled_search": cancelled_search,
+        "cancelled_phase": cancelled_phase,
+        "available_jobs": all_jobs,
+        # Evaluated Candidates Context
+        "evaluations": evaluations_list,
+        "total_evaluations": total_evaluations,
+        "avg_score": avg_score,
+        "strong_hire_count": rec_counts["strong_hire"] or 0,
+        "hire_count": rec_counts["hire"] or 0,
+        "hold_count": rec_counts["hold"] or 0,
+        "no_hire_count": rec_counts["no_hire"] or 0,
+        "audio_analyzed_count": rec_counts["audio_analyzed"] or 0,
+        "available_departments": all_departments,
+        "selected_department": selected_department,
+        "selected_mode": selected_mode,
+        "selected_recommendation": selected_recommendation,
+        "search_query": search_query,
+        "pending_eval_candidates": pending_eval_candidates,
+        # Candidates with Final Decision Context
+        "hired_department_sections": hired_department_sections,
+        "not_hired_department_sections": not_hired_department_sections,
+        "final_dept_filter": final_dept_filter,
+        "final_search_filter": final_search_filter,
+        "final_outcome": final_outcome,
+        # Report Customization Context
+        "selected_month": str(selected_month_int) if selected_month_int else "",
+        "selected_month_name": selected_month_name,
+        "selected_year": selected_year,
+        "selected_date_from": selected_date_from,
+        "selected_date_to": selected_date_to,
+        "selected_date_range": selected_date_range,
+        "report_period_display": report_period_display,
+        "report_title": report_title,
+        "auto_print": auto_print,
+        "include_kpi": include_kpi,
+        "include_notes": include_notes,
+        "include_details": include_details,
+        "is_custom_report": is_custom_report,
+        "all_months": all_months_list,
+        "all_years": all_years_list,
+        "current_timestamp": timezone.now(),
+    }
+
+    return render(request, "hr/reports.html", context)
+
+
+@never_cache
+@hr_required(login_url="hr_login")
+def export_reports_google_sheet(request):
+    """
+    Generates a new Google Sheet file (or updates an existing one if a URL is provided)
+    containing formatted records and metadata from the generated report.
+    Does not require a spreadsheet link.
+    """
+    from .google_sheets import (
+        extract_report_tabular_data,
+        create_new_google_spreadsheet,
+        create_google_sheet_tab,
+        extract_spreadsheet_id,
+    )
+
+    # Gather parameters from POST or GET
+    params = request.POST if request.method == "POST" else request.GET
+    tab_type = params.get("tab", "audit").strip().lower()
+
+    # Extract tabular data based on active tab and timeframe filters
+    data = extract_report_tabular_data(tab_type, params)
+
+    # File and table title
+    custom_file_name = params.get("file_name", "").strip() or params.get("table_title", "").strip()
+    file_title = custom_file_name or f"DBRecruit AI - {data.get('report_title', 'Report')} ({data.get('period_str', 'All Time')})"
+
+    custom_tab = params.get("tab_name", "").strip()
+    tab_name = custom_tab or data.get("suggested_tab_name") or f"Report - {timezone.now().strftime('%b %Y')}"
+
+    meta_info = {
+        "title": data.get("report_title", "HR Report"),
+        "table_title": file_title,
+        "period": data.get("period_str", "All Time"),
+        "generated_by": request.user.get_full_name() or request.user.username,
+        "generated_at": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    # Optional spreadsheet URL/ID (only if explicitly provided for backward compatibility)
+    spreadsheet_input = (
+        params.get("spreadsheet_url")
+        or params.get("spreadsheet_id")
+        or ""
+    ).strip()
+
+    if spreadsheet_input:
+        result = create_google_sheet_tab(
+            spreadsheet_id=spreadsheet_input,
+            tab_title=tab_name,
+            headers=data["headers"],
+            rows=data["rows"],
+            meta_info=meta_info
+        )
+    else:
+        # Default & primary mode: create a brand new Google Spreadsheet file without requiring any link!
+        result = create_new_google_spreadsheet(
+            file_title=file_title,
+            tab_title=tab_name,
+            headers=data["headers"],
+            rows=data["rows"],
+            meta_info=meta_info
+        )
+
+    if result.get("success"):
+        # Log to HR Audit Trail
+        ip_addr = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "127.0.0.1")
+        AuditLog.objects.create(
+            user=request.user,
+            user_name=request.user.get_full_name() or request.user.username,
+            action="OTHER",
+            action_display="Google Sheets Export",
+            target_model="GoogleSheet",
+            target_id=str(result.get("spreadsheet_id", ""))[:50],
+            target_repr=f"File: {result.get('file_name', file_title)}",
+            details=f"Generated Google Sheet '{result.get('file_name', file_title)}' ({result.get('tab_name', tab_name)}) with {len(data['rows'])} records.",
+            ip_address=ip_addr,
+            timestamp=timezone.now(),
+        )
+        return JsonResponse(result)
+    else:
+        return JsonResponse(result, status=400)
+
+
+

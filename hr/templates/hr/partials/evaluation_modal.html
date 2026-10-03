@@ -1,0 +1,560 @@
+{% load static %}
+<div class="modal-overlay" id="candidate-evaluation-modal" style="display: none; align-items: center; justify-content: center; z-index: 9999; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); padding: 20px; overflow-y: auto;">
+    <div class="modal-content post-job-card post-job-card-wide" style="max-width: 860px; width: 100%; max-height: 90vh; overflow-y: auto; background: #ffffff; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid #e2e8f0; padding: 0;">
+        
+        <!-- Modal Header -->
+        <div class="modal-header" style="display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 26px; border-bottom: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="modal-icon-badge" style="width: 48px; height: 48px; border-radius: 12px; background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <h2 class="modal-title" style="margin: 0; font-size: 20px; font-weight: 800; color: #0f172a;">
+                            Evaluate Candidate: <span id="eval-modal-cand-name" style="color: #2d5a27;">Candidate</span>
+                        </h2>
+                        <span id="eval-modal-status-badge" class="status-pill status-ongoing" style="font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; background: #fef3c7; color: #b45309;">
+                            <i class="fas fa-spinner fa-spin"></i> Ongoing (Evaluating)
+                        </span>
+                    </div>
+                    <p class="modal-subtitle" style="margin: 4px 0 0; font-size: 13px; color: #64748b;">
+                        <span id="eval-modal-job-title" style="font-weight: 700; color: #334155;">Role</span> &bull; 
+                        <span id="eval-modal-dept">Department</span> &bull; 
+                        <span id="eval-modal-intv-type">Interview</span>
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="btn-modal-close" onclick="closeEvaluationModal()" style="background: transparent; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.color='#0f172a'; this.style.background='#e2e8f0';" onmouseout="this.style.color='#94a3b8'; this.style.background='transparent';">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Evaluation Form Body -->
+        <form method="POST" action="" enctype="multipart/form-data" id="evalModalForm" onsubmit="return handleModalEvalSubmit(event)" style="padding: 24px 26px;">
+            {% csrf_token %}
+            <input type="hidden" name="redirect_to" value="interviews">
+
+            <!-- Context Info Notice -->
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #166534;">
+                    <i class="fas fa-circle-info"></i>
+                    <span>Interview status is now <strong>Ongoing</strong>. Saving this evaluation will mark the interview as <strong>Completed</strong>.</span>
+                </div>
+                <div id="eval-overall-score-pill" style="background: #2d5a27; color: #ffffff; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 12px; white-space: nowrap;">
+                    Overall: 3.0 / 5.0
+                </div>
+            </div>
+
+            <!-- Row 1: Interview Mode & Evaluation Date -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                        <i class="fas fa-headset text-green"></i> Interview Format / Mode <span style="color: #ef4444;">*</span>
+                    </label>
+                    <select name="interview_mode" id="eval_modal_mode" class="form-control-custom" style="width: 100%; height: 42px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; background: #fff;" required>
+                        <option value="Face-to-Face">Face-to-Face (Onsite)</option>
+                        <option value="Online">Online (Google Meet / Zoom / Teams)</option>
+                        <option value="Phone Call">Phone Call Interview</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                        <i class="fas fa-calendar-day text-green"></i> Evaluation Date <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="date" name="evaluation_date" id="eval_modal_date" value="{% now 'Y-m-d' %}" style="width: 100%; height: 42px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; font-size: 13.5px; box-sizing: border-box;" required>
+                </div>
+            </div>
+
+            <!-- Row 2: 5-Competency Rubric Rating Inputs -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <label style="font-size: 13px; font-weight: 700; color: #1e293b; margin: 0;">
+                        <i class="fas fa-star-half-stroke text-green"></i> Competency Rubric Scoring (1 to 5 Stars)
+                    </label>
+                    <span style="font-size: 12px; color: #64748b;">Slide to adjust score</span>
+                </div>
+
+                <div class="rubric-form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                    <!-- Technical -->
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <span style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Technical</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" name="technical_competence" id="eval_modal_tech" min="1" max="5" value="3" class="rubric-slider" oninput="updateModalRubricDisplay(this, 'modal-score-tech')" style="flex: 1; accent-color: #2d5a27;">
+                            <span id="modal-score-tech" style="font-weight: 700; font-size: 14px; color: #2d5a27; min-width: 20px;">3</span>
+                        </div>
+                    </div>
+
+                    <!-- Communication -->
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <span style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Communication</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" name="communication_skills" id="eval_modal_comm" min="1" max="5" value="3" class="rubric-slider" oninput="updateModalRubricDisplay(this, 'modal-score-comm')" style="flex: 1; accent-color: #2d5a27;">
+                            <span id="modal-score-comm" style="font-weight: 700; font-size: 14px; color: #2d5a27; min-width: 20px;">3</span>
+                        </div>
+                    </div>
+
+                    <!-- Problem Solving -->
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <span style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Problem Solving</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" name="problem_solving" id="eval_modal_prob" min="1" max="5" value="3" class="rubric-slider" oninput="updateModalRubricDisplay(this, 'modal-score-prob')" style="flex: 1; accent-color: #2d5a27;">
+                            <span id="modal-score-prob" style="font-weight: 700; font-size: 14px; color: #2d5a27; min-width: 20px;">3</span>
+                        </div>
+                    </div>
+
+                    <!-- Cultural Fit -->
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <span style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Cultural Fit</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" name="cultural_fit" id="eval_modal_cult" min="1" max="5" value="3" class="rubric-slider" oninput="updateModalRubricDisplay(this, 'modal-score-cult')" style="flex: 1; accent-color: #2d5a27;">
+                            <span id="modal-score-cult" style="font-weight: 700; font-size: 14px; color: #2d5a27; min-width: 20px;">3</span>
+                        </div>
+                    </div>
+
+                    <!-- Leadership -->
+                    <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px;">
+                        <span style="font-size: 11.5px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">Leadership</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="range" name="leadership_potential" id="eval_modal_lead" min="1" max="5" value="3" class="rubric-slider" oninput="updateModalRubricDisplay(this, 'modal-score-lead')" style="flex: 1; accent-color: #2d5a27;">
+                            <span id="modal-score-lead" style="font-weight: 700; font-size: 14px; color: #2d5a27; min-width: 20px;">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 3: Qualitative Feedback Notes -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #166534; margin-bottom: 6px;">
+                        <i class="fas fa-thumbs-up"></i> Candidate Strengths & Standouts
+                    </label>
+                    <textarea name="strengths_notes" id="eval_modal_strengths" rows="2" placeholder="Key strengths, standout responses, domain expertise..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;"></textarea>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 12.5px; font-weight: 700; color: #92400e; margin-bottom: 6px;">
+                        <i class="fas fa-triangle-exclamation"></i> Areas for Improvement / Reservations
+                    </label>
+                    <textarea name="weaknesses_notes" id="eval_modal_weaknesses" rows="2" placeholder="Skills gaps, hesitation, inconsistencies or concerns..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;"></textarea>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                    <i class="fas fa-pen-nib text-green"></i> Detailed Discussion Notes & Question Breakdown
+                </label>
+                <textarea name="general_notes" id="eval_modal_notes" rows="3" placeholder="Summary of questions answered, behavioral depth, technical test outcome..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; font-size: 13px; font-family: inherit; box-sizing: border-box;"></textarea>
+            </div>
+
+            <!-- Row 4: Practical HR Logistics -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px;">
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Expected Salary / Rate</label>
+                    <input type="text" name="expected_salary" id="eval_modal_salary" placeholder="e.g. $65,000 / PHP 45,000" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Notice Period</label>
+                    <input type="text" name="notice_period" id="eval_modal_notice" placeholder="e.g. 30 days, 2 weeks" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 4px;">Earliest Available Date</label>
+                    <input type="text" name="availability_date" id="eval_modal_avail" placeholder="e.g. Immediately / Next Month" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 13px; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <!-- Row 5: Audio Recording & AI Audio Intelligence -->
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                <label style="display: block; font-size: 12.5px; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+                    <i class="fas fa-microphone-lines text-green"></i> Interview Audio Recording (Optional for AI Analysis)
+                </label>
+                
+                <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button type="button" id="modal-btn-start-record" onclick="startModalInterviewAudioRecording()" style="background: #ef4444; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
+                            <i class="fas fa-circle-dot"></i> Record Mic
+                        </button>
+                        <button type="button" id="modal-btn-stop-record" onclick="stopModalInterviewAudioRecording()" style="display: none; background: #334155; color: #fff; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; align-items: center; gap: 6px; border: 1.5px solid transparent; cursor: pointer;">
+                            <i class="fas fa-stop"></i> Stop (<span id="modal-record-timer">00:00</span>)
+                        </button>
+                    </div>
+
+                    <span style="font-size: 11px; color: #94a3b8;">— OR upload audio file —</span>
+
+                    <div style="flex: 1; min-width: 180px;">
+                        <input type="file" name="audio_file" id="modalInterviewAudioFileInput" accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg" style="font-size: 12px; color: #475569;">
+                    </div>
+                </div>
+
+                <div id="modal-recorded-audio-preview" style="display: none; margin-top: 8px; align-items: center; gap: 10px;">
+                    <audio id="modal-preview-audio-player" controls style="height: 32px; max-width: 280px;"></audio>
+                    <span style="font-size: 11.5px; color: #16a34a; font-weight: 600;"><i class="fas fa-check-circle"></i> Audio captured</span>
+                </div>
+
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" name="run_ai_audio" id="modal_run_ai_audio" value="1" checked style="accent-color: #2d5a27; width: 15px; height: 15px;">
+                    <label for="modal_run_ai_audio" style="font-size: 12px; color: #334155; cursor: pointer;">
+                        <strong>Run Gemini Multimodal AI Analysis</strong> (Transcribe, compute clarity & score)
+                    </label>
+                </div>
+            </div>
+
+            <!-- Row 6: Talent Team Recommendation Radio Pills -->
+            <div style="margin-bottom: 22px;">
+                <label style="display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                    <i class="fas fa-award text-green"></i> Hiring Recommendation <span style="color: #ef4444;">*</span>
+                </label>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="recommendation" value="Strong Hire" style="display: none;" onchange="updateModalRecHighlight(this)">
+                        <span class="modal-rec-pill modal-rec-strong" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; border: 2px solid #22c55e; color: #15803d; background: #ffffff;">
+                            <i class="fas fa-star"></i> Strong Hire
+                        </span>
+                    </label>
+
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="recommendation" value="Hire" checked style="display: none;" onchange="updateModalRecHighlight(this)">
+                        <span class="modal-rec-pill modal-rec-hire" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; border: 2px solid #3b82f6; color: #1d4ed8; background: #dbeafe;">
+                            <i class="fas fa-circle-check"></i> Hire
+                        </span>
+                    </label>
+
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="recommendation" value="Hold" style="display: none;" onchange="updateModalRecHighlight(this)">
+                        <span class="modal-rec-pill modal-rec-hold" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; border: 2px solid #f59e0b; color: #b45309; background: #ffffff;">
+                            <i class="fas fa-circle-pause"></i> Hold / Review
+                        </span>
+                    </label>
+
+                    <label style="cursor: pointer;">
+                        <input type="radio" name="recommendation" value="No Hire" style="display: none;" onchange="updateModalRecHighlight(this)">
+                        <span class="modal-rec-pill modal-rec-nohire" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 700; border: 2px solid #ef4444; color: #b91c1c; background: #ffffff;">
+                            <i class="fas fa-circle-xmark"></i> Do Not Hire
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Modal Footer Actions -->
+            <div class="modal-footer-actions" style="display: flex; justify-content: flex-end; gap: 12px; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+                <button type="button" class="btn btn-secondary" onclick="closeEvaluationModal()" style="padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13.5px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">
+                    Cancel
+                </button>
+                <button type="submit" id="btn-modal-save-eval" class="btn btn-primary" style="background: #2d5a27; color: #fff; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13.5px; border: 1.5px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(45, 90, 39, 0.2);">
+                    <i class="fas fa-floppy-disk"></i>
+                    <span>Save &amp; Record Evaluation</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentEvaluationAppId = null;
+let currentAppInitialStatus = null;
+let evaluationChangedToOngoing = false;
+
+function openEvaluationModal(appId, candName, jobTitle, deptName, intvType, currentStatus, currentData) {
+    currentEvaluationAppId = appId;
+    currentAppInitialStatus = currentStatus || "Scheduled";
+    evaluationChangedToOngoing = false;
+
+    // Set form action
+    const form = document.getElementById("evalModalForm");
+    if (form) {
+        form.action = `/hr/candidates/applicant/${appId}/evaluate/`;
+    }
+
+    // Set header labels
+    const nameEl = document.getElementById("eval-modal-cand-name");
+    if (nameEl) nameEl.textContent = candName || "Candidate";
+
+    const jobEl = document.getElementById("eval-modal-job-title");
+    if (jobEl) jobEl.textContent = jobTitle || "Position";
+
+    const deptEl = document.getElementById("eval-modal-dept");
+    if (deptEl) deptEl.textContent = deptName || "Department";
+
+    const typeEl = document.getElementById("eval-modal-intv-type");
+    if (typeEl) typeEl.textContent = intvType || "Interview";
+
+    // Populate or reset form fields
+    const data = currentData || {};
+    document.getElementById("eval_modal_mode").value = data.mode || "Face-to-Face";
+    document.getElementById("eval_modal_date").value = data.date || new Date().toISOString().split("T")[0];
+
+    const techVal = data.tech || 3;
+    const commVal = data.comm || 3;
+    const probVal = data.prob || 3;
+    const cultVal = data.cult || 3;
+    const leadVal = data.lead || 3;
+
+    document.getElementById("eval_modal_tech").value = techVal;
+    document.getElementById("modal-score-tech").textContent = techVal;
+    document.getElementById("eval_modal_comm").value = commVal;
+    document.getElementById("modal-score-comm").textContent = commVal;
+    document.getElementById("eval_modal_prob").value = probVal;
+    document.getElementById("modal-score-prob").textContent = probVal;
+    document.getElementById("eval_modal_cult").value = cultVal;
+    document.getElementById("modal-score-cult").textContent = cultVal;
+    document.getElementById("eval_modal_lead").value = leadVal;
+    document.getElementById("modal-score-lead").textContent = leadVal;
+
+    document.getElementById("eval_modal_strengths").value = data.strengths || "";
+    document.getElementById("eval_modal_weaknesses").value = data.weaknesses || "";
+    document.getElementById("eval_modal_notes").value = data.notes || "";
+    document.getElementById("eval_modal_salary").value = data.salary || "";
+    document.getElementById("eval_modal_notice").value = data.notice || "";
+    document.getElementById("eval_modal_avail").value = data.avail || "";
+
+    // Set recommendation pill
+    const recVal = data.rec || "Hire";
+    const recInputs = document.querySelectorAll("input[name='recommendation']");
+    recInputs.forEach(input => {
+        if (input.value === recVal) {
+            input.checked = true;
+            updateModalRecHighlight(input);
+        }
+    });
+
+    computeModalOverallScore();
+
+    // Reset audio state
+    resetModalAudioRecorder();
+
+    // Update Status to Ongoing if candidate's interview is Scheduled
+    if (currentStatus === "Scheduled" || !currentStatus) {
+        evaluationChangedToOngoing = true;
+        fetch(`/hr/candidates/applicant/${appId}/start-evaluation/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.success) {
+                // Update badge on row in evaluation table if present
+                updateApplicantRowStatus(appId, "Ongoing");
+            }
+        })
+        .catch(err => console.log("Status update note:", err));
+    }
+
+    // Show modal
+    const modal = document.getElementById("candidate-evaluation-modal");
+    if (modal) {
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+    }
+}
+
+function closeEvaluationModal() {
+    // If interview was set to Ongoing when opened and was originally Scheduled, revert back to Scheduled upon cancel
+    if (evaluationChangedToOngoing && currentEvaluationAppId) {
+        fetch(`/hr/candidates/applicant/${currentEvaluationAppId}/cancel-evaluation/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.success) {
+                updateApplicantRowStatus(currentEvaluationAppId, "Scheduled");
+            }
+        })
+        .catch(err => console.log("Cancel status revert note:", err));
+    }
+
+    const modal = document.getElementById("candidate-evaluation-modal");
+    if (modal) {
+        modal.style.display = "none";
+        document.body.style.overflow = "auto";
+    }
+
+    currentEvaluationAppId = null;
+    evaluationChangedToOngoing = false;
+}
+
+function updateApplicantRowStatus(appId, newStatus) {
+    const statusPill = document.getElementById(`applicant-status-pill-${appId}`);
+    const actionBtn = document.getElementById(`applicant-eval-btn-${appId}`);
+    if (statusPill) {
+        if (newStatus === "Ongoing") {
+            statusPill.className = "status-pill status-ongoing";
+            statusPill.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ongoing';
+            statusPill.style.background = "#fef3c7";
+            statusPill.style.color = "#b45309";
+        } else if (newStatus === "Scheduled") {
+            statusPill.className = "status-pill status-scheduled";
+            statusPill.innerHTML = '<i class="fas fa-clock"></i> Scheduled';
+            statusPill.style.background = "#dbeafe";
+            statusPill.style.color = "#1e40af";
+        } else if (newStatus === "Completed") {
+            statusPill.className = "status-pill status-completed";
+            statusPill.innerHTML = '<i class="fas fa-check-circle"></i> Completed';
+            statusPill.style.background = "#dcfce7";
+            statusPill.style.color = "#15803d";
+        }
+    }
+    const row = document.getElementById(`eval-applicant-row-${appId}`);
+    if (row) {
+        row.setAttribute("data-status", newStatus.toLowerCase());
+    }
+    if (actionBtn && newStatus === "Ongoing") {
+        actionBtn.innerHTML = '<i class="fas fa-pen-to-square"></i> <span>Continue Evaluation</span>';
+        actionBtn.setAttribute("data-status", "Ongoing");
+        actionBtn.style.background = "#eab308";
+        actionBtn.style.color = "#ffffff";
+    } else if (actionBtn && newStatus === "Scheduled") {
+        actionBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> <span>Evaluate Candidate</span>';
+        actionBtn.setAttribute("data-status", "Scheduled");
+        actionBtn.style.background = "#2d5a27";
+        actionBtn.style.color = "#ffffff";
+    } else if (actionBtn && newStatus === "Completed") {
+        actionBtn.innerHTML = '<i class="fas fa-eye"></i> <span>View Evaluation</span>';
+        actionBtn.setAttribute("data-status", "Completed");
+        actionBtn.style.background = "#f1f5f9";
+        actionBtn.style.color = "#1e293b";
+    }
+}
+
+function updateModalRubricDisplay(slider, targetId) {
+    const target = document.getElementById(targetId);
+    if (target) target.textContent = slider.value;
+    computeModalOverallScore();
+}
+
+function computeModalOverallScore() {
+    const t = parseInt(document.getElementById("eval_modal_tech")?.value || 3);
+    const c = parseInt(document.getElementById("eval_modal_comm")?.value || 3);
+    const p = parseInt(document.getElementById("eval_modal_prob")?.value || 3);
+    const cu = parseInt(document.getElementById("eval_modal_cult")?.value || 3);
+    const l = parseInt(document.getElementById("eval_modal_lead")?.value || 3);
+    const avg = ((t + c + p + cu + l) / 5).toFixed(1);
+    const pill = document.getElementById("eval-overall-score-pill");
+    if (pill) pill.textContent = `Overall: ${avg} / 5.0`;
+}
+
+function updateModalRecHighlight(radio) {
+    const pills = document.querySelectorAll(".modal-rec-pill");
+    pills.forEach(p => p.style.background = "#ffffff");
+    const parentPill = radio.nextElementSibling;
+    if (parentPill) {
+        if (radio.value === "Strong Hire") parentPill.style.background = "#dcfce7";
+        else if (radio.value === "Hire") parentPill.style.background = "#dbeafe";
+        else if (radio.value === "Hold") parentPill.style.background = "#fef3c7";
+        else if (radio.value === "No Hire") parentPill.style.background = "#fee2e2";
+    }
+}
+
+function handleModalEvalSubmit(e) {
+    const btn = document.getElementById("btn-modal-save-eval");
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving &amp; Completing...</span>';
+    }
+    return true;
+}
+
+function getCsrfToken() {
+    const input = document.querySelector("input[name='csrfmiddlewaretoken']");
+    if (input) return input.value;
+    const cookie = document.cookie.split("; ").find(row => row.startsWith("csrftoken="));
+    return cookie ? cookie.split("=")[1] : "";
+}
+
+// In-modal audio recorder
+let modalMediaRecorder = null;
+let modalAudioChunks = [];
+let modalRecordInterval = null;
+let modalRecordSeconds = 0;
+
+function startModalInterviewAudioRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Audio recording is not supported in this browser. Please upload an audio file instead.");
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            modalMediaRecorder = new MediaRecorder(stream);
+            modalAudioChunks = [];
+            modalMediaRecorder.ondataavailable = e => { if (e.data.size > 0) modalAudioChunks.push(e.data); };
+            modalMediaRecorder.onstop = () => {
+                const audioBlob = new Blob(modalAudioChunks, { type: "audio/webm" });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const player = document.getElementById("modal-preview-audio-player");
+                const previewBox = document.getElementById("modal-recorded-audio-preview");
+                if (player && previewBox) {
+                    player.src = audioUrl;
+                    previewBox.style.display = "flex";
+                }
+                const fileInput = document.getElementById("modalInterviewAudioFileInput");
+                if (fileInput && window.DataTransfer) {
+                    const dt = new DataTransfer();
+                    const audioFile = new File([audioBlob], `interview_recording_${Date.now()}.webm`, { type: "audio/webm" });
+                    dt.items.add(audioFile);
+                    fileInput.files = dt.files;
+                }
+                stream.getTracks().forEach(track => track.stop());
+            };
+            modalMediaRecorder.start();
+            document.getElementById("modal-btn-start-record").style.display = "none";
+            document.getElementById("modal-btn-stop-record").style.display = "inline-flex";
+            modalRecordSeconds = 0;
+            modalRecordInterval = setInterval(() => {
+                modalRecordSeconds++;
+                const mins = String(Math.floor(modalRecordSeconds / 60)).padStart(2, "0");
+                const secs = String(modalRecordSeconds % 60).padStart(2, "0");
+                const timerEl = document.getElementById("modal-record-timer");
+                if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+        })
+        .catch(err => {
+            alert("Could not access microphone: " + err.message);
+        });
+}
+
+function stopModalInterviewAudioRecording() {
+    if (modalMediaRecorder && modalMediaRecorder.state !== "inactive") {
+        modalMediaRecorder.stop();
+    }
+    if (modalRecordInterval) {
+        clearInterval(modalRecordInterval);
+        modalRecordInterval = null;
+    }
+    document.getElementById("modal-btn-start-record").style.display = "inline-flex";
+    document.getElementById("modal-btn-stop-record").style.display = "none";
+}
+
+function resetModalAudioRecorder() {
+    if (modalMediaRecorder && modalMediaRecorder.state !== "inactive") {
+        modalMediaRecorder.stop();
+    }
+    if (modalRecordInterval) {
+        clearInterval(modalRecordInterval);
+        modalRecordInterval = null;
+    }
+    const startBtn = document.getElementById("modal-btn-start-record");
+    const stopBtn = document.getElementById("modal-btn-stop-record");
+    const preview = document.getElementById("modal-recorded-audio-preview");
+    const fileInput = document.getElementById("modalInterviewAudioFileInput");
+    if (startBtn) startBtn.style.display = "inline-flex";
+    if (stopBtn) stopBtn.style.display = "none";
+    if (preview) preview.style.display = "none";
+    if (fileInput) fileInput.value = "";
+}
+
+// Close on backdrop click or escape key
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+        const modal = document.getElementById("candidate-evaluation-modal");
+        if (modal && modal.style.display === "flex") {
+            closeEvaluationModal();
+        }
+    }
+});
+</script>

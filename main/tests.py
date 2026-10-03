@@ -48,7 +48,8 @@ class GmailEmailerTests(TestCase):
             "application": self.application,
             "job": self.job,
             "applicant_name": "Jane Doe",
-            "tracking_url": "http://127.0.0.1:8000/track/?application_id=APP998877",
+            "tracking_url": "http://127.0.0.1:8000/accounts/profile/",
+            "profile_url": "http://127.0.0.1:8000/accounts/profile/",
             "submitted_at": "September 13, 2026 at 09:30 PM",
         }
         html_out = render_to_string("emails/application_submitted.html", context)
@@ -57,7 +58,7 @@ class GmailEmailerTests(TestCase):
         self.assertIn("Senior Python Engineer", html_out)
         self.assertIn("APP998877", html_out)
         self.assertIn("Jane Doe", html_out)
-        self.assertIn("track/?application_id=APP998877", html_out)
+        self.assertIn("accounts/profile/", html_out)
 
         self.assertIn("Senior Python Engineer", text_out)
         self.assertIn("APP998877", text_out)

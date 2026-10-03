@@ -3,56 +3,70 @@
 {% block title %}Sign Up | DBRecruitAI{% endblock %} 
 
 {% block content %}
-<div class="bg">
-    <div class="auth-page">
-        <div class="auth-split">
-        <!-- Left: Image panel -->
-            <div class="auth-image-panel">
-                <img src="{% static 'accounts/img/signup-side.jpg' %}" alt="DBRecruitAI">
-                <div class="auth-image-overlay">
-                    <h2>Find. Apply. Get Hired.</h2>
-                    <p>Join DBRecruitAI and discover opportunities that match your skills.</p>
-                </div>
+{% if turnstile_site_key %}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+{% endif %}
+
+<div class="auth-page">
+    <div class="auth-split">
+    <!-- Left: Image panel -->
+        <div class="auth-image-panel">
+            <img src="{% static 'accounts/img/signup-side.jpg' %}" alt="DBRecruitAI">
+            <div class="auth-image-overlay">
+                <h2>Find. Apply. Get Hired.</h2>
+                <p>Join DBRecruitAI and discover opportunities that match your skills.</p>
             </div>
-            <div class="auth-card">
-                <h1>Create Applicant Account</h1>
-                <p>Join DBRecruitAI and start applying for jobs.</p>
-                
-                <form method="POST" enctype="multipart/form-data">
+        </div>
+        <div class="auth-card">
+            <h1>Create Applicant Account</h1>
+            <p>Join DBRecruitAI and start applying for jobs.</p>
 
-                    {% csrf_token %}
+            {% if messages %}
+                <div class="messages" style="margin-bottom: 15px;">
+                    {% for message in messages %}
+                        <div class="form-error" style="background: rgba(220, 53, 69, 0.15); border: 1px solid rgba(220, 53, 69, 0.4); color: #ff6b6b; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 8px;">
+                            <i class="fa-solid fa-circle-exclamation"></i> {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <form method="POST" enctype="multipart/form-data">
 
-                    {% if form.non_field_errors %}
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="form-error">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label>Upload Resume (PDF)</label>
+
+                    {{ form.default_resume }}
+
+                    {% if form.default_resume.errors %}
                         <div class="form-error">
-                            {{ form.non_field_errors }}
+                            {{ form.default_resume.errors }}
                         </div>
                     {% endif %}
 
-                    <div class="form-group">
-                        <label>Upload Resume (PDF)</label>
+                    <button type="button" id="process-resume-btn" class="btn btn-secondary" data-process-url="{% url "process_signup_resume" %}">
+                        Process Resume
+                    </button>
 
-                        {{ form.default_resume }}
-
-                        {% if form.default_resume.errors %}
-                            <div class="form-error">
-                                {{ form.default_resume.errors }}
-                            </div>
-                        {% endif %}
-
-                        <button type="button" id="process-resume-btn" class="btn btn-secondary" data-process-url="{% url "process_signup_resume" %}">
-                            Process Resume
-                        </button>
-
-                        <div id="resume-status" style="margin-top: 10px;">
-                        </div>
+                    <div id="resume-status" style="margin-top: 10px;">
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        {{ form.email }}
-                        {{ form.email.errors }}
-                    </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
 
+                <div class="form-row-names">
                     <div class="form-group">
                         <label>First Name</label>
                         {{ form.first_name }}
@@ -70,6 +84,7 @@
                         {{ form.last_name }}
                         {{ form.last_name.errors }}
                     </div>
+                </div>
 
                     <div class="form-group">
                         <label for="{{ form.password1.id_for_label }}">
@@ -149,6 +164,12 @@
                         </div>
                     </div>
 
+                    {% if turnstile_site_key %}
+                    <div class="form-group turnstile-container" style="margin: 15px 0; display: flex; justify-content: center;">
+                        <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="dark" data-appearance="always"></div>
+                    </div>
+                    {% endif %}
+
                     <button type="submit" class="btn btn-primary">
                         Sign Up
                     </button>
@@ -163,5 +184,4 @@
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
