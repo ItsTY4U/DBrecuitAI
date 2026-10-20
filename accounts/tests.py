@@ -31,8 +31,8 @@ class AccountSecurityTests(TestCase):
         )
         self.client = Client()
 
-    def test_profile_form_rejects_non_pdf(self):
-        """ApplicantProfileForm must reject non-PDF uploads."""
+    def test_profile_form_rejects_non_allowed_files(self):
+        """ApplicantProfileForm must reject disallowed file extensions (e.g. .exe)."""
         bad_file = SimpleUploadedFile("malicious.exe", b"binary content", content_type="application/octet-stream")
         form = ApplicantProfileForm(
             data={"phone": "09123456789", "address": "123 Street"},
@@ -41,7 +41,7 @@ class AccountSecurityTests(TestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertIn("default_resume", form.errors)
-        self.assertIn("Only PDF files are allowed.", form.errors["default_resume"][0])
+        self.assertIn("Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed.", form.errors["default_resume"][0])
 
     def test_profile_form_rejects_oversized_file(self):
         """ApplicantProfileForm must reject files exceeding 5MB."""
@@ -62,6 +62,26 @@ class AccountSecurityTests(TestCase):
         form = ApplicantProfileForm(
             data={"phone": "09123456789", "address": "123 Street"},
             files={"default_resume": valid_file},
+            instance=self.profile
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_profile_form_accepts_valid_docx(self):
+        """ApplicantProfileForm accepts valid DOCX under 5MB."""
+        docx_file = SimpleUploadedFile("resume.docx", b"PK\x03\x04 fake docx binary", content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        form = ApplicantProfileForm(
+            data={"phone": "09123456789", "address": "123 Street"},
+            files={"default_resume": docx_file},
+            instance=self.profile
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_profile_form_accepts_valid_image(self):
+        """ApplicantProfileForm accepts valid PNG/JPG image resume under 5MB."""
+        img_file = SimpleUploadedFile("resume.png", b"\x89PNG\r\n\x1a\n fake image", content_type="image/png")
+        form = ApplicantProfileForm(
+            data={"phone": "09123456789", "address": "123 Street"},
+            files={"default_resume": img_file},
             instance=self.profile
         )
         self.assertTrue(form.is_valid())

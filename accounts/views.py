@@ -213,7 +213,7 @@ def process_profile_resume(profile):
         resume_text = extract_resume_text(profile.default_resume)
         
         if not resume_text or len(resume_text.strip()) < 30:
-            return False, "Unable to extract readable text from your resume. Please ensure the PDF contains text and is not a scanned photo or image."
+            return False, "Unable to extract readable text from your resume. Please ensure the file contains readable text or a clear image."
 
         parsed_data = parse_resume(resume_text)
         
@@ -448,9 +448,10 @@ def process_signup_resume(request):
             status=400
         )
         
-    if not resume.name.lower().endswith(".pdf"):
+    allowed_extensions = (".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".webp")
+    if not any(resume.name.lower().endswith(ext) for ext in allowed_extensions):
         return JsonResponse(
-            {"error": "Only PDF files are allowed."},
+            {"error": "Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed."},
             status=400
         )
 
@@ -467,7 +468,7 @@ def process_signup_resume(request):
         if not resume_text or not resume_text.strip():
             return JsonResponse(
                 {
-                    "error": "Unable to extract text from the resume. Please ensure the PDF contains readable text (not a scanned image)."
+                    "error": "Unable to extract text from the resume. Please ensure the file contains readable text or a clear image."
                 },
                 status=400
             )

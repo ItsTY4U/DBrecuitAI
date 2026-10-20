@@ -113,10 +113,14 @@ document.addEventListener("DOMContentLoaded", function () {
     function handleFileSelection(file) {
         if (!file) return;
 
-        // Validation
-        if (!file.name.toLowerCase().endsWith(".pdf")) {
+        // Validation - Support PDF, DOCX, DOC, and Image formats
+        const allowedExtensions = [".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".webp"];
+        const fileName = (file.name || "").toLowerCase();
+        const isAllowed = allowedExtensions.some(ext => fileName.endsWith(ext));
+
+        if (!isAllowed) {
             if (modalError) {
-                modalError.textContent = "Only PDF files are allowed.";
+                modalError.textContent = "Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed.";
                 modalError.style.display = "block";
             }
             if (modalFileInput) modalFileInput.value = "";
@@ -140,6 +144,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (selectedFileName) selectedFileName.textContent = file.name;
         if (selectedFileSize) selectedFileSize.textContent = formatFileSize(file.size);
+
+        // Update file icon according to format
+        const iconEl = dropzoneSelected ? dropzoneSelected.querySelector(".selected-file-badge i") : null;
+        if (iconEl) {
+            iconEl.className = "fa-solid";
+            if (fileName.endsWith(".pdf")) {
+                iconEl.classList.add("fa-file-pdf");
+            } else if (fileName.endsWith(".docx") || fileName.endsWith(".doc")) {
+                iconEl.classList.add("fa-file-word");
+            } else if (fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".webp")) {
+                iconEl.classList.add("fa-file-image");
+            } else {
+                iconEl.classList.add("fa-file-lines");
+            }
+        }
+
         if (dropzoneIdle) dropzoneIdle.style.display = "none";
         if (dropzoneSelected) dropzoneSelected.style.display = "block";
     }
