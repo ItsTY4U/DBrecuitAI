@@ -63,61 +63,196 @@ def _clean_json_text(raw_text: str) -> str:
     return text
 
 
-def extract_resume_text(pdf_file: Any) -> str:
+def _extract_docx_text(source: io.BytesIO) -> str:
     """
-    Extracts plain text from a PDF file-like object, Django FieldFile, or filesystem path.
-    Returns cleaned, stripped text.
+    Extracts text cleanly from a .docx file including paragraphs and tables.
     """
-    if not pdf_file:
+    try:
+        import docx
+        doc = docx.Document(source)
+        chunks = []
+        for p in doc.paragraphs:
+            val = p.text.strip()
+            if val:
+                chunks.append(val)
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                # Deduplicate identical adjacent cell values caused by merged cells
+                deduped = []
+                for c in cells:
+                    if not deduped or deduped[-1] != c:
+                        deduped.append(c)
+                if deduped:
+                    chunks.append(" | ".join(deduped))
+        return "\n".join(chunks).strip()
+    except Exception as e:
+        logger.error("python-docx failed to extract text: %s", e)
         return ""
 
-    text = ""
-    source = pdf_file
 
-    # Ensure file is opened in binary mode and positioned at byte 0
-    if hasattr(pdf_file, "open"):
-        try:
-            pdf_file.open("rb")
-        except Exception as e:
-            logger.debug("Could not open pdf_file directly: %s", e)
+def _extract_multimodal_text_with_gemini(content_bytes: bytes, mime_type: str) -> str:
+    """
+    Uses Google GenAI SDK (Gemini Vision) to transcribe scanned, photographed, or image-based resumes.
+    Handles multi-column layouts, sidebars, headers, and creative typography accurately.
+    Uses SHA-256 caching (7 days) to avoid repeated API calls.
+    """
+    if not content_bytes:
+        return ""
 
-    if hasattr(pdf_file, "seek"):
-        try:
-            pdf_file.seek(0)
-        except Exception as e:
-            logger.debug("Could not seek(0) on pdf_file: %s", e)
+    file_hash = hashlib.sha256(content_bytes).hexdigest()
+    cache_key = f"ai_multimodal_resume:{file_hash}"
+    cached = cache.get(cache_key)
+    if cached:
+        logger.info("Multimodal resume text extraction: Cache hit for %s", file_hash[:8])
+        return cached
 
-    if hasattr(pdf_file, "read"):
-        try:
-            content = pdf_file.read()
-            source = io.BytesIO(content)
-        except Exception as e:
-            logger.warning("Failed to buffer file content: %s", e)
-            source = pdf_file
-        finally:
-            if hasattr(pdf_file, "seek"):
-                try:
-                    pdf_file.seek(0)
-                except Exception:
-                    pass
+    ai_client = get_genai_client()
+    if not ai_client:
+        logger.warning("Gemini client unavailable for multimodal resume extraction.")
+        return ""
+
+    prompt = (
+        "Extract all plain text from this resume document faithfully and completely. "
+        "Preserve section headers (Summary, Work Experience, Education, Skills, Certifications, Contact Info), "
+        "job titles, dates, bullet points, and skills. "
+        "Accurately follow the logical reading flow of multi-column layouts, sidebars, or tables. "
+        "Do not invent information. Output ONLY the extracted resume text without conversational preamble, "
+        "greetings, notes, or markdown code block formatting."
+    )
 
     try:
-        with pdfplumber.open(source) as pdf:
+        part = types.Part.from_bytes(data=content_bytes, mime_type=mime_type)
+        fast_model = getattr(settings, "GEMINI_FAST_MODEL", "gemini-2.5-flash")
+        response = ai_client.models.generate_content(
+            model=fast_model,
+            contents=[prompt, part],
+            config=types.GenerateContentConfig(
+                temperature=0.1,
+                max_output_tokens=3500,
+            ),
+        )
+        extracted = (getattr(response, "text", "") or "").strip()
+        # Clean any accidental markdown code fences
+        if extracted.startswith("```") and extracted.endswith("```"):
+            extracted = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", extracted).strip()
+        if extracted:
+            cache.set(cache_key, extracted, timeout=86400 * 7)
+        return extracted
+    except Exception as exc:
+        logger.error("Gemini multimodal resume extraction failed: %s", exc)
+        return ""
+
+
+def extract_resume_text(resume_file: Any) -> str:
+    """
+    Extracts plain text from a resume file (PDF, DOCX, or Image formats).
+    - DOCX: Extracted cleanly via python-docx (paragraphs and tables).
+    - PDF: Extracted via pdfplumber; if scanned or image-only (<40 chars), falls back to Gemini Multimodal.
+    - Images (PNG, JPG, JPEG, WEBP): Extracted via Gemini Native Multimodal AI.
+    Returns cleaned, stripped text.
+    """
+    if not resume_file:
+        return ""
+
+    filename = ""
+    if hasattr(resume_file, "name") and resume_file.name:
+        filename = str(resume_file.name).lower()
+    elif isinstance(resume_file, str):
+        filename = resume_file.lower()
+
+    content = b""
+
+    # Ensure file is opened in binary mode and positioned at byte 0
+    if hasattr(resume_file, "open"):
+        try:
+            resume_file.open("rb")
+        except Exception as e:
+            logger.debug("Could not open resume_file directly: %s", e)
+
+    if hasattr(resume_file, "seek"):
+        try:
+            resume_file.seek(0)
+        except Exception as e:
+            logger.debug("Could not seek(0) on resume_file: %s", e)
+
+    if hasattr(resume_file, "read"):
+        try:
+            content = resume_file.read()
+        except Exception as e:
+            logger.warning("Failed to buffer file content: %s", e)
+        finally:
+            if hasattr(resume_file, "seek"):
+                try:
+                    resume_file.seek(0)
+                except Exception:
+                    pass
+    elif isinstance(resume_file, (bytes, bytearray)):
+        content = bytes(resume_file)
+    elif isinstance(resume_file, str):
+        try:
+            with open(resume_file, "rb") as f:
+                content = f.read()
+        except Exception as e:
+            logger.error("Failed to read file from path %s: %s", resume_file, e)
+            return ""
+
+    if hasattr(resume_file, "close"):
+        try:
+            resume_file.close()
+        except Exception:
+            pass
+
+    if not content:
+        return ""
+
+    # 1. DOCX (.docx extension or PK\x03\x04 zip magic bytes)
+    if filename.endswith(".docx") or (content[:4] == b"PK\x03\x04" and not filename.endswith(".pdf")):
+        docx_text = _extract_docx_text(io.BytesIO(content))
+        if docx_text:
+            return docx_text
+
+    # 2. Image formats (PNG, JPG, JPEG, WEBP)
+    is_image = (
+        filename.endswith((".png", ".jpg", ".jpeg", ".webp"))
+        or content[:4] == b"\x89PNG"
+        or content[:3] == b"\xff\xd8\xff"
+        or (content[:4] == b"RIFF" and b"WEBP" in content[:16])
+    )
+    if is_image:
+        mime = "image/png"
+        if filename.endswith((".jpg", ".jpeg")) or content[:3] == b"\xff\xd8\xff":
+            mime = "image/jpeg"
+        elif filename.endswith(".webp") or (content[:4] == b"RIFF" and b"WEBP" in content[:16]):
+            mime = "image/webp"
+        return _extract_multimodal_text_with_gemini(content, mime)
+
+    # 3. PDF
+    text = ""
+    try:
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text += page_text + "\n"
     except Exception as e:
-        logger.error("pdfplumber failed to extract text: %s", e)
-        return ""
-    finally:
-        if hasattr(pdf_file, "close"):
-            try:
-                pdf_file.close()
-            except Exception:
-                pass
+        logger.warning("pdfplumber failed to extract text: %s", e)
+
+    # If pdfplumber found readable text (>=40 characters), return it
+    if len(text.strip()) >= 40:
+        return text.strip()
+
+    # 4. Scanned PDF fallback via Gemini Native Multimodal AI
+    logger.info(
+        "PDF has minimal or no selectable text (%d chars). Falling back to Gemini Multimodal extraction.",
+        len(text.strip()),
+    )
+    multimodal_text = _extract_multimodal_text_with_gemini(content, "application/pdf")
+    if multimodal_text:
+        return multimodal_text
 
     return text.strip()
+
 
 
 def _build_fallback_parsed_data(resume_text: str) -> Dict[str, Any]:

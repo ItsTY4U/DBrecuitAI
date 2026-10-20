@@ -689,7 +689,7 @@
                 <input type="hidden" name="address" value="{{ profile.address|default:'' }}">
 
                 <div class="resume-upload-dropzone" id="resume-modal-dropzone">
-                    <input type="file" name="default_resume" id="modal-resume-file" accept=".pdf" class="hidden-file-input">
+                    <input type="file" name="default_resume" id="modal-resume-file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp" class="hidden-file-input">
                     
                     <div class="dropzone-idle-state" id="dropzone-idle">
                         <div class="dropzone-icon-circle">
@@ -699,7 +699,7 @@
                             <strong>Click to browse</strong> or drag & drop your resume
                         </div>
                         <div class="dropzone-text-sub">
-                            PDF format only (Max 5MB)
+                            PDF, DOCX, or Image (Max 5MB)
                         </div>
                     </div>
 

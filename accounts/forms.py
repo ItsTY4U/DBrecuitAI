@@ -38,7 +38,7 @@ class ApplicantSignupForm(forms.Form):
     default_resume = forms.FileField(
         required=False,
         widget=forms.ClearableFileInput(
-            attrs={"accept": ".pdf"}
+            attrs={"accept": ".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp"}
         )
     )
 
@@ -155,10 +155,10 @@ class ApplicantSignupForm(forms.Form):
         resume = self.cleaned_data.get("default_resume")
         
         if resume:
-            
-            if not resume.name.lower().endswith(".pdf"):
+            allowed_extensions = (".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".webp")
+            if not any(resume.name.lower().endswith(ext) for ext in allowed_extensions):
                 raise forms.ValidationError(
-                    "Only PDF files are allowed."
+                    "Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed."
                 )
                 
             max_size = 5 * 1024 * 1024
@@ -258,8 +258,11 @@ class ApplicantProfileForm(forms.ModelForm):
     def clean_default_resume(self):
         resume = self.cleaned_data.get("default_resume")
         if resume and hasattr(resume, "name") and not isinstance(resume, str):
-            if not resume.name.lower().endswith(".pdf"):
-                raise forms.ValidationError("Only PDF files are allowed.")
+            allowed_extensions = (".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".webp")
+            if not any(resume.name.lower().endswith(ext) for ext in allowed_extensions):
+                raise forms.ValidationError(
+                    "Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed."
+                )
             if hasattr(resume, "size") and resume.size > 5 * 1024 * 1024:
                 raise forms.ValidationError("Resume file must not exceed 5MB.")
         return resume

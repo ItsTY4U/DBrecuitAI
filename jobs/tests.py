@@ -953,3 +953,57 @@ class RecommendationLogicTests(unittest.TestCase):
         self.assertEqual(result["match_level"], "Exceptional")
 
 
+class ResumeFileParserTests(TestCase):
+    def test_extract_docx_paragraphs_and_tables(self):
+        """Verify python-docx parses paragraphs and table contents from a .docx file."""
+        import docx
+        import io
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from jobs.ai import extract_resume_text
+
+        doc = docx.Document()
+        doc.add_heading("Jane Doe - Senior Full Stack Developer", level=1)
+        doc.add_paragraph("Experienced software engineer skilled in Python, Django, and React.")
+        
+        table = doc.add_table(rows=2, cols=2)
+        table.cell(0, 0).text = "Skills"
+        table.cell(0, 1).text = "Python, PostgreSQL"
+        table.cell(1, 0).text = "Certifications"
+        table.cell(1, 1).text = "AWS Certified Developer"
+
+        bio = io.BytesIO()
+        doc.save(bio)
+        content = bio.getvalue()
+
+        uploaded = SimpleUploadedFile("jane_doe_resume.docx", content, content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        extracted = extract_resume_text(uploaded)
+
+        self.assertIn("Jane Doe - Senior Full Stack Developer", extracted)
+        self.assertIn("Experienced software engineer", extracted)
+        self.assertIn("Skills | Python, PostgreSQL", extracted)
+        self.assertIn("Certifications | AWS Certified Developer", extracted)
+
+    @patch("jobs.ai.get_genai_client")
+    def test_extract_image_resume_via_multimodal_ai(self, mock_get_client):
+        """Verify image resume formats (PNG, JPG) use Gemini Native Multimodal AI."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from jobs.ai import extract_resume_text
+
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "John Smith\nSoftware Engineer\nPython, Django, AWS"
+        mock_client.models.generate_content.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        # Fake PNG bytes
+        png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
+        uploaded = SimpleUploadedFile("john_resume.png", png_bytes, content_type="image/png")
+        extracted = extract_resume_text(uploaded)
+
+        self.assertEqual(extracted, "John Smith\nSoftware Engineer\nPython, Django, AWS")
+        mock_client.models.generate_content.assert_called_once()
+        call_kwargs = mock_client.models.generate_content.call_args[1]
+        self.assertIn("gemini", call_kwargs.get("model", "").lower())
+
+
+

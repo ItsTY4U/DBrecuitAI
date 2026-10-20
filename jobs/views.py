@@ -365,7 +365,7 @@ def upload_resume(request, pk):
         })
 
     # Allowed resume file types
-    allowed_extensions = [".pdf", ".doc", ".docx"]
+    allowed_extensions = [".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".webp"]
 
     if not any(
         resume.name.lower().endswith(ext)
@@ -373,7 +373,7 @@ def upload_resume(request, pk):
     ):
         return render(request, "jobs/apply.html", {
             "job": job,
-            "error": "Only PDF, DOC, or DOCX files are allowed."
+            "error": "Only PDF, DOCX, DOC, or image files (PNG, JPG, WEBP) are allowed."
         })
 
     # Maximum file size: 5 MB
