@@ -6,20 +6,27 @@
     <main class="main-content-wide">
         <div class="job-detail-hero">
             <div class="hero-left">
-                <span class="badge-full">{{ job.job_type }}</span>
-                <span class="posted-date">
-                    Posted on {{ job.posted_date|date:"n/j/y" }}
-                </span>
+                <div class="hero-top-row">
+                    <a href="{% url 'jobs' %}" class="mobile-back-circle-btn" aria-label="Back to Browse jobs">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="hero-badges">
+                        <span class="badge-full">{{ job.job_type }}</span>
+                        <span class="posted-date">
+                            Posted on {{ job.posted_date|date:"n/j/y" }}
+                        </span>
+                    </div>
+                </div>
                 <h1>{{ job.title }}</h1>
                 <span class="dept">
                     {{ job.department }}
                 </span>
             </div>
             <div class="hero-right">
-                <a href="{% url 'jobs' %}" class="btn btn-outline-alt">
-                    Back to Browse jobs
+                <a href="{% url 'jobs' %}" class="btn btn-outline-alt desktop-back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Browse jobs
                 </a>
-                <a href="{% url 'apply' job.id %}" class="btn btn-primary">
+                <a href="{% url 'apply' job.id %}" class="btn btn-primary btn-apply">
                     Apply Now
                 </a>
             </div>

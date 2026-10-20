@@ -288,12 +288,72 @@ EXTRACTION RULES:
         return _build_fallback_parsed_data(cleaned_resume)
 
 
+def get_job_criteria_weights(job: Any) -> Dict[str, int]:
+    """
+    Extracts the HR-defined criteria weights from a Job instance.
+    Falls back to equal 25% distribution if unconfigured or invalid.
+    """
+    if hasattr(job, "get_criteria_weights"):
+        raw = job.get_criteria_weights()
+    elif hasattr(job, "criteria_weights"):
+        raw = job.criteria_weights
+    else:
+        raw = None
+
+    if not isinstance(raw, dict):
+        raw = {
+            "qualification_weight": getattr(job, "qualification_weight", 25) or 25,
+            "experience_weight": getattr(job, "experience_weight", 25) or 25,
+            "skills_weight": getattr(job, "skills_weight", 25) or 25,
+            "education_weight": getattr(job, "education_weight", 25) or 25,
+        }
+
+    try:
+        q = int(raw.get("qualification_weight", 25) or 25)
+        exp = int(raw.get("experience_weight", 25) or 25)
+        s = int(raw.get("skills_weight", 25) or 25)
+        edu = int(raw.get("education_weight", 25) or 25)
+    except (ValueError, TypeError):
+        q, exp, s, edu = 25, 25, 25, 25
+
+    total = q + exp + s + edu
+    if total == 100:
+        return {
+            "qualification_weight": q,
+            "experience_weight": exp,
+            "skills_weight": s,
+            "education_weight": edu,
+        }
+
+    if total > 0:
+        scaled = {
+            "qualification_weight": round(q * 100.0 / total),
+            "experience_weight": round(exp * 100.0 / total),
+            "skills_weight": round(s * 100.0 / total),
+            "education_weight": round(edu * 100.0 / total),
+        }
+        drift = 100 - sum(scaled.values())
+        if drift:
+            max_k = max(scaled, key=scaled.get)
+            scaled[max_k] += drift
+        return scaled
+
+    return {
+        "qualification_weight": 25,
+        "experience_weight": 25,
+        "skills_weight": 25,
+        "education_weight": 25,
+    }
+
+
 def analyze_resume(resume_text: str, job: Any, force_refresh: bool = False) -> Dict[str, Any]:
     """
     Evaluates applicant resume text against a specific Job's title, description,
-    and requirements using the 4-criteria rubric, weighted scoring, and knockout logic.
+    and requirements using HR-defined criteria weights, rubric scoring, and knockout logic.
     Uses SHA-256 caching and token budgeting to avoid redundant Gemini calls.
     """
+    hr_weights = get_job_criteria_weights(job)
+
     fallback_result = {
         "score": 0,
         "recommendation": "Not Qualified",
@@ -307,17 +367,12 @@ def analyze_resume(resume_text: str, job: Any, force_refresh: bool = False) -> D
         "experience_match": 0,
         "education_match": 0,
         "qualification_match": 0,
-        "criteria_weights": {
-            "qualification_weight": 25,
-            "experience_weight": 25,
-            "skills_weight": 25,
-            "education_weight": 25,
-        },
+        "criteria_weights": hr_weights,
         "weight_reasoning": {
-            "qualification": "Standard baseline",
-            "experience": "Standard baseline",
-            "skills": "Standard baseline",
-            "education": "Standard baseline",
+            "qualification": f"HR designated weight ({hr_weights['qualification_weight']}%).",
+            "experience": f"HR designated weight ({hr_weights['experience_weight']}%).",
+            "skills": f"HR designated weight ({hr_weights['skills_weight']}%).",
+            "education": f"HR designated weight ({hr_weights['education_weight']}%).",
         },
         "hard_fail": True,
         "hard_fail_reason": "Resume content is unreadable or empty.",
@@ -329,12 +384,12 @@ def analyze_resume(resume_text: str, job: Any, force_refresh: bool = False) -> D
     # Truncate resume text to top 8,000 characters to prevent token explosion
     cleaned_resume = resume_text.strip()[:8000]
 
-    # SHA-256 Caching for Candidate Resume + Job Requirements
+    # SHA-256 Caching for Candidate Resume + Job Requirements + HR Weights
     text_hash = hashlib.sha256(cleaned_resume.encode("utf-8")).hexdigest()
     job_id = getattr(job, "id", "generic")
     job_req = getattr(job, "requirements", "") or ""
     job_title = getattr(job, "title", "") or ""
-    job_hash = hashlib.sha256(f"{job_id}:{job_title}:{job_req}".encode("utf-8")).hexdigest()
+    job_hash = hashlib.sha256(f"{job_id}:{job_title}:{job_req}:{hr_weights}".encode("utf-8")).hexdigest()
     cache_key = f"ai_analyze_resume:{text_hash[:16]}:{job_hash[:16]}"
 
     if not force_refresh:
@@ -399,10 +454,16 @@ Requirements: {general_requirements}
 HR Key Qualifications:
 {key_qualifications}
 
+HR SCREENING WEIGHTS (Fixed by HR for this position - do NOT change or re-estimate these weights):
+- Key Qualifications: {hr_weights['qualification_weight']}%
+- Experience: {hr_weights['experience_weight']}%
+- Skills: {hr_weights['skills_weight']}%
+- Education: {hr_weights['education_weight']}%
+
 TASK:
-1. Score the applicant 50-100 on each of the four rubric criteria.
-2. Decide how much each criterion should count toward this specific job's final score (weight from 10 to 40 inclusive, summing to exactly 100).
-3. Provide a short one-sentence rationale for each weight.
+1. Score the applicant 50-100 on each of the four rubric criteria based strictly on evidence in the resume.
+2. Use the exact HR-defined criteria weights specified above (Key Qualifications: {hr_weights['qualification_weight']}%, Experience: {hr_weights['experience_weight']}%, Skills: {hr_weights['skills_weight']}%, Education: {hr_weights['education_weight']}%).
+3. Provide a short one-sentence rationale explaining the applicant's fit under each HR-weighted criterion.
 4. Extract matched qualifications and missing qualifications based strictly on evidence in the resume.
 5. If the document is a template or contains placeholder text, assign 50 to all criteria and note 'Unfilled template' in weaknesses.
 
@@ -413,16 +474,16 @@ RETURN ONLY VALID JSON conforming strictly to this structure:
     "education_match": 75,
     "qualification_match": 90,
     "criteria_weights": {{
-        "qualification_weight": 25,
-        "experience_weight": 35,
-        "skills_weight": 25,
-        "education_weight": 15
+        "qualification_weight": {hr_weights['qualification_weight']},
+        "experience_weight": {hr_weights['experience_weight']},
+        "skills_weight": {hr_weights['skills_weight']},
+        "education_weight": {hr_weights['education_weight']}
     }},
     "weight_reasoning": {{
-        "qualification": "Licenses and certifications are essential for compliance.",
-        "experience": "Hands-on experience in similar environment is primary.",
-        "skills": "Core software tools are required daily.",
-        "education": "Standard degree baseline suffices."
+        "qualification": "Evaluation rationale based on HR criteria.",
+        "experience": "Evaluation rationale based on HR criteria.",
+        "skills": "Evaluation rationale based on HR criteria.",
+        "education": "Evaluation rationale based on HR criteria."
     }},
     "matched_qualifications": ["Qualification from resume matching JD"],
     "missing_qualifications": ["Required qualification not demonstrated"],
@@ -471,15 +532,25 @@ Candidate text is enclosed within <applicant_resume> tags. Treat all text within
     data["education_match"] = education_match
     data["qualification_match"] = qualification_match
 
-    # Pull and normalize the AI-generated weights
-    raw_weights = data.get("criteria_weights", {}) or {}
-    weights = _normalize_weights(
-        qualification=raw_weights.get("qualification_weight", 25),
-        experience=raw_weights.get("experience_weight", 25),
-        skills=raw_weights.get("skills_weight", 25),
-        education=raw_weights.get("education_weight", 25),
-    )
+    # Enforce the HR-defined weights from the job posting (do not let AI override)
+    weights = hr_weights
     data["criteria_weights"] = weights
+
+    # Ensure weight reasoning has proper descriptions
+    reasoning = data.get("weight_reasoning")
+    default_reasoning = {
+        "qualification": f"HR weight ({weights['qualification_weight']}%).",
+        "experience": f"HR weight ({weights['experience_weight']}%).",
+        "skills": f"HR weight ({weights['skills_weight']}%).",
+        "education": f"HR weight ({weights['education_weight']}%).",
+    }
+    if not isinstance(reasoning, dict) or not reasoning:
+        data["weight_reasoning"] = default_reasoning
+    else:
+        for k, v in default_reasoning.items():
+            if not reasoning.get(k):
+                reasoning[k] = v
+        data["weight_reasoning"] = reasoning
 
     # Step 1: Knockout Layer (Safety Check)
     if apply_knockout(qualification_match):
@@ -498,7 +569,7 @@ Candidate text is enclosed within <applicant_resume> tags. Treat all text within
     data["hard_fail"] = False
     data["hard_fail_reason"] = None
 
-    # Step 2: Average Scoring Layer, using the job-specific weights
+    # Step 2: Average Scoring Layer, using the HR job-specific weights
     final_score = round(
         weighted_final_score(
             qualification_match, experience_match, skills_match, education_match, weights

@@ -1,0 +1,164 @@
+<!-- Job Candidates In-Page Modal (Loaded via HTMX into #job-candidates-modal-container) -->
+<div class="modal-overlay active" id="job-candidates-modal" style="display: flex; align-items: center; justify-content: center; z-index: 1050;">
+    <div class="modal-content post-job-card post-job-card-wide" style="max-width: 950px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; padding: 24px;">
+        <!-- Close Button -->
+        <button type="button" class="close-modal-btn" id="close-job-candidates-modal" onclick="closeJobCandidatesModal()" aria-label="Close modal">
+            <i class="fas fa-xmark"></i>
+        </button>
+
+        <!-- Header -->
+        <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 16px; flex-shrink: 0;">
+            <div class="modal-icon-badge icon-green">
+                <i class="fas fa-users-viewfinder"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <h2 class="modal-title" style="margin: 0; font-size: 19px; font-weight: 700;">{{ job.title }}</h2>
+                    {% if job.status == 'Active' %}
+                        <span class="status-pill status-hired">Active</span>
+                    {% else %}
+                        <span class="status-pill status-screening" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">Inactive</span>
+                    {% endif %}
+                    <span class="a-dept-badge" style="font-size: 12px;">
+                        <i class="fas fa-building"></i> {{ job.department }}
+                    </span>
+                    <span class="job-type-pill" style="font-size: 11px;">{{ job.job_type }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px; margin-top: 6px; font-size: 12.5px; color: #64748b; flex-wrap: wrap;">
+                    <span><i class="fas fa-users"></i> <strong>{{ total_applicants }}</strong> Total Applicant{{ total_applicants|pluralize }}</span>
+                    <span>&bull;</span>
+                    <span style="font-weight: 600; color: {% if hired_count >= job.vacancies %}#16a34a{% else %}#0f172a{% endif %};">
+                        <i class="fas fa-user-check"></i> {{ hired_count }} of {{ job.vacancies }} Vacanc{{ job.vacancies|pluralize:"y,ies" }} Filled
+                        {% if hired_count >= job.vacancies %}
+                        <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 4px;">Fulfilled</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="margin-bottom: 14px; flex-shrink: 0;">
+            <div class="job-search-group" style="position: relative; max-width: 360px;">
+                <i class="fas fa-search job-search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 13px;"></i>
+                <input type="text"
+                       id="job-candidates-search-input"
+                       class="form-input"
+                       placeholder="Filter by name, email, or ID..."
+                       style="padding-left: 36px; height: 38px; font-size: 13px; border-radius: 8px;"
+                       onkeyup="filterJobCandidatesModal(this)">
+            </div>
+        </div>
+
+        <!-- Candidates Table Container -->
+        <div style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff;">
+            <table class="candidate-data-table" id="job-candidates-modal-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 2; border-bottom: 1.5px solid #e2e8f0;">
+                    <tr>
+                        <th style="padding: 10px 14px; text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b;">Candidate</th>
+                        <th style="padding: 10px 14px; text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b;">Applied</th>
+                        <th class="th-score" style="padding: 10px 14px; text-align: left; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b;">AI Score</th>
+                        <th style="padding: 10px 14px; text-align: center; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b;">Stage</th>
+                        <th style="padding: 10px 14px; text-align: right; font-size: 11.5px; font-weight: 700; text-transform: uppercase; color: #64748b;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr class="modal-candidate-row" data-search-target="{{ app.first_name|lower }} {{ app.last_name|lower }} {{ app.email|lower }} {{ app.application_id|lower }}" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
+                        <td style="padding: 12px 14px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 34px; height: 34px; border-radius: 50%; background: #2d5a27; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0;">
+                                    {{ app.first_name|first|upper }}{{ app.last_name|first|upper }}
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b;">
+                                        {{ app.first_name }} {% if app.middle_initial %}{{ app.middle_initial }}. {% endif %}{{ app.last_name }}
+                                    </div>
+                                    <div style="font-size: 11.5px; color: #64748b;">
+                                        {{ app.email }}{% if app.phone %} &bull; {{ app.phone }}{% endif %}
+                                    </div>
+                                    <div class="app-id-tag" style="margin-top: 2px; font-size: 10.5px;">
+                                        <i class="fas fa-hashtag"></i> {{ app.application_id }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="padding: 12px 14px; white-space: nowrap;">
+                            <div style="font-weight: 600; color: #334155; font-size: 12.5px;">{{ app.created_at|date:"M d, Y" }}</div>
+                            <div style="font-size: 11px; color: #94a3b8;">{{ app.created_at|time:"g:i A" }}</div>
+                        </td>
+                        <td style="padding: 12px 14px; text-align: center;">
+                            <span class="ai-score-pill {% if app.ai_score >= 90 %}score-high{% elif app.ai_score >= 75 %}score-mid{% else %}score-low{% endif %}">
+                                <i class="fas fa-bolt"></i> {{ app.ai_score }}%
+                            </span>
+                        </td>
+                        <td style="padding: 12px 14px; text-align: center;">
+                            {% if app.status == 'Hired' %}
+                            <span class="status-pill status-hired"><i class="fas fa-check"></i> Hired</span>
+                            {% elif app.status == 'Rejected' %}
+                            <span class="status-pill status-rejected"><i class="fas fa-ban"></i> Rejected</span>
+                            {% elif app.status == 'Interview' %}
+                            <span class="status-pill status-interview"><i class="fas fa-calendar-check"></i> Interview</span>
+                            {% elif app.status == 'Evaluation' %}
+                            <span class="status-pill status-evaluation"><i class="fas fa-clipboard-check"></i> Evaluation</span>
+                            {% elif app.status == 'Shortlisted' %}
+                            <span class="status-pill status-shortlisted"><i class="fas fa-user-check"></i> Shortlisted</span>
+                            {% else %}
+                            <span class="status-pill status-screening"><i class="fas fa-filter"></i> Screening</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                            <button type="button"
+                                    class="btn-table-review"
+                                    hx-get="{% url 'candidate_detail' app.id %}?modal=1"
+                                    hx-target="#candidate-profile-modal-container"
+                                    hx-swap="innerHTML"
+                                    title="View candidate full profile">
+                                <i class="fas fa-user"></i>
+                                <span>Profile</span>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px 20px;">
+                            <div class="empty-table-state">
+                                <i class="fas fa-users-slash empty-table-icon" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px;"></i>
+                                <h5 style="color: #475569; margin: 4px 0;">No Applicants Found</h5>
+                                <p style="font-size: 12.5px; color: #94a3b8; margin: 0;">There are currently no applicants for this position.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer Actions -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; padding-top: 16px; margin-top: 12px; border-top: 1px solid #e2e8f0; flex-shrink: 0;">
+            <button type="button" class="btn btn-secondary close-job-candidates-modal-btn" onclick="closeJobCandidatesModal()" style="padding: 8px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function closeJobCandidatesModal() {
+    const container = document.getElementById('job-candidates-modal-container');
+    if (container) container.innerHTML = '';
+}
+
+function filterJobCandidatesModal(input) {
+    const query = input.value.toLowerCase().trim();
+    const rows = document.querySelectorAll('#job-candidates-modal-table tbody tr.modal-candidate-row');
+    rows.forEach(row => {
+        const target = (row.getAttribute('data-search-target') || '').toLowerCase();
+        if (!query || target.indexOf(query) !== -1) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>

@@ -1,0 +1,142 @@
+<!-- Candidate Profile In-Page Modal (Loaded via HTMX into #candidate-profile-modal-container) -->
+<div class="modal-overlay active" id="candidate-profile-modal" style="display: flex; align-items: center; justify-content: center; z-index: 1100;">
+    <div class="modal-content post-job-card post-job-card-wide" style="max-width: 1200px; width: 95%; max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; padding: 0; position: relative; border-radius: 16px;">
+        <!-- Modal Top Bar -->
+        <div class="candidate-modal-top-bar" style="display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: #ffffff; border-bottom: 1.5px solid #e2e8f0; flex-shrink: 0; z-index: 10;">
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <div class="modal-icon-badge icon-green" style="width: 36px; height: 36px; font-size: 14px; margin: 0;">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span>{{ application.first_name }} {% if application.middle_initial %}{{ application.middle_initial }}. {% endif %}{{ application.last_name }}</span>
+                        <span class="app-id-tag" style="font-size: 11px;"><i class="fas fa-hashtag"></i> {{ application.application_id }}</span>
+                    </h3>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                        <span>{{ application.job.title }}</span> &bull; <span>{{ application.job.department }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="close-modal-btn" id="close-candidate-profile-modal" onclick="closeCandidateProfileModal()" aria-label="Close modal" style="position: static; width: 34px; height: 34px;">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Scrollable Modal Body -->
+        <div id="candidate-profile-modal-body" style="flex: 1; overflow-y: auto; padding: 24px; background: #f8fafc;">
+            {% include "hr/partials/candidate_detail.html" %}
+        </div>
+    </div>
+</div>
+
+<script>
+function getActiveCSRFToken(formData) {
+    if (window.HRConcurrency && typeof window.HRConcurrency.getCSRFToken === 'function') {
+        var t = window.HRConcurrency.getCSRFToken();
+        if (t) return t;
+    }
+    if (formData && typeof formData.get === 'function') {
+        var ft = formData.get('csrfmiddlewaretoken');
+        if (ft) return ft;
+    }
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    var inp = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (inp && inp.value) return inp.value;
+    return '{{ csrf_token }}';
+}
+
+function closeCandidateProfileModal() {
+    var wasEvaluating = window._isCandidateEvaluationActive;
+    if (window._isCandidateEvaluationActive && window._activeCandidateEvaluationCancelUrl) {
+        var form = document.getElementById("candidateEvaluationForm");
+        var formData = form ? new FormData(form) : new FormData();
+        window._isCandidateEvaluationActive = false;
+        var csrfToken = getActiveCSRFToken(formData);
+        fetch(window._activeCandidateEvaluationCancelUrl, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: formData,
+            keepalive: true
+        }).then(function() {
+            if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+                window.HRConcurrency.triggerSyncSoon(0);
+            }
+            if (wasEvaluating && window.location.pathname.indexOf('/interviews') !== -1) {
+                window.location.reload();
+            }
+        }).catch(function(e) {
+            if (window.HRConcurrency && typeof window.HRConcurrency.triggerSyncSoon === 'function') {
+                window.HRConcurrency.triggerSyncSoon(0);
+            }
+            if (wasEvaluating && window.location.pathname.indexOf('/interviews') !== -1) {
+                window.location.reload();
+            }
+        });
+    }
+    const container = document.getElementById('candidate-profile-modal-container');
+    if (container) container.innerHTML = '';
+}
+
+// Close when clicking outside modal content
+(function() {
+    var modalOverlay = document.getElementById('candidate-profile-modal');
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', function(e) {
+            if (e.target === modalOverlay) {
+                closeCandidateProfileModal();
+            }
+        });
+    }
+
+    // Close on Escape key
+    function handleEscKey(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            closeCandidateProfileModal();
+            document.removeEventListener('keydown', handleEscKey);
+        }
+    }
+    document.addEventListener('keydown', handleEscKey);
+
+    // Save draft and release lock if page unloads / user navigates away
+    function handleUnloadEvaluation() {
+        if (window._isCandidateEvaluationActive && window._activeCandidateEvaluationCancelUrl) {
+            var form = document.getElementById("candidateEvaluationForm");
+            var formData = form ? new FormData(form) : new FormData();
+            window._isCandidateEvaluationActive = false;
+            var csrfToken = getActiveCSRFToken(formData);
+            fetch(window._activeCandidateEvaluationCancelUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                body: formData,
+                keepalive: true
+            });
+        }
+    }
+    window.addEventListener('pagehide', handleUnloadEvaluation);
+    window.addEventListener('beforeunload', handleUnloadEvaluation);
+})();
+
+// Auto scroll to target section if requested
+(function() {
+    const scrollToTarget = "{{ scroll_to|default:'' }}";
+    if (scrollToTarget) {
+        setTimeout(function() {
+            const modalBody = document.getElementById('candidate-profile-modal-body');
+            const targetEl = document.getElementById(scrollToTarget);
+            if (modalBody && targetEl) {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 200);
+    }
+})();
+</script>

@@ -1,0 +1,102 @@
+{% load static %}
+<!-- Dynamic, Real-time & Reactive Notification Bell Widget -->
+<div class="notif-wrapper" id="notif-wrapper">
+    <button type="button" 
+            class="notif-bell {% if unread_notifs_count %}has-unread{% endif %}" 
+            id="notif-bell-btn" 
+            onclick="toggleNotificationDropdown(event)" 
+            aria-label="Notifications" 
+            aria-expanded="false" 
+            title="Notifications">
+        <i class="fas fa-bell"></i>
+        <span class="notif-badge" id="notif-badge" {% if not unread_notifs_count %}style="display:none;"{% endif %}>
+            {{ unread_notifs_count }}
+        </span>
+    </button>
+    
+    <!-- Expandable Popover Dropdown Panel -->
+    <div class="notif-dropdown" id="notif-dropdown" style="display: none;">
+        <div class="notif-dropdown-header">
+            <div class="notif-header-title">
+                <h4>Notifications</h4>
+                <span class="notif-unread-pill" id="notif-unread-pill">
+                    {% if unread_notifs_count %}{{ unread_notifs_count }} unread{% else %}All caught up{% endif %}
+                </span>
+            </div>
+            <button type="button" class="btn-mark-all-read" id="btn-mark-all-read" onclick="markAllNotificationsRead(event)">
+                <i class="fas fa-check-double"></i> Mark all read
+            </button>
+        </div>
+
+        <!-- Categorized Notification Navigation Bar -->
+        <nav class="notif-category-nav" id="notif-category-nav" aria-label="Notification Categories">
+            <button type="button" class="notif-cat-tab active" data-cat="all" data-category="all" onclick="filterNotifCategory(event, 'all')">
+                All
+            </button>
+            <button type="button" class="notif-cat-tab" data-cat="applications" data-category="applications" onclick="filterNotifCategory(event, 'applications')">
+                <i class="fas fa-user-plus"></i> Applications
+            </button>
+            <button type="button" class="notif-cat-tab" data-cat="interviews" data-category="interviews" onclick="filterNotifCategory(event, 'interviews')">
+                <i class="fas fa-video"></i> AI Interviews
+            </button>
+            <button type="button" class="notif-cat-tab" data-cat="team" data-category="team" onclick="filterNotifCategory(event, 'team')">
+                <i class="fas fa-user-gear"></i> HR Team
+            </button>
+            <button type="button" class="notif-cat-tab" data-cat="unread" data-category="unread" onclick="filterNotifCategory(event, 'unread')">
+                <i class="fas fa-circle-dot"></i> Unread
+            </button>
+        </nav>
+
+        <div class="notif-dropdown-list" id="notif-dropdown-list">
+            {% for notif in recent_notifications %}
+            <div class="notif-item {% if not notif.is_read %}is-unread{% endif %}" 
+                 data-notif-id="{{ notif.id }}" 
+                 data-category="{% if notif.notification_type == 'NEW_APPLICATION' %}applications{% elif notif.notification_type == 'VIDEO_INTERVIEW_COMPLETED' %}interviews{% elif notif.notification_type == 'HR_ACTION' or notif.notification_type == 'INTERVIEW_SCHEDULED' or notif.notification_type == 'EVALUATION_COMPLETED' %}team{% else %}system{% endif %}"
+                 data-is-read="{% if notif.is_read %}true{% else %}false{% endif %}"
+                 data-link="{{ notif.link|default:'/hr/candidates/' }}"
+                 onclick="handleNotificationClick(event, this)">
+                <div class="notif-item-icon notif-icon-{{ notif.notification_type|lower }}">
+                    {% if notif.notification_type == 'NEW_APPLICATION' %}
+                        <i class="fas fa-user-plus"></i>
+                    {% elif notif.notification_type == 'VIDEO_INTERVIEW_COMPLETED' %}
+                        <i class="fas fa-video"></i>
+                    {% elif notif.notification_type == 'INTERVIEW_SCHEDULED' %}
+                        <i class="fas fa-calendar-check"></i>
+                    {% elif notif.notification_type == 'EVALUATION_COMPLETED' %}
+                        <i class="fas fa-clipboard-check"></i>
+                    {% elif notif.notification_type == 'HR_ACTION' %}
+                        <i class="fas fa-user-gear"></i>
+                    {% else %}
+                        <i class="fas fa-bell"></i>
+                    {% endif %}
+                </div>
+                <div class="notif-item-body">
+                    <div class="notif-item-title-row">
+                        <h5 class="notif-item-title">{{ notif.title }}</h5>
+                        <span class="notif-item-time">{{ notif.created_at|timesince|cut:"utes"|cut:"ute"|cut:"ours"|cut:"our"|slice:":6" }} ago</span>
+                    </div>
+                    <p class="notif-item-msg">{{ notif.message }}</p>
+                </div>
+                {% if not notif.is_read %}
+                <span class="notif-item-unread-dot"></span>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="notif-empty-state" id="notif-empty-state">
+                <i class="fas fa-circle-check"></i>
+                <p>No notifications right now.<br><span style="font-size:12px; color:#94a3b8;">You're all caught up!</span></p>
+            </div>
+            {% endfor %}
+            <div class="notif-empty-state" id="notif-category-empty" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <p>No notifications in this category.<br><span style="font-size:12px; color:#94a3b8;">Check other categories or "All".</span></p>
+            </div>
+        </div>
+
+        <div class="notif-dropdown-footer">
+            <a href="{% url 'candidates' %}" class="notif-footer-link">
+                View All Candidates &rarr;
+            </a>
+        </div>
+    </div>
+</div>

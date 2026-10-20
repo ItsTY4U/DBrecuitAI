@@ -85,11 +85,34 @@
     });
 
     // --- 2. HTMX Lifecycle Integration ---
-    document.addEventListener('htmx:beforeRequest', function () {
+    function isSilentRequest(e) {
+        if (!e) return false;
+        const detail = e.detail || {};
+        const elt = detail.elt || e.target;
+        if (elt) {
+            if (elt.id === 'hr-live-toast-poller' ||
+                (elt.classList && elt.classList.contains('silent-poller')) ||
+                (elt.hasAttribute && elt.hasAttribute('data-silent')) ||
+                (elt.closest && elt.closest('#hr-live-toast-poller, .silent-poller, [data-silent="true"]'))) {
+                return true;
+            }
+        }
+        const path = (detail.pathInfo && detail.pathInfo.requestPath) || 
+                     (detail.requestConfig && (detail.requestConfig.path || detail.requestConfig.url)) ||
+                     (detail.url) || '';
+        if (path.includes('/api/live-toasts/') || path.includes('/api/check-version/') || path.includes('/api/notifications/') || path.includes('/api/live-sync/')) {
+            return true;
+        }
+        return false;
+    }
+
+    document.addEventListener('htmx:beforeRequest', function (e) {
+        if (isSilentRequest(e)) return;
         showLoader();
     });
 
-    document.addEventListener('htmx:afterRequest', function () {
+    document.addEventListener('htmx:afterRequest', function (e) {
+        if (isSilentRequest(e)) return;
         hideLoader();
     });
 

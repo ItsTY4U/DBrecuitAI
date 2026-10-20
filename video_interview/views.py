@@ -1,8 +1,10 @@
+import os
+import logging
 import random
 import threading
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, FileResponse, HttpResponseForbidden, Http404
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -13,6 +15,7 @@ from django.db.models import Q
 from jobs.models import Application
 from .models import InterviewSession, InterviewResponse, BehavioralQuestion
 from .ai import analyze_interview_session
+from .tts import generate_question_speech
 
 def _run_ai_analysis_async(session_id):
     """
@@ -113,9 +116,14 @@ def start_interview_view(request, application_id):
         messages.error(request, "This interview has already been completed or abandoned.")
         return redirect("profile")
 
-    # If retaking or previously started, clear old responses and delete their video clips from storage
+    # Clean up video files from storage if present, then bulk delete responses in 1 SQL query
     for old_resp in session.responses.all():
-        old_resp.delete()
+        if old_resp.video_clip:
+            try:
+                old_resp.video_clip.delete(save=False)
+            except Exception:
+                pass
+    session.responses.all().delete()
 
     # 1. Two standard intro questions
     questions = [
@@ -214,6 +222,35 @@ def interview_room_view(request, application_id):
 
 @never_cache
 @login_required(login_url="applicant_login")
+def question_audio_api(request, application_id, question_number):
+    """
+    Returns the MP3 TTS audio for a specific interview question.
+    """
+    application = get_object_or_404(Application, application_id=application_id)
+    if not request.user.is_staff and application.applicant != request.user:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    session = _get_or_create_session(application)
+    response_item = get_object_or_404(
+        InterviewResponse,
+        session=session,
+        question_number=question_number
+    )
+
+    audio_bytes = generate_question_speech(response_item.question_text)
+    if audio_bytes:
+        http_response = HttpResponse(audio_bytes, content_type="audio/mpeg")
+        http_response["Cache-Control"] = "public, max-age=86400"
+        return http_response
+
+    return JsonResponse(
+        {"error": "TTS audio unavailable", "fallback_tts": True},
+        status=404
+    )
+
+
+@never_cache
+@login_required(login_url="applicant_login")
 @require_POST
 def submit_answer_api(request, application_id):
     """
@@ -224,7 +261,7 @@ def submit_answer_api(request, application_id):
         return JsonResponse({"error": "Unauthorized"}, status=403)
 
     session = _get_or_create_session(application)
-    if session.status != "IN_PROGRESS":
+    if session.status not in ["IN_PROGRESS", "COMPLETED"]:
         return JsonResponse({"error": "Session is not active"}, status=400)
 
     try:
@@ -242,18 +279,21 @@ def submit_answer_api(request, application_id):
         response.duration_seconds = duration_seconds
 
         video_file = request.FILES.get("video")
-        if video_file and not skipped:
+        if not skipped:
+            if not video_file or video_file.size == 0:
+                return JsonResponse({"success": False, "error": "No recorded video file was received. Please retry recording."}, status=400)
+
             # Validate file extension
             ext = ".webm"
             if video_file.name and "." in video_file.name:
                 ext = "." + video_file.name.split(".")[-1].lower()
 
             if ext not in [".webm", ".mp4"]:
-                return JsonResponse({"error": "Only .webm and .mp4 video files are allowed."}, status=400)
+                return JsonResponse({"success": False, "error": "Only .webm and .mp4 video files are allowed."}, status=400)
 
             # Validate max file size (50MB)
             if video_file.size > 50 * 1024 * 1024:
-                return JsonResponse({"error": "Video file exceeds the 50MB limit."}, status=400)
+                return JsonResponse({"success": False, "error": "Video file exceeds the 50MB limit."}, status=400)
 
             filename = f"{application.application_id}_q{question_number}{ext}"
             video_file.name = filename
@@ -289,6 +329,19 @@ def finish_interview_view(request, application_id):
         session.status = "COMPLETED"
         session.completed_at = timezone.now()
         session.save(update_fields=["status", "completed_at"])
+
+        # Trigger HR notification for video interview completion
+        try:
+            from hr.utils import create_hr_notification
+            from django.urls import reverse
+            create_hr_notification(
+                title=f"Video Interview Completed: {application.first_name} {application.last_name}",
+                message=f"Completed automated AI video interview for {application.job.title}",
+                notification_type="VIDEO_INTERVIEW_COMPLETED",
+                link=reverse("candidate_detail", kwargs={"pk": application.pk}),
+            )
+        except Exception:
+            pass
 
         # Run AI analysis in background unless synchronous mode is explicitly configured (e.g. testing)
         if getattr(settings, "ASYNC_VIDEO_ANALYSIS", True):
@@ -348,4 +401,36 @@ def congratulations_view(request, application_id):
         "session": session,
         "job": application.job,
     })
+
+
+@never_cache
+@login_required(login_url="applicant_login")
+def stream_video_clip(request, response_id):
+    """
+    Streams a candidate's video interview recording directly from storage (R2/S3/local).
+    Supports HTTP Range requests (206 Partial Content) for seamless HR playback and seeking.
+    """
+    response_obj = get_object_or_404(
+        InterviewResponse.objects.select_related("session__application__applicant"),
+        id=response_id
+    )
+
+    # Permission check: must be staff/HR or the applicant owner
+    if not request.user.is_staff and response_obj.session.application.applicant != request.user:
+        return HttpResponseForbidden("Unauthorized")
+
+    if not response_obj.video_clip:
+        raise Http404("No video clip recorded for this question.")
+
+    try:
+        file_obj = response_obj.video_clip.open("rb")
+        ext = os.path.splitext(response_obj.video_clip.name)[1].lower()
+        content_type = "video/mp4" if ext == ".mp4" else "video/webm"
+        file_resp = FileResponse(file_obj, content_type=content_type)
+        file_resp["Cache-Control"] = "private, max-age=3600"
+        return file_resp
+    except Exception as e:
+        logging.getLogger(__name__).error(f"Error streaming video clip ID {response_id}: {e}")
+        raise Http404("Unable to load video clip.")
+
 

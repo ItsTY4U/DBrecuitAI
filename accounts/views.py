@@ -10,6 +10,8 @@ from django.utils import timezone
 from jobs.recommendations import get_recommended_jobs, get_applicant_strongest_field
 from .models import ApplicantProfile
 from jobs.models import Application
+from hr.models import Interview
+from django.db.models import Prefetch
 from django.contrib import messages
 from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
 from django.core.cache import cache
@@ -356,16 +358,30 @@ def profile(request):
             instance=profile
         )
 
-    # Calculate recommendations AFTER profile is loaded/saved (top 6 best matches)
-    recommended_jobs = get_recommended_jobs(profile, limit=6)
-    strongest_field_key, strongest_field_display = get_applicant_strongest_field(profile)
-    
-    applications = (
+    applications = list(
         Application.objects.filter(applicant=request.user)
         .select_related("job", "video_interview")
+        .prefetch_related(
+            Prefetch(
+                "interview",
+                queryset=Interview.objects.order_by("-date", "-time"),
+                to_attr="ordered_interviews"
+            )
+        )
         .defer("ai_summary", "ai_strengths", "ai_weaknesses")
         .order_by("-created_at")
     )
+
+    # Collect upcoming / scheduled interviews for the applicant
+    active_interviews = []
+    for app in applications:
+        if hasattr(app, "ordered_interviews") and app.ordered_interviews:
+            latest = app.ordered_interviews[0]
+            if latest.status in ("Scheduled", "Rescheduled", "Ongoing"):
+                active_interviews.append({
+                    "application": app,
+                    "interview": latest,
+                })
 
     return render(
         request,
@@ -374,10 +390,30 @@ def profile(request):
             "user_form": user_form,
             "profile_form": profile_form,
             "profile": profile,
+            "applications": applications,
+            "active_interviews": active_interviews,
+        }
+    )
+
+@login_required
+def profile_recommendations(request):
+    """
+    HTMX lazy-loaded endpoint to calculate and render job recommendations
+    asynchronously so initial profile page load is instantaneous.
+    """
+    profile, _ = ApplicantProfile.objects.get_or_create(
+        user=request.user
+    )
+    recommended_jobs = get_recommended_jobs(profile, limit=6)
+    strongest_field_key, strongest_field_display = get_applicant_strongest_field(profile)
+    return render(
+        request,
+        "accounts/partials/recommended_jobs.html",
+        {
+            "profile": profile,
             "recommended_jobs": recommended_jobs,
             "strongest_field": strongest_field_key,
             "strongest_field_display": strongest_field_display,
-            "applications": applications,
         }
     )
     

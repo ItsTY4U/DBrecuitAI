@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Invitation - DBRecruitAI</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+        .wrapper {
+            width: 100%;
+            background-color: #f1f5f9;
+            padding: 40px 16px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3d1a 0%, #2d5a27 60%, #15803d 100%);
+            padding: 36px 32px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .brand-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+        .header-title {
+            margin: 0;
+            font-size: 25px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .header-subtitle {
+            margin: 8px 0 0 0;
+            font-size: 14px;
+            color: #dcfce7;
+        }
+        .content {
+            padding: 36px 32px;
+        }
+        .greeting {
+            font-size: 17px;
+            font-weight: 600;
+            color: #0f172a;
+            margin: 0 0 14px 0;
+        }
+        .lead-text {
+            font-size: 14.5px;
+            line-height: 1.6;
+            color: #475569;
+            margin: 0 0 22px 0;
+        }
+        .details-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .card-row {
+            padding: 8px 0;
+            border-bottom: 1px dashed #e2e8f0;
+            font-size: 13.5px;
+        }
+        .card-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .card-label {
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .card-value {
+            color: #0f172a;
+            font-weight: 700;
+        }
+        .notes-card {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            font-size: 13.5px;
+            color: #1e40af;
+            line-height: 1.5;
+        }
+        .btn-container {
+            text-align: center;
+            margin: 28px 0 10px 0;
+        }
+        .cta-btn {
+            display: inline-block;
+            background: #2d5a27;
+            color: #ffffff !important;
+            padding: 13px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14.5px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(45, 90, 39, 0.25);
+        }
+        .footer {
+            background-color: #f8fafc;
+            padding: 24px 32px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+        .footer a {
+            color: #2d5a27;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header">
+                <div class="brand-badge">DBRecruitAI &bull; Interview Invitation</div>
+                <h1 class="header-title">{{ interview.interview_type }}</h1>
+                <p class="header-subtitle">Position: {{ job.title }} ({{ job.department }})</p>
+            </div>
+
+            <div class="content">
+                <p class="greeting">Dear {{ applicant_name }},</p>
+                <p class="lead-text">
+                    Congratulations! Your application has advanced to the interview phase. We are pleased to invite you to attend your <strong>{{ interview.interview_type }}</strong> for the <strong>{{ job.title }}</strong> role.
+                </p>
+
+                <div class="details-card">
+                    <div class="card-row">
+                        <div class="card-label">Interview Type</div>
+                        <div class="card-value">{{ interview.interview_type }}</div>
+                    </div>
+                    <div class="card-row">
+                        <div class="card-label">Scheduled Date</div>
+                        <div class="card-value">{{ interview.date|date:"l, F d, Y" }}</div>
+                    </div>
+                    <div class="card-row">
+                        <div class="card-label">Scheduled Time</div>
+                        <div class="card-value">{{ interview.time|time:"g:i A" }}</div>
+                    </div>
+                    <div class="card-row">
+                        <div class="card-label">Interviewer / Panel Lead</div>
+                        <div class="card-value">{{ interview.interviewer|default:"Talent Acquisition Team" }}</div>
+                    </div>
+                    <div class="card-row">
+                        <div class="card-label">Location / Meeting Link</div>
+                        <div class="card-value">
+                            {% if "http" in interview.location %}
+                                <a href="{{ interview.location }}" target="_blank" style="color: #2563eb; text-decoration: underline;">{{ interview.location }}</a>
+                            {% else %}
+                                {{ interview.location|default:"HR Office / To be announced" }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-row">
+                        <div class="card-label">Application Reference</div>
+                        <div class="card-value">#{{ application.application_id }}</div>
+                    </div>
+                </div>
+
+                {% if interview.notes %}
+                <div class="notes-card">
+                    <strong>Special Instructions / Notes from Hiring Team:</strong>
+                    <div style="margin-top: 6px; white-space: pre-line;">{{ interview.notes }}</div>
+                </div>
+                {% endif %}
+
+                <p class="lead-text" style="margin-bottom: 8px;">
+                    You can also review this schedule, update your contact details, and monitor your hiring status anytime directly from your applicant profile:
+                </p>
+
+                <div class="btn-container">
+                    <a href="{{ profile_url }}" class="cta-btn" target="_blank">
+                        View Interview in Profile &rarr;
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p style="margin: 0 0 6px 0;">This is an automated notification from <strong>DBRecruitAI</strong>.</p>
+                <p style="margin: 0;">Please arrive or join the meeting link 5-10 minutes prior to your scheduled time.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

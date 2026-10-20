@@ -11,6 +11,7 @@ document.addEventListener("click", function (e) {
                 deptInput.value = deptAttr ? deptAttr : '';
             }
             modal.classList.add('active');
+            updateCriteriaModal(modal);
         }
         return;
     }
@@ -30,7 +31,7 @@ document.addEventListener("click", function (e) {
         if (modal) {
             modal.classList.add('active');
             const input = modal.querySelector('#new-dept-name');
-            if (input) setTimeout(() => input.focus(), 100);
+            if (input) input.focus();
         }
         return;
     }
@@ -53,6 +54,22 @@ document.addEventListener("click", function (e) {
         return;
     }
 
+    // Close job candidates modal
+    const closeJobCandsBtn = e.target.closest('#close-job-candidates-modal, .close-job-candidates-modal-btn');
+    if (closeJobCandsBtn) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
+    // Close candidate profile modal
+    const closeCandProfileBtn = e.target.closest('#close-candidate-profile-modal, .close-candidate-profile-modal-btn');
+    if (closeCandProfileBtn) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
     // Backdrop clicks
     const postModal = document.getElementById('post-job-modal');
     if (postModal && e.target === postModal) {
@@ -68,6 +85,18 @@ document.addEventListener("click", function (e) {
     if (editModal && e.target === editModal) {
         const editContainer = document.getElementById('edit-job-modal-container');
         if (editContainer) editContainer.innerHTML = '';
+    }
+
+    const jobCandsModal = document.getElementById('job-candidates-modal');
+    if (jobCandsModal && e.target === jobCandsModal) {
+        const container = document.getElementById('job-candidates-modal-container');
+        if (container) container.innerHTML = '';
+    }
+
+    const candProfileModal = document.getElementById('candidate-profile-modal');
+    if (candProfileModal && e.target === candProfileModal) {
+        const container = document.getElementById('candidate-profile-modal-container');
+        if (container) container.innerHTML = '';
     }
 
     // ==========================================
@@ -134,6 +163,16 @@ document.addEventListener("keydown", function (e) {
         const editContainer = document.getElementById('edit-job-modal-container');
         if (editContainer && editContainer.innerHTML.trim() !== '') {
             editContainer.innerHTML = '';
+        }
+
+        const candProfileContainer = document.getElementById('candidate-profile-modal-container');
+        if (candProfileContainer && candProfileContainer.innerHTML.trim() !== '') {
+            candProfileContainer.innerHTML = '';
+        }
+
+        const jobCandsContainer = document.getElementById('job-candidates-modal-container');
+        if (jobCandsContainer && jobCandsContainer.innerHTML.trim() !== '') {
+            jobCandsContainer.innerHTML = '';
         }
     }
 });
@@ -323,9 +362,7 @@ function toggleInterviewComment(button) {
         );
 
         if (textarea) {
-            setTimeout(function () {
-                textarea.focus();
-            }, 100);
+            textarea.focus();
         }
     }
 }
@@ -622,8 +659,6 @@ function updateCriteriaTotal(
             </span>
         `;
 
-        submitButton.disabled = false;
-
     } else {
 
         totalDisplay.classList.remove("is-valid");
@@ -638,8 +673,6 @@ function updateCriteriaTotal(
                 Criteria weights must total 100%.
             </span>
         `;
-
-        submitButton.disabled = true;
     }
 }
 
@@ -715,8 +748,6 @@ function updateCriteriaModal(modal) {
             </span>
         `;
 
-        submitButton.disabled = false;
-
     } else {
 
         totalElement.classList.remove("is-valid");
@@ -731,8 +762,6 @@ function updateCriteriaModal(modal) {
                 Criteria weights must total 100%.
             </span>
         `;
-
-        submitButton.disabled = true;
     }
 }
 

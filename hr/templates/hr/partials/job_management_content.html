@@ -1,53 +1,11 @@
 <!-- Job Management Main Content (HTMX Swappable Container) -->
 <div id="job-management-content">
-    <!-- Job Stats Summary -->
-    <section class="stats-grid job-summary-grid">
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-green">
-                    <i class="fas fa-briefcase"></i>
-                </div>
-                <span class="stat-badge">Live</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_active }}</h3>
-                <span class="stat-label">Active Job Openings</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-amber">
-                    <i class="fas fa-box-archive"></i>
-                </div>
-                <span class="stat-badge">Closed</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_inactive }}</h3>
-                <span class="stat-label">Inactive / Archived</span>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-header">
-                <div class="stat-icon-wrapper icon-blue">
-                    <i class="fas fa-layer-group"></i>
-                </div>
-                <span class="stat-badge">Total</span>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-value">{{ total_jobs }}</h3>
-                <span class="stat-label">Total Created Roles</span>
-            </div>
-        </div>
-    </section>
-
-    <!-- Global Top Toolbar: Department Filter -->
-    <div class="candidates-top-toolbar">
-        <form method="GET" action="{% url 'job_management' %}" class="toolbar-filter-form" id="deptFilterForm">
-            <div class="toolbar-filter-group">
-                <label for="deptSelect" class="toolbar-filter-label">
-                    <i class="fas fa-building"></i> Filter by Department:
+    <!-- Global Top Toolbar: Department Filter & New Department Action -->
+    <div class="candidates-top-toolbar" style="margin-bottom: 24px;">
+        <form method="GET" action="{% url 'job_management' %}" class="toolbar-filter-form" id="deptFilterForm" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div class="toolbar-filter-group" style="display: flex; align-items: center; gap: 8px;">
+                <label for="deptSelect" class="toolbar-filter-label" style="margin: 0; font-size: 13px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-building text-green"></i> Filter by Department:
                 </label>
                 <select name="department" id="deptSelect" class="toolbar-select"
                     hx-get="{% url 'job_management' %}?partial=content" hx-target="#job-management-content"
@@ -61,6 +19,11 @@
                     {% endfor %}
                 </select>
             </div>
+            <!-- Relocated New Department Button Next to Department Dropdown -->
+            <button type="button" class="btn-new-dept-toolbar open-new-department-modal-btn" id="open-new-department-modal" title="Add a new department">
+                <i class="fas fa-plus"></i>
+                <span>New Department</span>
+            </button>
             {% if selected_department %}
             <a href="{% url 'job_management' %}" class="btn-reset-filters" title="Reset all filters"
                 hx-get="{% url 'job_management' %}?partial=content" hx-target="#job-management-content"

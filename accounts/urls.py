@@ -5,6 +5,7 @@ urlpatterns = [
     path("login/", views.applicant_login, name="applicant_login"),
     path("logout/", views.applicant_logout, name="applicant_logout"),
     path("profile/", views.profile, name="profile"),
+    path("profile/recommendations/", views.profile_recommendations, name="profile_recommendations"),
     path(
     "process-signup-resume/",
     views.process_signup_resume,
